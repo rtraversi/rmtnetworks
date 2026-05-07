@@ -73,7 +73,7 @@ exports.handler = async (event) => {
   // ── 3. Make operations (best-effort — API coverage not guaranteed) ─────────
   if (process.env.MAKE_API_TOKEN) {
     try {
-      const region  = process.env.MAKE_API_REGION || 'us1';
+      const region  = process.env.MAKE_API_REGION || 'us2';
       const baseUrl = `https://${region}.make.com/api/v2`;
 
       const meRes = await fetch(`${baseUrl}/users/me`, {
