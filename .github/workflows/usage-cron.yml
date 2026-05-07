@@ -1,0 +1,54 @@
+name: Usage Stats & Supabase Keepalive
+
+on:
+  schedule:
+    # 8am ET  = 13:00 UTC (winter EST) — close enough year-round
+    - cron: '0 13 * * *'
+    # 5pm ET  = 22:00 UTC (winter EST)
+    - cron: '0 22 * * *'
+    # 9am ET Sunday = 14:00 UTC — Supabase keepalive
+    - cron: '0 14 * * 0'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Which job to run'
+        required: true
+        default: 'usage'
+        type: choice
+        options: [usage, ping, both]
+
+jobs:
+  update-usage:
+    name: Fetch & update usage stats
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'usage' || github.event.inputs.job == 'both') ||
+      github.event.schedule == '0 13 * * *' ||
+      github.event.schedule == '0 22 * * *'
+    steps:
+      - name: Call fetch-usage function
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "Fetching usage stats at $(date -u)"
+          curl -sf \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://rmtnetworks.com/.netlify/functions/fetch-usage" \
+            | jq . || true
+
+  supabase-ping:
+    name: Supabase keepalive ping
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'ping' || github.event.inputs.job == 'both') ||
+      github.event.schedule == '0 14 * * 0'
+    steps:
+      - name: Ping Supabase
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "Pinging Supabase at $(date -u)"
+          curl -sf \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://rmtnetworks.com/.netlify/functions/supabase-ping" \
+            | jq . || true

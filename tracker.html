@@ -194,6 +194,21 @@
   .date-cell { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); }
   .date-soon { color: var(--warn) !important; }
 
+  /* ── Usage column ── */
+  .usage-cell { font-family: 'DM Mono', monospace; font-size: 0.72rem; min-width: 120px; }
+  .usage-nums { margin-bottom: 5px; }
+  .usage-bar-track {
+    background: var(--border);
+    border-radius: 3px;
+    height: 3px;
+    width: 90px;
+  }
+  .usage-bar-fill {
+    height: 3px;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
   .actions { display: flex; gap: 6px; }
 
   /* ── Modal ── */
@@ -271,7 +286,8 @@
     .stats { grid-template-columns: 1fr 1fr; }
     .form-grid { grid-template-columns: 1fr; }
     th:nth-child(4), td:nth-child(4),
-    th:nth-child(5), td:nth-child(5) { display: none; }
+    th:nth-child(5), td:nth-child(5),
+    th:nth-child(6), td:nth-child(6) { display: none; }
   }
 </style>
 </head>
@@ -343,6 +359,7 @@
           <th>Service</th>
           <th>Category</th>
           <th>Plan</th>
+          <th>Usage</th>
           <th>Price</th>
           <th>Renewal</th>
           <th>Login</th>
@@ -351,7 +368,7 @@
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="8"><div class="state-msg"><div class="big">⟳</div>Loading...</div></td></tr>
+        <tr><td colspan="9"><div class="state-msg"><div class="big">⟳</div>Loading...</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -458,16 +475,91 @@
     'Content-Type': 'application/json',
     'Prefer': 'return=representation'
   };
+  const sbHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
 
-  let allData = [];
+  // Which metric to show first in the Usage column per service
+  const PRIMARY_METRIC = {
+    'Make':       'operations',
+    'Cloudinary': 'credits',
+    'Supabase':   'db_size_mb',
+    'Netlify':    'credits',
+  };
+
+  let allData   = [];
+  let usageData = new Map(); // service_name → [metric rows]
   let editingId = null;
+
+  // ── Usage helpers ──────────────────────────────────────────
+  async function loadUsage() {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/usage_metrics?select=*&order=service_name.asc,metric_name.asc`,
+        { headers: sbHeaders }
+      );
+      if (!res.ok) return;
+      const rows = await res.json();
+      usageData.clear();
+      for (const row of rows) {
+        if (!usageData.has(row.service_name)) usageData.set(row.service_name, []);
+        usageData.get(row.service_name).push(row);
+      }
+    } catch { /* usage display degrades gracefully */ }
+  }
+
+  function fmtNum(n) {
+    if (n == null) return '—';
+    if (n >= 1000) return Number(n).toLocaleString();
+    return n % 1 === 0 ? String(n) : Number(n).toFixed(1);
+  }
+
+  function renderUsageCell(serviceName) {
+    const metrics = usageData.get(serviceName);
+    if (!metrics || metrics.length === 0) {
+      return `<td><span style="color:var(--muted);font-family:'DM Mono',monospace;font-size:0.78rem">—</span></td>`;
+    }
+    const primKey = PRIMARY_METRIC[serviceName];
+    const m = metrics.find(r => r.metric_name === primKey) || metrics[0];
+    const pct  = m.limit_value ? Math.min((m.used_value / m.limit_value) * 100, 100) : 0;
+    const color = pct >= 80 ? 'var(--warn)' : pct >= 50 ? '#e8c840' : 'var(--accent)';
+    const extra = metrics.length > 1
+      ? `<div style="margin-top:6px;color:var(--muted);font-size:0.64rem">${
+          metrics.filter(r => r.metric_name !== primKey)
+            .map(r => `${r.metric_label}: ${fmtNum(r.used_value)}/${fmtNum(r.limit_value)}`)
+            .join(' · ')
+        }</div>`
+      : '';
+    const age = m.last_updated
+      ? (() => {
+          const mins = Math.round((Date.now() - new Date(m.last_updated)) / 60000);
+          if (mins < 60)  return `${mins}m ago`;
+          if (mins < 1440) return `${Math.round(mins/60)}h ago`;
+          return `${Math.round(mins/1440)}d ago`;
+        })()
+      : '';
+    return `<td>
+      <div class="usage-cell">
+        <div class="usage-nums">
+          <span style="color:${color}">${fmtNum(m.used_value)}</span>
+          <span style="color:var(--muted)"> / ${fmtNum(m.limit_value)} ${m.unit}</span>
+        </div>
+        <div class="usage-bar-track">
+          <div class="usage-bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div>
+        </div>
+        ${extra}
+        ${age ? `<div style="margin-top:4px;color:var(--muted);font-size:0.6rem;opacity:0.6">${age}</div>` : ''}
+      </div>
+    </td>`;
+  }
 
   // ── Fetch ──────────────────────────────────────────────────
   async function loadData() {
     try {
-      const res = await fetch(`${API}?order=name.asc`, { headers });
-      if (!res.ok) throw new Error(await res.text());
-      allData = await res.json();
+      const [subRes] = await Promise.all([
+        fetch(`${API}?order=name.asc`, { headers }),
+        loadUsage(),
+      ]);
+      if (!subRes.ok) throw new Error(await subRes.text());
+      allData = await subRes.json();
       updateStats();
       renderTable();
       document.getElementById('conn-status').textContent = '● connected';
@@ -475,7 +567,7 @@
     } catch (e) {
       document.getElementById('conn-status').textContent = '● error';
       document.getElementById('conn-status').style.color = 'var(--warn)';
-      document.getElementById('tbody').innerHTML = `<tr><td colspan="8"><div class="state-msg"><div class="big">⚠</div>Could not connect to Supabase.</div></td></tr>`;
+      document.getElementById('tbody').innerHTML = `<tr><td colspan="9"><div class="state-msg"><div class="big">⚠</div>Could not connect to Supabase.</div></td></tr>`;
     }
   }
 
@@ -510,7 +602,7 @@
     });
 
     if (rows.length === 0) {
-      document.getElementById('tbody').innerHTML = `<tr><td colspan="8"><div class="state-msg"><div class="big">∅</div>No subscriptions found.</div></td></tr>`;
+      document.getElementById('tbody').innerHTML = `<tr><td colspan="9"><div class="state-msg"><div class="big">∅</div>No subscriptions found.</div></td></tr>`;
       return;
     }
 
@@ -544,6 +636,7 @@
         </td>
         <td><span class="cat-pill">${r.category}</span></td>
         <td><div class="plan-cell">${r.plan || '—'}</div></td>
+        ${renderUsageCell(r.name)}
         <td>${priceHTML}</td>
         <td>${renewal}</td>
         <td><div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">${loginInfo || '—'}</div></td>
