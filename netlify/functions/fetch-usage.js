@@ -110,23 +110,21 @@ exports.handler = async (event) => {
         } else {
           results.push({ service: 'Make', ok: null, note: 'ops field not found', orgKeys: Object.keys(org2.organization || org2) });
         }
-        return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ updated: new Date().toISOString(), results }, null, 2) };
-      }
-
-      const orgRes = await fetch(`${baseUrl}/organizations/${orgId}`, { headers: makeHeaders });
-      if (!orgRes.ok) throw new Error(`/organizations/${orgId} HTTP ${orgRes.status}`);
-      const org     = await orgRes.json();
-      const opsUsed = org.organization?.operations
-        ?? org.organization?.operationsUsed
-        ?? org.organization?.operations_used
-        ?? org.organization?.plan?.operationsUsed;
-
-      if (opsUsed != null) {
-        await patchMetric('Make', 'operations', opsUsed);
-        results.push({ service: 'Make', ok: true, operations: opsUsed });
       } else {
-        // Log full response so we can see what fields are available
-        results.push({ service: 'Make', ok: null, note: 'operations field not found', orgKeys: Object.keys(org.organization || org) });
+        const orgRes = await fetch(`${baseUrl}/organizations/${orgId}`, { headers: makeHeaders });
+        if (!orgRes.ok) throw new Error(`/organizations/${orgId} HTTP ${orgRes.status}`);
+        const org     = await orgRes.json();
+        const opsUsed = org.organization?.operations
+          ?? org.organization?.operationsUsed
+          ?? org.organization?.operations_used
+          ?? org.organization?.plan?.operationsUsed;
+
+        if (opsUsed != null) {
+          await patchMetric('Make', 'operations', opsUsed);
+          results.push({ service: 'Make', ok: true, operations: opsUsed });
+        } else {
+          results.push({ service: 'Make', ok: null, note: 'operations field not found', orgKeys: Object.keys(org.organization || org) });
+        }
       }
     } catch (e) {
       results.push({ service: 'Make', ok: false, error: e.message });
