@@ -217,9 +217,10 @@
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.7);
     z-index: 200;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 20px;
+    padding: 40px 20px;
+    overflow-y: auto;
   }
   .modal-overlay.open { display: flex; }
   .modal {
@@ -229,8 +230,7 @@
     padding: 36px;
     width: 100%;
     max-width: 580px;
-    max-height: 90vh;
-    overflow-y: auto;
+    margin: auto;
   }
   .modal h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; }
   .modal h2 span { color: var(--accent); }
