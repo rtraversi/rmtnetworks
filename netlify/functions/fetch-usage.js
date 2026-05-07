@@ -143,24 +143,14 @@ exports.handler = async (event) => {
       const d = await res.json();
 
       // Field names are undocumented — log so we can find the right one
-      const creditsUsed = d.credits_used
-        ?? d.billing?.credits_used
-        ?? d.subscription?.credits_used
-        ?? d.capabilities?.buildCreditsUsed
-        ?? d.plan_credits;
+      const creditsUsed = d.capabilities?.credits?.used ?? null;
+      const creditsTotal = d.capabilities?.credits?.included ?? d.plan_credits ?? null;
 
       if (creditsUsed != null) {
         await patchMetric('Netlify', 'credits', creditsUsed);
-        results.push({
-          service: 'Netlify',
-          ok: true,
-          credits: creditsUsed,
-          plan_credits: d.plan_credits,
-          capabilitiesKeys: d.capabilities ? Object.keys(d.capabilities) : 'no capabilities object',
-          capabilitiesValues: d.capabilities,
-        });
+        results.push({ service: 'Netlify', ok: true, credits_used: creditsUsed, credits_total: creditsTotal });
       } else {
-        results.push({ service: 'Netlify', ok: null, note: 'credits field not found', topKeys: Object.keys(d), capabilitiesValues: d.capabilities });
+        results.push({ service: 'Netlify', ok: null, note: 'credits field not found' });
       }
     } catch (e) {
       results.push({ service: 'Netlify', ok: false, error: e.message });
