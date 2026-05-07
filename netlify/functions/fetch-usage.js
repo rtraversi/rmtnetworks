@@ -153,9 +153,16 @@ exports.handler = async (event) => {
 
       if (creditsUsed != null) {
         await patchMetric('Netlify', 'credits', creditsUsed);
-        results.push({ service: 'Netlify', ok: true, credits: creditsUsed });
+        results.push({
+          service: 'Netlify',
+          ok: true,
+          credits: creditsUsed,
+          plan_credits: d.plan_credits,
+          capabilitiesKeys: d.capabilities ? Object.keys(d.capabilities) : 'no capabilities object',
+          capabilitiesValues: d.capabilities,
+        });
       } else {
-        results.push({ service: 'Netlify', ok: null, note: 'credits field not found', topKeys: Object.keys(d) });
+        results.push({ service: 'Netlify', ok: null, note: 'credits field not found', topKeys: Object.keys(d), capabilitiesValues: d.capabilities });
       }
     } catch (e) {
       results.push({ service: 'Netlify', ok: false, error: e.message });
