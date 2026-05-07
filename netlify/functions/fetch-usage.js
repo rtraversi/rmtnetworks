@@ -87,9 +87,31 @@ exports.handler = async (event) => {
         throw new Error(`/users/me HTTP ${meRes.status}: ${body}`);
       }
       const me    = await meRes.json();
-      const orgId = me.user?.organizationId ?? me.user?.organization?.id;
+      const orgId = me.user?.organizationId
+        ?? me.user?.organization?.id
+        ?? me.authUser?.organizationId
+        ?? me.authUser?.organization?.id;
 
-      if (!orgId) throw new Error('Could not determine org ID from /users/me. Response: ' + JSON.stringify(me));
+      if (!orgId) {
+        // Fall back: fetch org list directly
+        const orgsRes = await fetch(`${baseUrl}/organizations`, { headers: makeHeaders });
+        if (!orgsRes.ok) throw new Error('Could not get org ID. /users/me: ' + JSON.stringify(me));
+        const orgsData = await orgsRes.json();
+        const firstOrg = orgsData.organizations?.[0] ?? orgsData[0];
+        if (!firstOrg?.id) throw new Error('No org found. /users/me: ' + JSON.stringify(me));
+        // recurse with found org
+        const orgRes2 = await fetch(`${baseUrl}/organizations/${firstOrg.id}`, { headers: makeHeaders });
+        if (!orgRes2.ok) throw new Error(`/organizations/${firstOrg.id} HTTP ${orgRes2.status}`);
+        const org2 = await orgRes2.json();
+        const opsUsed2 = org2.organization?.operationsUsed ?? org2.organization?.operations_used ?? org2.organization?.plan?.operationsUsed;
+        if (opsUsed2 != null) {
+          await patchMetric('Make', 'operations', opsUsed2);
+          results.push({ service: 'Make', ok: true, operations: opsUsed2 });
+        } else {
+          results.push({ service: 'Make', ok: null, note: 'ops field not found', orgKeys: Object.keys(org2.organization || org2) });
+        }
+        return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ updated: new Date().toISOString(), results }, null, 2) };
+      }
 
       const orgRes = await fetch(`${baseUrl}/organizations/${orgId}`, { headers: makeHeaders });
       if (!orgRes.ok) throw new Error(`/organizations/${orgId} HTTP ${orgRes.status}`);
