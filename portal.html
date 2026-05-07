@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMT Networks — Portal</title>
+<script>
+  (function() {
+    var token = sessionStorage.getItem('rmt_session');
+    if (!token) { window.location.replace('/'); return; }
+    fetch('/.netlify/functions/verify', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function(r) {
+      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
+      else { document.body.style.visibility = 'visible'; }
+    }).catch(function() {
+      document.body.style.visibility = 'visible';
+    });
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0d0f14;
+    --surface: #13161e;
+    --border:  #1e2230;
+    --accent:  #4fffb0;
+    --accent2: #4b8fff;
+    --warn:    #ff6b4a;
+    --text:    #e8eaf0;
+    --muted:   #5a6070;
+    --card-bg: #181b24;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    visibility: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
+  .logo span { color: var(--muted); font-weight: 400; }
+
+  .btn-logout {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.74rem;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .btn-logout:hover { color: var(--warn); border-color: var(--warn); }
+
+  main {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 64px 40px 80px;
+  }
+
+  .page-header {
+    margin-bottom: 56px;
+  }
+
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .page-header h1 {
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+    line-height: 1.1;
+  }
+
+  .page-header p {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  /* App tiles */
+  .apps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .app-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 30px;
+    text-decoration: none;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .app-tile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(79,255,176,0.04) 0%, transparent 55%);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  .app-tile:hover {
+    border-color: rgba(79,255,176,0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  }
+
+  .app-tile:hover::after { opacity: 1; }
+
+  .tile-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+  }
+
+  .tile-body { flex: 1; }
+
+  .tile-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .tile-desc {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .tile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .tile-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tile-cta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .app-tile:hover .tile-cta { opacity: 1; }
+
+  /* Coming-soon placeholder tile */
+  .app-tile.placeholder {
+    border-style: dashed;
+    opacity: 0.45;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  @media (max-width: 640px) {
+    main { padding: 36px 20px 60px; }
+    header { padding: 20px; }
+    .page-header h1 { font-size: 2rem; }
+    .apps-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">RMT<span>/</span>Networks</div>
+  <button class="btn-logout" onclick="logout()">Sign out</button>
+</header>
+
+<main>
+  <div class="page-header">
+    <div class="eyebrow">Private Portal</div>
+    <h1>Your Applications</h1>
+    <p>Choose an app below to get started.</p>
+  </div>
+
+  <div class="apps-grid">
+
+    <a class="app-tile" href="/tracker.html">
+      <div class="tile-icon">📋</div>
+      <div class="tile-body">
+        <div class="tile-name">Subscription Tracker</div>
+        <div class="tile-desc">Manage all your service subscriptions — costs, renewal dates, login details, and monthly spend.</div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">Finance</span>
+        <span class="tile-cta">Open →</span>
+      </div>
+    </a>
+
+    <!-- Add more app tiles here as needed -->
+    <div class="app-tile placeholder">
+      <div class="tile-icon">＋</div>
+      <div class="tile-body">
+        <div class="tile-name">More coming soon</div>
+        <div class="tile-desc">Future apps will appear here automatically.</div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">Placeholder</span>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function logout() {
+    sessionStorage.removeItem('rmt_session');
+    window.location.replace('/');
+  }
+</script>
+
+</body>
+</html>

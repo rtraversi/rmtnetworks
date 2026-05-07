@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMT Networks — Subscription Tracker</title>
+<script>
+  (function() {
+    var token = sessionStorage.getItem('rmt_session');
+    if (!token) { window.location.replace('/'); return; }
+    fetch('/.netlify/functions/verify', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function(r) {
+      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
+    }).catch(function() {});
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0d0f14;
+    --surface:  #13161e;
+    --border:   #1e2230;
+    --accent:   #4fffb0;
+    --accent2:  #4b8fff;
+    --warn:     #ff6b4a;
+    --text:     #e8eaf0;
+    --muted:    #5a6070;
+    --card-bg:  #181b24;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .back-link {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); border-color: var(--accent); }
+  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .header-right { display: flex; gap: 12px; align-items: center; }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 9px 18px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .btn-primary { background: var(--accent); color: #000; font-weight: 500; }
+  .btn-primary:hover { background: #6fffbe; transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-danger { background: transparent; color: var(--warn); border: 1px solid var(--warn); font-size: 0.72rem; padding: 5px 12px; }
+  .btn-danger:hover { background: var(--warn); color: #fff; }
+
+  /* ── Main layout ── */
+  main { max-width: 1200px; margin: 0 auto; padding: 40px; }
+
+  /* ── Stats row ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-size: 2rem; font-weight: 800; color: var(--text); }
+  .stat-value.green { color: var(--accent); }
+  .stat-value.blue  { color: var(--accent2); }
+  .stat-value.warn  { color: var(--warn); }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap input {
+    width: 100%;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 14px 9px 36px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+  }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; }
+  select.filter-select {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  td { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(79, 255, 176, 0.03); }
+
+  .badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .badge-active   { background: rgba(79,255,176,0.12); color: var(--accent); }
+  .badge-inactive { background: rgba(90,96,112,0.2);   color: var(--muted);  }
+  .badge-warn     { background: rgba(255,107,74,0.15); color: var(--warn);   }
+
+  .cat-pill {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .price-cell { font-family: 'DM Mono', monospace; font-size: 0.85rem; }
+  .price-free  { color: var(--accent); }
+  .price-usage { color: var(--accent2); }
+
+  .name-cell { font-weight: 700; font-size: 0.95rem; }
+  .plan-cell { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); }
+
+  .date-cell { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); }
+  .date-soon { color: var(--warn) !important; }
+
+  .actions { display: flex; gap: 6px; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 36px;
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; }
+  .modal h2 span { color: var(--accent); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { outline: none; border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 72px; }
+  .form-group select option { background: var(--surface); }
+
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* ── Loading / Empty ── */
+  .state-msg {
+    text-align: center;
+    padding: 60px 20px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .state-msg .big { font-size: 2.5rem; margin-bottom: 12px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--accent); color: #000;
+    font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    padding: 12px 20px; border-radius: 8px;
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s; z-index: 999;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  @media (max-width: 768px) {
+    main { padding: 20px; }
+    header { padding: 20px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a class="back-link" href="/portal.html">← Portal</a>
+    <div class="logo">RMT<span>/</span>Networks</div>
+  </div>
+  <div class="header-right">
+    <span id="conn-status" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">● connecting...</span>
+    <button class="btn btn-primary" onclick="openModal()">+ Add Subscription</button>
+  </div>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Services</div>
+      <div class="stat-value" id="stat-total">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active</div>
+      <div class="stat-value green" id="stat-active">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Monthly Cost</div>
+      <div class="stat-value blue" id="stat-cost">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Renewing Soon</div>
+      <div class="stat-value warn" id="stat-soon">—</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search" placeholder="Search subscriptions..." oninput="renderTable()">
+    </div>
+    <select class="filter-select" id="filter-cat" onchange="renderTable()">
+      <option value="">All Categories</option>
+      <option>AI</option>
+      <option>Automation</option>
+      <option>Hosting</option>
+      <option>Database</option>
+      <option>DNS/CDN</option>
+      <option>Media</option>
+      <option>Messaging</option>
+      <option>Travel</option>
+      <option>Utilities</option>
+      <option>General</option>
+    </select>
+    <select class="filter-select" id="filter-status" onchange="renderTable()">
+      <option value="">All Status</option>
+      <option value="true">Active</option>
+      <option value="false">Inactive</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Category</th>
+          <th>Plan</th>
+          <th>Price</th>
+          <th>Renewal</th>
+          <th>Login</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="8"><div class="state-msg"><div class="big">⟳</div>Loading...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">Add <span>Subscription</span></h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Service Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Make" required>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f-cat">
+          <option>General</option>
+          <option>AI</option>
+          <option>Automation</option>
+          <option>Hosting</option>
+          <option>Database</option>
+          <option>DNS/CDN</option>
+          <option>Media</option>
+          <option>Messaging</option>
+          <option>Travel</option>
+          <option>Utilities</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Plan</label>
+        <input type="text" id="f-plan" placeholder="e.g. Pro 750, Free">
+      </div>
+      <div class="form-group">
+        <label>Monthly Price (USD)</label>
+        <input type="number" id="f-price" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Billing Cycle</label>
+        <select id="f-billing">
+          <option value="monthly">Monthly</option>
+          <option value="annual">Annual</option>
+          <option value="usage">Usage / Pay-as-you-go</option>
+          <option value="free">Free</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Renewal Date</label>
+        <input type="date" id="f-renewal">
+      </div>
+      <div class="form-group">
+        <label>Login Email</label>
+        <input type="email" id="f-email" placeholder="rtraversi@gmail.com">
+      </div>
+      <div class="form-group">
+        <label>Login Method</label>
+        <select id="f-login">
+          <option value="email">Email / Password</option>
+          <option value="Google SSO">Google SSO</option>
+          <option value="GitHub SSO">GitHub SSO</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Website URL</label>
+        <input type="url" id="f-url" placeholder="https://...">
+      </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="f-notes" placeholder="API keys, account IDs, anything useful..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Active?</label>
+        <select id="f-active">
+          <option value="true">Yes — Active</option>
+          <option value="false">No — Inactive</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Auto-Renews?</label>
+        <select id="f-autorenew">
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSubscription()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const SUPABASE_URL = 'https://enowrzljapjkaxpsvdhr.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_Ad4AOTXxO8WWk4dv8tU_dg_AGFGPuZy';
+
+  const API = `${SUPABASE_URL}/rest/v1/subscriptions`;
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
+
+  let allData = [];
+  let editingId = null;
+
+  // ── Fetch ──────────────────────────────────────────────────
+  async function loadData() {
+    try {
+      const res = await fetch(`${API}?order=name.asc`, { headers });
+      if (!res.ok) throw new Error(await res.text());
+      allData = await res.json();
+      updateStats();
+      renderTable();
+      document.getElementById('conn-status').textContent = '● connected';
+      document.getElementById('conn-status').style.color = 'var(--accent)';
+    } catch (e) {
+      document.getElementById('conn-status').textContent = '● error';
+      document.getElementById('conn-status').style.color = 'var(--warn)';
+      document.getElementById('tbody').innerHTML = `<tr><td colspan="8"><div class="state-msg"><div class="big">⚠</div>Could not connect to Supabase.</div></td></tr>`;
+    }
+  }
+
+  // ── Stats ─────────────────────────────────────────────────
+  function updateStats() {
+    const active = allData.filter(r => r.is_active);
+    const cost = active
+      .filter(r => r.price && r.billing_cycle === 'monthly')
+      .reduce((s, r) => s + parseFloat(r.price), 0);
+    const soon = active.filter(r => {
+      if (!r.renewal_date) return false;
+      const diff = (new Date(r.renewal_date) - new Date()) / 86400000;
+      return diff >= 0 && diff <= 30;
+    });
+    document.getElementById('stat-total').textContent = allData.length;
+    document.getElementById('stat-active').textContent = active.length;
+    document.getElementById('stat-cost').textContent = cost > 0 ? `$${cost.toFixed(0)}/mo` : '$0';
+    document.getElementById('stat-soon').textContent = soon.length;
+  }
+
+  // ── Render table ──────────────────────────────────────────
+  function renderTable() {
+    const q    = document.getElementById('search').value.toLowerCase();
+    const cat  = document.getElementById('filter-cat').value;
+    const stat = document.getElementById('filter-status').value;
+
+    const rows = allData.filter(r => {
+      const matchQ = !q || r.name?.toLowerCase().includes(q) || r.plan?.toLowerCase().includes(q) || r.notes?.toLowerCase().includes(q);
+      const matchC = !cat || r.category === cat;
+      const matchS = stat === '' || String(r.is_active) === stat;
+      return matchQ && matchC && matchS;
+    });
+
+    if (rows.length === 0) {
+      document.getElementById('tbody').innerHTML = `<tr><td colspan="8"><div class="state-msg"><div class="big">∅</div>No subscriptions found.</div></td></tr>`;
+      return;
+    }
+
+    document.getElementById('tbody').innerHTML = rows.map(r => {
+      const priceHTML = r.billing_cycle === 'free' || r.price === 0
+        ? `<span class="price-cell price-free">FREE</span>`
+        : r.billing_cycle === 'usage'
+        ? `<span class="price-cell price-usage">Usage</span>`
+        : r.price
+        ? `<span class="price-cell">$${parseFloat(r.price).toFixed(2)}</span>`
+        : `<span class="price-cell" style="color:var(--muted)">—</span>`;
+
+      const renewal = r.renewal_date
+        ? (() => {
+            const diff = (new Date(r.renewal_date) - new Date()) / 86400000;
+            const cls = diff < 30 ? 'date-cell date-soon' : 'date-cell';
+            return `<span class="${cls}">${r.renewal_date}</span>`;
+          })()
+        : `<span class="date-cell">—</span>`;
+
+      const statusBadge = r.is_active
+        ? `<span class="badge badge-active">active</span>`
+        : `<span class="badge badge-inactive">inactive</span>`;
+
+      const loginInfo = [r.login_email, r.login_method ? `(${r.login_method})` : ''].filter(Boolean).join(' ');
+
+      return `<tr>
+        <td>
+          <div class="name-cell">${r.website_url ? `<a href="${r.website_url}" target="_blank" style="color:inherit;text-decoration:none;">${r.name} ↗</a>` : r.name}</div>
+          ${r.notes ? `<div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:3px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.notes}</div>` : ''}
+        </td>
+        <td><span class="cat-pill">${r.category}</span></td>
+        <td><div class="plan-cell">${r.plan || '—'}</div></td>
+        <td>${priceHTML}</td>
+        <td>${renewal}</td>
+        <td><div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">${loginInfo || '—'}</div></td>
+        <td>${statusBadge}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:0.72rem" onclick="editRow('${r.id}')">Edit</button>
+            <button class="btn btn-danger" onclick="deleteRow('${r.id}')">✕</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Modal ─────────────────────────────────────────────────
+  function openModal(id = null) {
+    editingId = id;
+    document.getElementById('modal-title').innerHTML = id ? 'Edit <span>Subscription</span>' : 'Add <span>Subscription</span>';
+    if (id) {
+      const r = allData.find(x => x.id === id);
+      document.getElementById('f-name').value      = r.name || '';
+      document.getElementById('f-cat').value       = r.category || 'General';
+      document.getElementById('f-plan').value      = r.plan || '';
+      document.getElementById('f-price').value     = r.price || '';
+      document.getElementById('f-billing').value   = r.billing_cycle || 'monthly';
+      document.getElementById('f-renewal').value   = r.renewal_date || '';
+      document.getElementById('f-email').value     = r.login_email || '';
+      document.getElementById('f-login').value     = r.login_method || 'email';
+      document.getElementById('f-url').value       = r.website_url || '';
+      document.getElementById('f-notes').value     = r.notes || '';
+      document.getElementById('f-active').value    = String(r.is_active);
+      document.getElementById('f-autorenew').value = String(r.auto_renews);
+    } else {
+      ['f-name','f-plan','f-price','f-renewal','f-email','f-url','f-notes'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-cat').value       = 'General';
+      document.getElementById('f-billing').value   = 'monthly';
+      document.getElementById('f-login').value     = 'email';
+      document.getElementById('f-active').value    = 'true';
+      document.getElementById('f-autorenew').value = 'true';
+    }
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('modal').classList.remove('open'); editingId = null; }
+  function editRow(id) { openModal(id); }
+
+  // ── Save ──────────────────────────────────────────────────
+  async function saveSubscription() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { toast('Service name is required', true); return; }
+
+    const payload = {
+      name,
+      category:      document.getElementById('f-cat').value,
+      plan:          document.getElementById('f-plan').value || null,
+      price:         document.getElementById('f-price').value ? parseFloat(document.getElementById('f-price').value) : null,
+      billing_cycle: document.getElementById('f-billing').value,
+      renewal_date:  document.getElementById('f-renewal').value || null,
+      login_email:   document.getElementById('f-email').value || null,
+      login_method:  document.getElementById('f-login').value || null,
+      website_url:   document.getElementById('f-url').value || null,
+      notes:         document.getElementById('f-notes').value || null,
+      is_active:     document.getElementById('f-active').value === 'true',
+      auto_renews:   document.getElementById('f-autorenew').value === 'true',
+    };
+
+    try {
+      let res;
+      if (editingId) {
+        res = await fetch(`${API}?id=eq.${editingId}`, { method: 'PATCH', headers, body: JSON.stringify(payload) });
+      } else {
+        res = await fetch(API, { method: 'POST', headers, body: JSON.stringify(payload) });
+      }
+      if (!res.ok) throw new Error(await res.text());
+      closeModal();
+      await loadData();
+      toast(editingId ? 'Updated!' : 'Subscription added!');
+    } catch(e) {
+      toast('Error saving: ' + e.message, true);
+    }
+  }
+
+  // ── Delete ────────────────────────────────────────────────
+  async function deleteRow(id) {
+    const r = allData.find(x => x.id === id);
+    if (!confirm(`Remove "${r.name}" from the tracker?`)) return;
+    const res = await fetch(`${API}?id=eq.${id}`, { method: 'DELETE', headers });
+    if (res.ok) { await loadData(); toast('Removed.'); }
+    else toast('Delete failed', true);
+  }
+
+  // ── Toast ─────────────────────────────────────────────────
+  function toast(msg, err = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = err ? 'var(--warn)' : 'var(--accent)';
+    t.style.color = '#000';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+  loadData();
+</script>
+</body>
+</html>
