@@ -121,7 +121,8 @@ exports.handler = async (event) => {
       const creditsUsed = d.credits_used
         ?? d.billing?.credits_used
         ?? d.subscription?.credits_used
-        ?? d.capabilities?.buildCreditsUsed;
+        ?? d.capabilities?.buildCreditsUsed
+        ?? d.plan_credits;
 
       if (creditsUsed != null) {
         await patchMetric('Netlify', 'credits', creditsUsed);
