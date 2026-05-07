@@ -76,18 +76,22 @@ exports.handler = async (event) => {
       const region  = process.env.MAKE_API_REGION || 'us2';
       const baseUrl = `https://${region}.make.com/api/v2`;
 
-      const meRes = await fetch(`${baseUrl}/users/me`, {
-        headers: { 'Authorization': `Token ${process.env.MAKE_API_TOKEN}` },
-      });
-      if (!meRes.ok) throw new Error(`/users/me HTTP ${meRes.status}`);
+      const makeHeaders = {
+        'Authorization': `Token ${process.env.MAKE_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      };
+
+      const meRes = await fetch(`${baseUrl}/users/me`, { headers: makeHeaders });
+      if (!meRes.ok) {
+        const body = await meRes.text();
+        throw new Error(`/users/me HTTP ${meRes.status}: ${body}`);
+      }
       const me    = await meRes.json();
       const orgId = me.user?.organizationId ?? me.user?.organization?.id;
 
-      if (!orgId) throw new Error('Could not determine org ID from /users/me');
+      if (!orgId) throw new Error('Could not determine org ID from /users/me. Response: ' + JSON.stringify(me));
 
-      const orgRes = await fetch(`${baseUrl}/organizations/${orgId}`, {
-        headers: { 'Authorization': `Token ${process.env.MAKE_API_TOKEN}` },
-      });
+      const orgRes = await fetch(`${baseUrl}/organizations/${orgId}`, { headers: makeHeaders });
       if (!orgRes.ok) throw new Error(`/organizations/${orgId} HTTP ${orgRes.status}`);
       const org     = await orgRes.json();
       const opsUsed = org.organization?.operationsUsed
