@@ -31,23 +31,25 @@ async function patchMetric(service, metric, usedValue) {
 
   try {
     console.log('Navigating to Netlify login...');
-    await page.goto('https://app.netlify.com/login', { waitUntil: 'networkidle' });
+    await page.goto('https://app.netlify.com/login', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(2000);
 
     // Click "Log in with email" option
     const emailBtn = page.locator('a[href*="email"], button:has-text("Email"), a:has-text("Email")').first();
     await emailBtn.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
 
     console.log('Filling login form...');
     await page.fill('input[name="email"], input[type="email"]', NL_EMAIL);
     await page.fill('input[name="password"], input[type="password"]', NL_PASS);
     await page.click('button[type="submit"], input[type="submit"]');
-    await page.waitForLoadState('networkidle');
+    await page.waitForURL('**/app.netlify.com/**', { timeout: 30000 });
     console.log('Logged in. Current URL:', page.url());
 
     // Navigate to billing page
     console.log('Navigating to billing...');
-    await page.goto('https://app.netlify.com/teams/rtraversi/billing', { waitUntil: 'networkidle' });
+    await page.goto('https://app.netlify.com/teams/rtraversi/billing', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(4000);
     console.log('Billing URL:', page.url());
 
     // Wait a moment for dynamic content to load
