@@ -46,7 +46,7 @@ async function patchMetric(service, metric, usedValue) {
 
     await page.click('button[type="submit"]');
     console.log('Submitted. Waiting for redirect away from login...');
-    await page.waitForURL(url => !url.includes('/login'), { timeout: 30000 });
+    await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 30000 });
     console.log('Logged in. Current URL:', page.url());
     await page.screenshot({ path: `screenshot-loggedin-${Date.now()}.png` });
 
