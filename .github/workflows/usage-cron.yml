@@ -15,7 +15,7 @@ on:
         required: true
         default: 'usage'
         type: choice
-        options: [usage, ping, both]
+        options: [usage, ping, both, scrape-netlify]
 
 jobs:
   update-usage:
@@ -35,6 +35,38 @@ jobs:
             -H "Authorization: Bearer $CRON_SECRET" \
             "https://rmtnetworks.com/.netlify/functions/fetch-usage" \
             | jq . || true
+
+  scrape-netlify:
+    name: Scrape Netlify credit balance
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'scrape-netlify' || github.event.inputs.job == 'both') ||
+      github.event.schedule == '0 13 * * *' ||
+      github.event.schedule == '0 22 * * *'
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Netlify scraper
+        env:
+          NETLIFY_EMAIL:    ${{ secrets.NETLIFY_EMAIL }}
+          NETLIFY_PASSWORD: ${{ secrets.NETLIFY_PASSWORD }}
+          SUPABASE_URL:     ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:     ${{ secrets.SUPABASE_KEY }}
+        run: |
+          echo "Scraping Netlify credits at $(date -u)"
+          node scripts/scrape-netlify.js
 
   supabase-ping:
     name: Supabase keepalive ping
