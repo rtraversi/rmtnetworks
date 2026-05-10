@@ -13,9 +13,7 @@
     }).then(function(r) {
       if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
       else { document.body.style.visibility = 'visible'; }
-    }).catch(function() {
-      document.body.style.visibility = 'visible';
-    });
+    }).catch(function() { document.body.style.visibility = 'visible'; });
   })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,189 +42,200 @@
   }
 
   header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 28px 40px;
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0;
-    background: var(--bg);
-    z-index: 100;
+    background: var(--bg); z-index: 100;
   }
-
   .header-left { display: flex; align-items: center; gap: 20px; }
   .back-link {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--muted);
-    text-decoration: none;
-    padding: 6px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted);
+    text-decoration: none; padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
     transition: color 0.15s, border-color 0.15s;
   }
   .back-link:hover { color: var(--accent); border-color: var(--accent); }
   .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
   .logo span { color: var(--muted); font-weight: 400; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
 
   .btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    padding: 9px 18px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 0.03em;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    padding: 9px 18px; border-radius: 6px; border: none;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em;
   }
   .btn-primary { background: var(--accent); color: #000; font-weight: 500; }
   .btn-primary:hover { background: #6fffbe; transform: translateY(-1px); }
   .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-pdf { background: transparent; color: var(--accent2); border: 1px solid var(--accent2); }
+  .btn-pdf:hover { background: var(--accent2); color: #fff; }
+  .btn-pdf:disabled { opacity: 0.35; cursor: not-allowed; }
   .btn-danger { background: transparent; color: var(--warn); border: 1px solid var(--warn); font-size: 0.72rem; padding: 5px 12px; }
   .btn-danger:hover { background: var(--warn); color: #fff; }
 
-  main { max-width: 1000px; margin: 0 auto; padding: 40px; }
+  main { max-width: 900px; margin: 0 auto; padding: 40px; }
 
-  /* ── Filter/toolbar ── */
+  .page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .page-title h1 { font-size: 1.8rem; font-weight: 800; }
+  .page-title .icon { font-size: 1.8rem; }
+
   .toolbar {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap;
   }
-  .toolbar-left { flex: 1; display: flex; gap: 12px; flex-wrap: wrap; }
+  .toolbar-left { flex: 1; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   select.filter-select {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 9px 14px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    cursor: pointer;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.76rem; cursor: pointer;
   }
   select:focus { outline: none; border-color: var(--accent); }
+  .select-all-wrap {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted);
+    cursor: pointer; user-select: none;
+  }
+  .select-all-wrap input { cursor: pointer; accent-color: var(--accent); }
+  #selected-count { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); }
 
-  /* ── Ideas list ── */
-  .ideas-list { display: flex; flex-direction: column; gap: 14px; }
+  /* ── Idea rows ── */
+  .ideas-list { display: flex; flex-direction: column; gap: 8px; }
 
-  .idea-card {
+  .idea-row {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 22px 26px;
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-    transition: border-color 0.15s;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    /* Flashy gradient shift on hover */
+    background-size: 200% 200%;
   }
-  .idea-card:hover { border-color: rgba(79,255,176,0.25); }
 
-  .idea-priority-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    margin-top: 6px;
+  @keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
-  .priority-high   { background: var(--warn); }
-  .priority-medium { background: #e8c840; }
-  .priority-low    { background: var(--accent); }
 
-  .idea-content { flex: 1; }
-  .idea-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
-  .idea-desc { font-family: 'DM Mono', monospace; font-size: 0.76rem; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+  .idea-row:hover {
+    border-color: transparent;
+    box-shadow:
+      0 0 0 1px rgba(79,255,176,0.5),
+      0 0 24px rgba(79,255,176,0.08),
+      0 8px 32px rgba(0,0,0,0.3);
+    background: linear-gradient(135deg, #181b24 0%, #1a2030 40%, #181b24 100%);
+  }
 
-  .idea-meta {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
+  .idea-row::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+      rgba(79,255,176,0) 0%,
+      rgba(79,255,176,0.04) 30%,
+      rgba(75,143,255,0.04) 70%,
+      rgba(79,255,176,0) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    border-radius: inherit;
   }
-  .meta-item {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.66rem;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  .idea-row:hover::before { opacity: 1; }
+
+  /* Animated left accent bar on hover */
+  .idea-row::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 10%; bottom: 10%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.25s;
   }
-  .meta-item span { color: var(--text); }
+  .idea-row:hover::after { opacity: 1; }
+
+  .idea-row-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px; cursor: pointer;
+  }
+
+  .idea-checkbox { cursor: pointer; accent-color: var(--accent); width: 15px; height: 15px; flex-shrink: 0; }
+
+  .idea-title-text { flex: 1; font-weight: 700; font-size: 0.95rem; }
 
   .priority-badge {
-    display: inline-block;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    padding: 2px 8px;
-    border-radius: 20px;
-    letter-spacing: 0.05em;
-    font-weight: 500;
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    padding: 3px 9px; border-radius: 20px;
+    letter-spacing: 0.05em; font-weight: 500; flex-shrink: 0;
   }
   .badge-high   { background: rgba(255,107,74,0.15); color: var(--warn); }
   .badge-medium { background: rgba(232,200,64,0.15); color: #e8c840; }
   .badge-low    { background: rgba(79,255,176,0.12); color: var(--accent); }
 
-  .idea-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .idea-who {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    color: var(--muted); flex-shrink: 0; min-width: 40px; text-align: right;
+  }
+  .idea-date {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    color: var(--muted); flex-shrink: 0; min-width: 90px; text-align: right;
+  }
+  .expand-icon {
+    font-size: 0.7rem; color: var(--muted); flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .idea-row.expanded .expand-icon { transform: rotate(180deg); }
 
-  /* ── Modal ── */
-  .modal-overlay {
+  .idea-detail {
     display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 200;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 40px 20px;
-    overflow-y: auto;
+    padding: 0 20px 18px 49px;
+    border-top: 1px solid var(--border);
   }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 36px;
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
+  .idea-row.expanded .idea-detail { display: block; }
+  .idea-desc-text {
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    color: var(--muted); line-height: 1.7; padding-top: 14px;
   }
-  .modal h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; }
-  .modal h2 span { color: var(--accent); }
-
-  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-  .form-group label { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 14px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.82rem;
-    transition: border-color 0.15s;
-  }
-  .form-group input:focus,
-  .form-group select:focus,
-  .form-group textarea:focus { outline: none; border-color: var(--accent); }
-  .form-group textarea { resize: vertical; min-height: 100px; }
-  .form-group select option { background: var(--surface); }
-
-  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .idea-detail-actions { display: flex; gap: 8px; margin-top: 14px; }
 
   /* ── Empty / loading ── */
   .state-msg {
-    text-align: center;
-    padding: 60px 20px;
-    font-family: 'DM Mono', monospace;
-    color: var(--muted);
-    font-size: 0.85rem;
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    text-align: center; padding: 60px 20px;
+    font-family: 'DM Mono', monospace; color: var(--muted); font-size: 0.85rem;
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
   }
   .state-msg .big { font-size: 2.5rem; margin-bottom: 12px; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    align-items: flex-start; justify-content: center;
+    padding: 40px 20px; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 36px; width: 100%; max-width: 540px; margin: 0 auto;
+  }
+  .modal h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; }
+  .modal h2 span { color: var(--accent); }
+  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .form-group label { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .form-group input, .form-group select, .form-group textarea {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 14px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.82rem; transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 100px; }
+  .form-group select option { background: var(--surface); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
 
   /* ── Toast ── */
   #toast {
@@ -239,18 +248,29 @@
   }
   #toast.show { transform: translateY(0); opacity: 1; }
 
-  .page-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 32px;
+  /* ── Print styles ── */
+  @media print {
+    body { visibility: visible !important; background: #fff; color: #000; font-family: Georgia, serif; }
+    header, .toolbar, .page-title, #toast, .modal-overlay, .idea-detail-actions, .idea-checkbox, .expand-icon { display: none !important; }
+    main { max-width: 100%; padding: 0; margin: 0; }
+    .print-header { display: block !important; margin-bottom: 24px; border-bottom: 2px solid #000; padding-bottom: 12px; }
+    .idea-row { border: 1px solid #ccc; border-radius: 0; margin-bottom: 12px; box-shadow: none !important; background: #fff !important; }
+    .idea-row::before, .idea-row::after { display: none; }
+    .idea-row-header { padding: 10px 14px; cursor: default; }
+    .idea-title-text { color: #000; font-size: 1rem; }
+    .idea-date, .idea-who { color: #555; }
+    .priority-badge { border: 1px solid #999; background: #f5f5f5 !important; color: #333 !important; }
+    .idea-detail { display: block !important; padding: 8px 14px 12px; border-top: 1px solid #eee; }
+    .idea-desc-text { color: #333; }
+    .idea-row:not(.print-selected) { display: none; }
   }
-  .page-title h1 { font-size: 1.8rem; font-weight: 800; }
-  .page-title .icon { font-size: 1.8rem; }
+
+  .print-header { display: none; }
 
   @media (max-width: 640px) {
     main { padding: 20px; }
     header { padding: 20px; }
+    .idea-date { display: none; }
   }
 </style>
 </head>
@@ -261,10 +281,18 @@
     <a class="back-link" href="/portal.html">← Portal</a>
     <div class="logo">RMT<span>/</span>Networks</div>
   </div>
-  <button class="btn btn-primary" onclick="openModal()">+ Add Idea</button>
+  <div class="header-right">
+    <button class="btn btn-pdf" id="pdf-btn" onclick="printSelected()" disabled>⬇ Print PDF</button>
+    <button class="btn btn-primary" onclick="openModal()">+ Add Idea</button>
+  </div>
 </header>
 
 <main>
+  <div class="print-header">
+    <h1 style="font-size:1.5rem;font-weight:800;">Ideas — RMT Networks</h1>
+    <p style="font-size:0.85rem;color:#666;margin-top:4px;">Printed <span id="print-date"></span></p>
+  </div>
+
   <div class="page-title">
     <span class="icon">💡</span>
     <h1>Ideas</h1>
@@ -272,6 +300,9 @@
 
   <div class="toolbar">
     <div class="toolbar-left">
+      <label class="select-all-wrap">
+        <input type="checkbox" id="select-all" onchange="toggleSelectAll()"> Select all
+      </label>
       <select class="filter-select" id="filter-priority" onchange="renderIdeas()">
         <option value="">All Priorities</option>
         <option value="High">High</option>
@@ -279,12 +310,12 @@
         <option value="Low">Low</option>
       </select>
       <select class="filter-select" id="filter-who" onchange="renderIdeas()">
-        <option value="">All People</option>
+        <option value="">Everyone</option>
         <option value="Rob">Rob</option>
         <option value="Katy">Katy</option>
       </select>
     </div>
-    <span id="idea-count" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)"></span>
+    <span id="selected-count"></span>
   </div>
 
   <div id="ideas-list">
@@ -296,7 +327,6 @@
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <h2 id="modal-title">Add <span>Idea</span></h2>
-
     <div class="form-group">
       <label>Title *</label>
       <input type="text" id="f-title" placeholder="What's the idea?">
@@ -320,7 +350,6 @@
         <option value="Katy">Katy</option>
       </select>
     </div>
-
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveIdea()">Save Idea</button>
@@ -331,10 +360,9 @@
 <div id="toast"></div>
 
 <script>
-  let SUPABASE_URL = '';
-  let SUPABASE_KEY = '';
-  let allIdeas = [];
-  let editingId = null;
+  let SUPABASE_URL = '', SUPABASE_KEY = '';
+  let allIdeas = [], editingId = null;
+  let selectedIds = new Set();
 
   async function initConfig() {
     const res = await fetch('/.netlify/functions/config');
@@ -368,12 +396,9 @@
   function renderIdeas() {
     const pri = document.getElementById('filter-priority').value;
     const who = document.getElementById('filter-who').value;
+    const filtered = allIdeas.filter(r => (!pri || r.priority === pri) && (!who || r.added_by === who));
 
-    const filtered = allIdeas.filter(r => {
-      return (!pri || r.priority === pri) && (!who || r.added_by === who);
-    });
-
-    document.getElementById('idea-count').textContent = `${filtered.length} idea${filtered.length !== 1 ? 's' : ''}`;
+    updateSelectionUI();
 
     if (filtered.length === 0) {
       document.getElementById('ideas-list').innerHTML =
@@ -382,29 +407,77 @@
     }
 
     document.getElementById('ideas-list').innerHTML = `<div class="ideas-list">${filtered.map(r => {
-      const dotClass = r.priority === 'High' ? 'priority-high' : r.priority === 'Low' ? 'priority-low' : 'priority-medium';
       const badgeClass = r.priority === 'High' ? 'badge-high' : r.priority === 'Low' ? 'badge-low' : 'badge-medium';
       const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      const isSelected = selectedIds.has(r.id);
+      const isPrintSelected = isSelected ? 'print-selected' : '';
       return `
-        <div class="idea-card">
-          <div class="idea-priority-dot ${dotClass}"></div>
-          <div class="idea-content">
-            <div class="idea-title">${r.title}</div>
-            ${r.description ? `<div class="idea-desc">${r.description}</div>` : ''}
-            <div class="idea-meta">
-              <div class="meta-item">Priority <span><span class="priority-badge ${badgeClass}">${r.priority}</span></span></div>
-              <div class="meta-item">Added by <span>${r.added_by}</span></div>
-              <div class="meta-item">Date <span>${date}</span></div>
-            </div>
+        <div class="idea-row ${isPrintSelected}" id="row-${r.id}">
+          <div class="idea-row-header" onclick="toggleExpand('${r.id}', event)">
+            <input class="idea-checkbox" type="checkbox" ${isSelected ? 'checked' : ''}
+              onclick="event.stopPropagation(); toggleSelect('${r.id}')" title="Select for PDF">
+            <div class="idea-title-text">${r.title}</div>
+            <span class="priority-badge ${badgeClass}">${r.priority}</span>
+            <div class="idea-who">${r.added_by}</div>
+            <div class="idea-date">${date}</div>
+            <span class="expand-icon">▼</span>
           </div>
-          <div class="idea-actions">
-            <button class="btn btn-ghost" style="padding:5px 12px;font-size:0.72rem" onclick="editIdea('${r.id}')">Edit</button>
-            <button class="btn btn-danger" onclick="deleteIdea('${r.id}')">✕</button>
+          <div class="idea-detail">
+            <div class="idea-desc-text">${r.description || '<em style="opacity:0.5">No description added.</em>'}</div>
+            <div class="idea-detail-actions">
+              <button class="btn btn-ghost" style="padding:5px 14px;font-size:0.72rem" onclick="editIdea('${r.id}')">Edit</button>
+              <button class="btn btn-danger" onclick="deleteIdea('${r.id}')">Delete</button>
+            </div>
           </div>
         </div>`;
     }).join('')}</div>`;
   }
 
+  function toggleExpand(id, e) {
+    if (e.target.type === 'checkbox') return;
+    const row = document.getElementById('row-' + id);
+    row.classList.toggle('expanded');
+  }
+
+  function toggleSelect(id) {
+    if (selectedIds.has(id)) {
+      selectedIds.delete(id);
+      document.getElementById('row-' + id)?.classList.remove('print-selected');
+    } else {
+      selectedIds.add(id);
+      document.getElementById('row-' + id)?.classList.add('print-selected');
+    }
+    updateSelectionUI();
+  }
+
+  function toggleSelectAll() {
+    const all = document.getElementById('select-all').checked;
+    const checkboxes = document.querySelectorAll('.idea-checkbox');
+    checkboxes.forEach(cb => {
+      const id = cb.closest('.idea-row').id.replace('row-', '');
+      if (all) { selectedIds.add(id); cb.checked = true; document.getElementById('row-' + id)?.classList.add('print-selected'); }
+      else { selectedIds.delete(id); cb.checked = false; document.getElementById('row-' + id)?.classList.remove('print-selected'); }
+    });
+    updateSelectionUI();
+  }
+
+  function updateSelectionUI() {
+    const count = selectedIds.size;
+    const countEl = document.getElementById('selected-count');
+    const pdfBtn = document.getElementById('pdf-btn');
+    countEl.textContent = count > 0 ? `${count} selected` : '';
+    pdfBtn.disabled = count === 0;
+    pdfBtn.textContent = count > 0 ? `⬇ Print PDF (${count})` : '⬇ Print PDF';
+  }
+
+  function printSelected() {
+    document.getElementById('print-date').textContent = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    // Expand all selected rows so description shows in print
+    selectedIds.forEach(id => document.getElementById('row-' + id)?.classList.add('expanded'));
+    window.print();
+  }
+
+  // Modal
   function openModal(id = null) {
     editingId = id;
     document.getElementById('modal-title').innerHTML = id ? 'Edit <span>Idea</span>' : 'Add <span>Idea</span>';
@@ -429,14 +502,12 @@
   async function saveIdea() {
     const title = document.getElementById('f-title').value.trim();
     if (!title) { toast('Title is required', true); return; }
-
     const payload = {
       title,
       description: document.getElementById('f-desc').value.trim() || null,
       priority:    document.getElementById('f-priority').value,
       added_by:    document.getElementById('f-who').value,
     };
-
     try {
       let res;
       if (editingId) {
@@ -447,17 +518,15 @@
       if (!res.ok) throw new Error(await res.text());
       closeModal();
       await loadIdeas();
-      toast(editingId ? 'Idea updated!' : 'Idea added!');
-    } catch (e) {
-      toast('Error saving: ' + e.message, true);
-    }
+      toast(editingId ? 'Idea updated!' : 'Idea saved!');
+    } catch (e) { toast('Error: ' + e.message, true); }
   }
 
   async function deleteIdea(id) {
     const r = allIdeas.find(x => x.id === id);
     if (!confirm(`Delete "${r.title}"?`)) return;
     const res = await fetch(`${SUPABASE_URL}/rest/v1/ideas?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
-    if (res.ok) { await loadIdeas(); toast('Deleted.'); }
+    if (res.ok) { selectedIds.delete(id); await loadIdeas(); toast('Deleted.'); }
     else toast('Delete failed', true);
   }
 
@@ -465,12 +534,12 @@
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.background = err ? 'var(--warn)' : 'var(--accent)';
+    t.style.color = '#000';
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2800);
   }
 
   document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
-
   loadIdeas();
 </script>
 </body>
