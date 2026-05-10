@@ -68,6 +68,14 @@ jobs:
           echo "Scraping Netlify credits at $(date -u)"
           node scripts/scrape-netlify.js
 
+      - name: Upload screenshot on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-screenshot
+          path: screenshot-*.png
+          if-no-files-found: ignore
+
   supabase-ping:
     name: Supabase keepalive ping
     runs-on: ubuntu-latest

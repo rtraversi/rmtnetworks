@@ -31,8 +31,8 @@ async function patchMetric(service, metric, usedValue) {
 
   try {
     console.log('Navigating to Netlify login...');
-    await page.goto('https://app.netlify.com/login', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(2000);
+    await page.goto('https://app.netlify.com/login', { waitUntil: 'load', timeout: 90000 });
+    await page.waitForTimeout(3000);
 
     // Click "Log in with email" option
     const emailBtn = page.locator('a[href*="email"], button:has-text("Email"), a:has-text("Email")').first();
@@ -94,6 +94,7 @@ async function patchMetric(service, metric, usedValue) {
 
   } catch (e) {
     console.error('Error:', e.message);
+    try { await page.screenshot({ path: `screenshot-error-${Date.now()}.png`, fullPage: true }); } catch {}
     process.exit(1);
   } finally {
     await browser.close();
