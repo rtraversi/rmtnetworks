@@ -30,21 +30,25 @@ async function patchMetric(service, metric, usedValue) {
   const page = await browser.newPage();
 
   try {
-    console.log('Navigating to Netlify login...');
-    await page.goto('https://app.netlify.com/login', { waitUntil: 'load', timeout: 90000 });
-    await page.waitForTimeout(3000);
-
-    // Click "Log in with email" option
-    const emailBtn = page.locator('a[href*="email"], button:has-text("Email"), a:has-text("Email")').first();
-    await emailBtn.click();
+    console.log('Navigating directly to email login page...');
+    await page.goto('https://app.netlify.com/login/email', { waitUntil: 'load', timeout: 90000 });
     await page.waitForTimeout(2000);
+    await page.screenshot({ path: `screenshot-login-${Date.now()}.png` });
+
+    console.log('Login page URL:', page.url());
+    console.log('Waiting for email input...');
+    await page.waitForSelector('input[type="email"]', { timeout: 15000 });
 
     console.log('Filling login form...');
-    await page.fill('input[name="email"], input[type="email"]', NL_EMAIL);
-    await page.fill('input[name="password"], input[type="password"]', NL_PASS);
-    await page.click('button[type="submit"], input[type="submit"]');
-    await page.waitForURL('**/app.netlify.com/**', { timeout: 30000 });
+    await page.fill('input[type="email"]', NL_EMAIL);
+    await page.fill('input[type="password"]', NL_PASS);
+    await page.screenshot({ path: `screenshot-filled-${Date.now()}.png` });
+
+    await page.click('button[type="submit"]');
+    console.log('Submitted. Waiting for redirect away from login...');
+    await page.waitForURL(url => !url.includes('/login'), { timeout: 30000 });
     console.log('Logged in. Current URL:', page.url());
+    await page.screenshot({ path: `screenshot-loggedin-${Date.now()}.png` });
 
     // Navigate to billing page
     console.log('Navigating to billing...');
@@ -54,6 +58,7 @@ async function patchMetric(service, metric, usedValue) {
 
     // Wait a moment for dynamic content to load
     await page.waitForTimeout(3000);
+    await page.screenshot({ path: `screenshot-billing-${Date.now()}.png`, fullPage: true });
 
     // Dump page text so we can find the right selector
     const bodyText = await page.locator('body').innerText();
@@ -63,13 +68,30 @@ async function patchMetric(service, metric, usedValue) {
     console.log(creditLines.join('\n'));
     console.log('--- END SAMPLE ---');
 
-    // Try to find credit balance — look for number near "credit" text
-    const creditsText = creditLines.find(l => /[\d,]+\.?\d*\s*(credits?|available)/i.test(l));
-    if (creditsText) {
-      const match = creditsText.match(/([\d,]+\.?\d*)/);
+    // Log ALL credit-related lines for debugging
+    console.log('Credit-related lines found:');
+    creditLines.forEach((l, i) => console.log(`  [${i}] ${l.trim()}`));
+
+    // Look specifically for "Pro plan available credits: X,XXX.X"
+    const proLine = creditLines.find(l => /pro plan available credits/i.test(l));
+    // Fallback: any line with a number followed by "credits"
+    const fallbackLine = creditLines.find(l => /[\d,]+\.?\d*\s*credits/i.test(l));
+
+    const targetLine = proLine || fallbackLine;
+    console.log('Target line:', targetLine);
+
+    if (targetLine) {
+      const match = targetLine.match(/([\d,]+\.?\d*)/);
       if (match) {
         const available = parseFloat(match[1].replace(/,/g, ''));
-        console.log(`Credits available: ${available}`);
+        console.log(`Pro plan credits available: ${available}`);
+
+        // Also log add-on credits for reference
+        const addonLine = creditLines.find(l => /add-on available credits/i.test(l));
+        if (addonLine) {
+          const addonMatch = addonLine.match(/([\d,]+\.?\d*)/);
+          if (addonMatch) console.log(`Add-on credits available: ${addonMatch[1]} (not counted)`);
+        }
 
         // Get total from Supabase to calculate used
         const sbRes = await fetch(
@@ -79,16 +101,20 @@ async function patchMetric(service, metric, usedValue) {
         const sbData = await sbRes.json();
         const total = sbData[0]?.limit_value ?? 3000;
         const used = Math.max(0, total - available);
-        console.log(`Total: ${total}, Used: ${used}`);
+        console.log(`Total: ${total}, Available: ${available}, Used: ${used}`);
 
         await patchMetric('Netlify', 'credits', used);
         console.log('Supabase updated successfully.');
       } else {
-        console.log('Could not parse credit number from:', creditsText);
+        console.log('Could not parse credit number from:', targetLine);
         process.exit(1);
       }
     } else {
-      console.log('No credit-related text found. All lines:', bodyText.split('\n').slice(0, 50).join('\n'));
+      console.log('No credit-related text found.');
+      console.log('All page lines (first 80):');
+      bodyText.split('\n').slice(0, 80).forEach((l, i) => {
+        if (l.trim()) console.log(`  [${i}] ${l.trim()}`);
+      });
       process.exit(1);
     }
 
