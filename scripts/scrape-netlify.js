@@ -72,25 +72,41 @@ async function patchMetric(service, metric, usedValue) {
     console.log('Credit-related lines found:');
     creditLines.forEach((l, i) => console.log(`  [${i}] ${l.trim()}`));
 
-    // Look specifically for "Pro plan available credits: X,XXX.X"
-    const proLine = creditLines.find(l => /pro plan available credits/i.test(l));
-    // Fallback: any line with a number followed by "credits"
-    const fallbackLine = creditLines.find(l => /[\d,]+\.?\d*\s*credits/i.test(l));
+    // The label and value are on separate lines, e.g.:
+    //   "Pro plan available credits"
+    //   "2,756.6 credits"
+    const allLines = bodyText.split('\n').map(l => l.trim()).filter(Boolean);
+    const proIdx = allLines.findIndex(l => /pro plan available credits/i.test(l));
+    let available = null;
 
-    const targetLine = proLine || fallbackLine;
-    console.log('Target line:', targetLine);
+    if (proIdx !== -1) {
+      // Value is on the next non-empty line
+      const valueLine = allLines[proIdx + 1] || '';
+      console.log('Pro label at index', proIdx, '— next line:', valueLine);
+      const m = valueLine.match(/([\d,]+\.?\d*)/);
+      if (m) available = parseFloat(m[1].replace(/,/g, ''));
+    }
 
-    if (targetLine) {
-      const match = targetLine.match(/([\d,]+\.?\d*)/);
-      if (match) {
-        const available = parseFloat(match[1].replace(/,/g, ''));
-        console.log(`Pro plan credits available: ${available}`);
+    // Fallback: find a line like "2,756.6 credits" that follows credit context
+    if (available === null) {
+      const fallbackLine = creditLines.find(l => /^[\d,]+\.?\d*\s*credits/i.test(l));
+      console.log('Fallback line:', fallbackLine);
+      if (fallbackLine) {
+        const m = fallbackLine.match(/([\d,]+\.?\d*)/);
+        if (m) available = parseFloat(m[1].replace(/,/g, ''));
+      }
+    }
+
+    console.log('Available credits resolved to:', available);
+
+    if (available !== null) {
+      console.log(`Pro plan credits available: ${available}`);
 
         // Also log add-on credits for reference
-        const addonLine = creditLines.find(l => /add-on available credits/i.test(l));
-        if (addonLine) {
-          const addonMatch = addonLine.match(/([\d,]+\.?\d*)/);
-          if (addonMatch) console.log(`Add-on credits available: ${addonMatch[1]} (not counted)`);
+        const addonIdx = allLines.findIndex(l => /add-on available credits/i.test(l));
+        if (addonIdx !== -1) {
+          const addonVal = allLines[addonIdx + 1] || '';
+          console.log(`Add-on credits line: ${addonVal} (not counted)`);
         }
 
         // Get total from Supabase to calculate used
@@ -105,10 +121,6 @@ async function patchMetric(service, metric, usedValue) {
 
         await patchMetric('Netlify', 'credits', used);
         console.log('Supabase updated successfully.');
-      } else {
-        console.log('Could not parse credit number from:', targetLine);
-        process.exit(1);
-      }
     } else {
       console.log('No credit-related text found.');
       console.log('All page lines (first 80):');
