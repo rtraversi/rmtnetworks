@@ -146,23 +146,11 @@ exports.handler = async (event) => {
       const creditsUsed = d.capabilities?.credits?.used ?? null;
       const creditsTotal = d.capabilities?.credits?.included ?? d.plan_credits ?? null;
 
-      // Dump all top-level numeric/string fields and capabilities with used/included for debugging
-      const debugFields = {};
-      for (const [k, v] of Object.entries(d)) {
-        if (typeof v === 'number' || typeof v === 'string') debugFields[k] = v;
-      }
-      const capDebug = {};
-      if (d.capabilities) {
-        for (const [k, v] of Object.entries(d.capabilities)) {
-          if (v && typeof v === 'object' && ('used' in v || 'included' in v)) capDebug[k] = v;
-        }
-      }
-
       if (creditsUsed != null) {
         await patchMetric('Netlify', 'credits', creditsUsed);
-        results.push({ service: 'Netlify', ok: true, credits_used: creditsUsed, credits_total: creditsTotal, debugTopFields: debugFields, capabilitiesWithUsage: capDebug });
+        results.push({ service: 'Netlify', ok: true, credits_used: creditsUsed, credits_total: creditsTotal, note: 'credits.used always 0 — API limitation, scraping needed for real value' });
       } else {
-        results.push({ service: 'Netlify', ok: null, note: 'credits field not found', debugTopFields: debugFields, capabilitiesWithUsage: capDebug });
+        results.push({ service: 'Netlify', ok: null, note: 'credits field not found' });
       }
     } catch (e) {
       results.push({ service: 'Netlify', ok: false, error: e.message });
