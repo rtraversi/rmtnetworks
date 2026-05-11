@@ -159,6 +159,52 @@ exports.handler = async (event) => {
     results.push({ service: 'Netlify', ok: null, reason: 'NETLIFY_TOKEN or NETLIFY_ACCOUNT_SLUG not set' });
   }
 
+  // ── 5. n8n executions & workflows ────────────────────────────────────────
+  if (process.env.N8N_API_KEY && process.env.N8N_BASE_URL) {
+    try {
+      const n8nBase    = process.env.N8N_BASE_URL.replace(/\/$/, '') + '/api/v1';
+      const n8nHeaders = { 'X-N8N-API-KEY': process.env.N8N_API_KEY, 'Content-Type': 'application/json' };
+
+      // Count executions in the current calendar month (no date filter in API — paginate)
+      const now         = new Date();
+      const monthStart  = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      let execCount     = 0;
+      let cursor        = null;
+      let keepGoing     = true;
+
+      while (keepGoing) {
+        const qs  = `limit=250${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+        const res = await fetch(`${n8nBase}/executions?${qs}`, { headers: n8nHeaders });
+        if (!res.ok) throw new Error(`executions HTTP ${res.status}: ${await res.text()}`);
+        const data = await res.json();
+        const rows = data.data ?? [];
+
+        for (const row of rows) {
+          const started = row.startedAt ?? row.startTime ?? '';
+          if (started < monthStart) { keepGoing = false; break; }
+          execCount++;
+        }
+
+        cursor     = data.nextCursor ?? null;
+        if (!cursor || rows.length === 0) keepGoing = false;
+      }
+
+      // Count active workflows
+      const wfRes = await fetch(`${n8nBase}/workflows?active=true&limit=250`, { headers: n8nHeaders });
+      if (!wfRes.ok) throw new Error(`workflows HTTP ${wfRes.status}`);
+      const wfData         = await wfRes.json();
+      const activeWorkflows = (wfData.data ?? []).length;
+
+      await patchMetric('n8n', 'executions', execCount);
+      await patchMetric('n8n', 'workflows',  activeWorkflows);
+      results.push({ service: 'n8n', ok: true, executions_this_month: execCount, active_workflows: activeWorkflows });
+    } catch (e) {
+      results.push({ service: 'n8n', ok: false, error: e.message });
+    }
+  } else {
+    results.push({ service: 'n8n', ok: null, reason: 'N8N_API_KEY or N8N_BASE_URL not set' });
+  }
+
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
