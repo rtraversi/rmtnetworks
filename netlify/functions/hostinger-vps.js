@@ -79,8 +79,8 @@ exports.handler = async () => {
       fetched_at: now.toISOString(),
     };
 
-    await syncToSupabase(metrics);
-    return json(200, metrics);
+    const syncResult = await syncToSupabase(metrics);
+    return json(200, { ...metrics, _sync: syncResult });
   } catch (e) {
     return json(500, { error: e.message, stack: e.stack });
   }
@@ -99,7 +99,7 @@ function json(status, body) {
 async function syncToSupabase(metrics) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_KEY;
-  if (!url || !key) return;
+  if (!url || !key) return { ok: false, error: 'missing env vars' };
 
   const headers = {
     'apikey': key,
@@ -108,33 +108,40 @@ async function syncToSupabase(metrics) {
     'Prefer': 'return=minimal',
   };
 
-  await fetch(`${url}/rest/v1/usage_metrics?service_name=eq.Hostinger`, {
-    method: 'DELETE',
-    headers,
-  });
+  try {
+    const delRes = await fetch(`${url}/rest/v1/usage_metrics?service_name=eq.Hostinger`, {
+      method: 'DELETE',
+      headers,
+    });
 
-  await fetch(`${url}/rest/v1/usage_metrics`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify([
-      {
-        service_name: 'Hostinger',
-        metric_name:  'disk',
-        metric_label: 'Disk',
-        used_value:   metrics.disk.used_gb,
-        limit_value:  metrics.disk.total_gb,
-        unit:         'GB',
-        last_updated: metrics.fetched_at,
-      },
-      {
-        service_name: 'Hostinger',
-        metric_name:  'bandwidth',
-        metric_label: 'Bandwidth',
-        used_value:   metrics.bandwidth.used_tb,
-        limit_value:  metrics.bandwidth.total_tb,
-        unit:         'TB',
-        last_updated: metrics.fetched_at,
-      },
-    ]),
-  });
+    const insRes = await fetch(`${url}/rest/v1/usage_metrics`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify([
+        {
+          service_name: 'Hostinger',
+          metric_name:  'disk',
+          metric_label: 'Disk',
+          used_value:   metrics.disk.used_gb,
+          limit_value:  metrics.disk.total_gb,
+          unit:         'GB',
+          last_updated: metrics.fetched_at,
+        },
+        {
+          service_name: 'Hostinger',
+          metric_name:  'bandwidth',
+          metric_label: 'Bandwidth',
+          used_value:   metrics.bandwidth.used_tb,
+          limit_value:  metrics.bandwidth.total_tb,
+          unit:         'TB',
+          last_updated: metrics.fetched_at,
+        },
+      ]),
+    });
+
+    const insBody = await insRes.text();
+    return { ok: insRes.ok, del_status: delRes.status, ins_status: insRes.status, ins_body: insBody };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
