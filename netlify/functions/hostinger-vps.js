@@ -2,7 +2,7 @@
 // Also syncs disk + bandwidth into Supabase usage_metrics so tracker.html picks them up.
 // Required env vars: HOSTINGER_API_KEY, HOSTINGER_VM_ID, SUPABASE_URL, SUPABASE_KEY
 
-const API_BASE = 'https://api.hostinger.com';
+const API_BASE = 'https://developers.hostinger.com/api';
 
 exports.handler = async () => {
   const apiKey = process.env.HOSTINGER_API_KEY;
@@ -12,66 +12,81 @@ exports.handler = async () => {
     return json(500, { error: 'HOSTINGER_API_KEY and HOSTINGER_VM_ID env vars are required' });
   }
 
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' };
+
   try {
-    const res = await fetch(
-      `${API_BASE}/v1/vps/virtual-machines/${vmId}/metrics`,
-      { headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' } }
-    );
-
-    if (!res.ok) {
-      return json(502, { error: `Hostinger API returned ${res.status}`, detail: await res.text() });
+    // Fetch VM plan details for totals (disk/memory/bandwidth limits)
+    const vmRes = await fetch(`${API_BASE}/vps/v1/virtual-machines/${vmId}`, { headers });
+    if (!vmRes.ok) {
+      return json(502, { error: `Hostinger VM API ${vmRes.status}`, detail: await vmRes.text() });
     }
+    const vm = await vmRes.json();
 
-    const body = await res.json();
-    const d = body.data || body;
+    // Plan limits are in MB
+    const diskTotalGB = vm.disk     / 1024;              // e.g. 102400 MB → 100 GB
+    const ramTotalGB  = vm.memory   / 1024;              // e.g. 8192 MB  → 8 GB
+    const bwTotalTB   = vm.bandwidth / 1024 / 1024;      // e.g. 8192000 MB → ~7.8 TB
 
-    // All raw values assumed to be in bytes (standard for Hostinger API).
-    // If values look off, check the `_raw` field in the response to see actual units.
-    const disk = d.disk || {};
-    const ram  = d.ram  || d.memory || {};
-    const net  = d.network || {};
-    const bw   = net.transfer || net.bandwidth || {};
-    const cpu  = d.cpu || {};
+    // Fetch metrics for the current calendar month
+    const now        = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const dateFrom   = monthStart.toISOString().slice(0, 19) + 'Z';
+    const dateTo     = now.toISOString().slice(0, 19) + 'Z';
 
-    const diskUsedGB  = bytesToGB(disk.used  ?? 0);
-    const diskTotalGB = bytesToGB(disk.total ?? 0);
-    const diskPct     = diskTotalGB > 0 ? (diskUsedGB / diskTotalGB) * 100 : 0;
+    const mRes = await fetch(
+      `${API_BASE}/vps/v1/virtual-machines/${vmId}/metrics?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+      { headers }
+    );
+    if (!mRes.ok) {
+      return json(502, { error: `Hostinger metrics API ${mRes.status}`, detail: await mRes.text() });
+    }
+    const m = await mRes.json();
 
-    const ramUsedGB   = bytesToGB(ram.used  ?? 0);
-    const ramTotalGB  = bytesToGB(ram.total ?? 0);
-    const ramPct      = ramTotalGB > 0
-      ? (ramUsedGB / ramTotalGB) * 100
-      : (typeof ram.usage === 'number' ? ram.usage : 0);
+    // Get most recent data point (highest Unix timestamp key)
+    const tsKeys   = Object.keys(m.cpu_usage?.usage || {}).map(Number).sort((a, b) => b - a);
+    const latest   = String(tsKeys[0]);
 
-    const bwUsedTB    = bytesToTB(bw.used  ?? bw.rx_bytes ?? 0);
-    const bwTotalTB   = bytesToTB(bw.total ?? bw.limit    ?? 0);
-    const bwPct       = bwTotalTB > 0 ? (bwUsedTB / bwTotalTB) * 100 : 0;
+    const cpuPct     = m.cpu_usage?.usage?.[latest]   ?? 0;
+    const ramUsedGB  = (m.ram_usage?.usage?.[latest]  ?? 0) / 1073741824;
+    const diskUsedGB = (m.disk_space?.usage?.[latest] ?? 0) / 1073741824;
 
-    const cpuPct = typeof cpu.usage   === 'number' ? cpu.usage
-                 : typeof cpu.percent === 'number' ? cpu.percent
-                 : Array.isArray(cpu.load)          ? cpu.load[0]
-                 : 0;
+    // Monthly bandwidth = sum all incoming + outgoing intervals
+    const allTs      = Object.keys(m.incoming_traffic?.usage || {});
+    const bwUsedBytes = allTs.reduce((sum, ts) => {
+      return sum
+        + (m.incoming_traffic?.usage?.[ts]  ?? 0)
+        + (m.outgoing_traffic?.usage?.[ts]  ?? 0);
+    }, 0);
+    const bwUsedTB = bwUsedBytes / 1099511627776;
 
     const metrics = {
-      disk:      { used_gb: round(diskUsedGB, 1), total_gb: round(diskTotalGB, 0), pct: round(diskPct, 1) },
-      memory:    { used_gb: round(ramUsedGB,  1), total_gb: round(ramTotalGB,  0), pct: round(ramPct,  1) },
-      bandwidth: { used_tb: round(bwUsedTB, 3),   total_tb: round(bwTotalTB,  0), pct: round(bwPct,   2) },
-      cpu:       { pct: round(cpuPct, 1) },
-      fetched_at: new Date().toISOString(),
-      _raw: d,
+      disk: {
+        used_gb:  round(diskUsedGB, 1),
+        total_gb: round(diskTotalGB, 0),
+        pct:      round((diskUsedGB / diskTotalGB) * 100, 1),
+      },
+      memory: {
+        used_gb:  round(ramUsedGB, 1),
+        total_gb: round(ramTotalGB, 0),
+        pct:      round((ramUsedGB / ramTotalGB) * 100, 1),
+      },
+      bandwidth: {
+        used_tb:  round(bwUsedTB, 4),
+        total_tb: round(bwTotalTB, 1),
+        pct:      round((bwUsedTB / bwTotalTB) * 100, 3),
+      },
+      cpu: { pct: round(cpuPct, 1) },
+      fetched_at: now.toISOString(),
     };
 
     await syncToSupabase(metrics);
-
     return json(200, metrics);
   } catch (e) {
-    return json(500, { error: e.message });
+    return json(500, { error: e.message, stack: e.stack });
   }
 };
 
-function bytesToGB(n) { return n / 1073741824; }
-function bytesToTB(n) { return n / 1099511627776; }
-function round(n, dp) { return parseFloat(n.toFixed(dp)); }
+function round(n, dp) { return parseFloat(Number(n).toFixed(dp)); }
 
 function json(status, body) {
   return {
