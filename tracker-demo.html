@@ -292,6 +292,7 @@
     <span class="demo-tag">DEMO</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
+    <span id="hit-counter" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">👁 —</span>
     <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--accent)">● live view</span>
     <button class="btn btn-primary" onclick="openModal()">+ Add Subscription</button>
   </div>
@@ -688,8 +689,16 @@
 
   document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 
-  // Fire-and-forget hit counter
-  fetch('/.netlify/functions/track-hit', { method: 'POST' }).catch(() => {});
+  // Hit counter — increment and display
+  fetch('/.netlify/functions/track-hit', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.hits) {
+        document.getElementById('hit-counter').textContent = `👁 ${d.hits.toLocaleString()} views`;
+        document.getElementById('hit-counter').style.color = 'var(--accent2)';
+      }
+    })
+    .catch(() => {});
 
   updateStats(DEMO_SUBS);
   renderTable();
