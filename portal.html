@@ -230,7 +230,10 @@
 
 <header>
   <div class="logo">RMT<span>/</span>Networks</div>
-  <button class="btn-logout" onclick="logout()">Sign out</button>
+  <div style="display:flex;align-items:center;gap:20px">
+    <span id="demo-hits" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">👁 —</span>
+    <button class="btn-logout" onclick="logout()">Sign out</button>
+  </div>
 </header>
 
 <main>
@@ -298,6 +301,22 @@
     sessionStorage.removeItem('rmt_session');
     window.location.replace('/');
   }
+
+  // Demo page hit counter
+  (async () => {
+    try {
+      const cfg = await fetch('/.netlify/functions/config').then(r => r.json());
+      const res = await fetch(
+        `${cfg.supabaseUrl}/rest/v1/usage_metrics?service_name=eq.Demo&metric_name=eq.page_hits&select=used_value`,
+        { headers: { 'apikey': cfg.supabaseKey, 'Authorization': `Bearer ${cfg.supabaseKey}` } }
+      );
+      const rows = await res.json();
+      const hits = rows[0]?.used_value ?? 0;
+      const el = document.getElementById('demo-hits');
+      el.textContent = `👁 ${hits.toLocaleString()} demo views`;
+      el.style.color = hits > 0 ? 'var(--accent2)' : 'var(--muted)';
+    } catch {}
+  })();
 </script>
 
 </body>
