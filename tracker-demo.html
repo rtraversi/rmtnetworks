@@ -688,6 +688,9 @@
 
   document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 
+  // Fire-and-forget hit counter
+  fetch('/.netlify/functions/track-hit', { method: 'POST' }).catch(() => {});
+
   updateStats(DEMO_SUBS);
   renderTable();
 </script>
