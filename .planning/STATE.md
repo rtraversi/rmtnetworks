@@ -48,6 +48,7 @@ Recent decisions affecting current work:
 - 2026-05-17: Use Traefik (not Caddy) — keep existing reverse proxy, add monitoring subdomains as Traefik routes
 - 2026-05-17: Template-first build — all configs parameterized with env var placeholders for client duplication
 - 2026-05-17: Multi-VPS ready — bridge and dashboard must support ?node= expansion; design data model now
+- 2026-05-17: Two-VPS split — current VPS = DEV/INTERNAL, new Hostinger VPS = PROD (client automations). Kuma on DEV monitors both. PROD VPS provisioned in a later inserted phase after DEV stack is live.
 
 ### Pending Todos
 
