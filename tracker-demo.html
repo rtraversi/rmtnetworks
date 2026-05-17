@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscription Tracker — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0d0f14;
+    --surface:  #13161e;
+    --border:   #1e2230;
+    --accent:   #4fffb0;
+    --accent2:  #4b8fff;
+    --warn:     #ff6b4a;
+    --text:     #e8eaf0;
+    --muted:    #5a6070;
+    --card-bg:  #181b24;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Demo Banner ── */
+  .demo-banner {
+    background: linear-gradient(90deg, rgba(79,255,176,0.12), rgba(75,143,255,0.12));
+    border-bottom: 1px solid rgba(79,255,176,0.25);
+    padding: 10px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+  .demo-banner::before, .demo-banner::after {
+    content: '◆';
+    font-size: 0.5rem;
+    opacity: 0.6;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .demo-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(79,255,176,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(79,255,176,0.3);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 9px 18px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── Main layout ── */
+  main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; }
+
+  /* ── Stats row ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+  }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
+  .stat-value { font-family: 'DM Mono', monospace; font-size: 2.4rem; font-weight: 500; color: var(--text); line-height: 1; letter-spacing: -0.02em; }
+  .stat-value.green { color: var(--accent); }
+  .stat-value.blue  { color: var(--accent2); }
+  .stat-value.warn  { color: var(--warn); }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap input {
+    width: 100%;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 14px 9px 36px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+  }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; }
+  select.filter-select {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(79, 255, 176, 0.03); }
+
+  .badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .badge-active   { background: rgba(79,255,176,0.12); color: var(--accent); }
+  .badge-inactive { background: rgba(90,96,112,0.2);   color: var(--muted);  }
+
+  .cat-pill {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .price-cell { font-family: 'DM Mono', monospace; font-size: 0.85rem; }
+  .price-free  { color: var(--accent); }
+  .price-usage { color: var(--accent2); }
+
+  .name-cell { font-weight: 700; font-size: 0.95rem; }
+  .plan-cell { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); }
+
+  .date-cell { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); }
+  .date-soon { color: var(--warn) !important; }
+
+  /* ── Usage column ── */
+  .usage-cell { font-family: 'DM Mono', monospace; font-size: 0.72rem; min-width: 120px; }
+  .usage-nums { margin-bottom: 5px; }
+  .usage-bar-track {
+    background: var(--border);
+    border-radius: 3px;
+    height: 3px;
+    width: 90px;
+  }
+  .usage-bar-fill {
+    height: 3px;
+    border-radius: 3px;
+  }
+
+  @media (max-width: 768px) {
+    main { padding: 20px; }
+    header { padding: 20px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5),
+    th:nth-child(6), td:nth-child(6) { display: none; }
+    .demo-banner { padding: 10px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">SAMPLE DATA — FOR PRESENTATION PURPOSES ONLY</div>
+
+<header>
+  <div class="header-left">
+    <div class="logo">RMT<span>/</span>Networks</div>
+    <span class="demo-tag">DEMO</span>
+  </div>
+  <div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--accent)">● live view</div>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Services</div>
+      <div class="stat-value" id="stat-total">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active</div>
+      <div class="stat-value green" id="stat-active">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Monthly Cost</div>
+      <div class="stat-value blue" id="stat-cost">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Renewing Soon</div>
+      <div class="stat-value warn" id="stat-soon">—</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search" placeholder="Search subscriptions..." oninput="renderTable()">
+    </div>
+    <select class="filter-select" id="filter-cat" onchange="renderTable()">
+      <option value="">All Categories</option>
+      <option>AI</option>
+      <option>Billing</option>
+      <option>Finance</option>
+      <option>Legal Tech</option>
+      <option>Research</option>
+    </select>
+    <select class="filter-select" id="filter-status" onchange="renderTable()">
+      <option value="">All Status</option>
+      <option value="true">Active</option>
+      <option value="false">Inactive</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Category</th>
+          <th>Plan</th>
+          <th>Usage</th>
+          <th>Price</th>
+          <th>Renewal</th>
+          <th>Login</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+  // ── Demo data ──────────────────────────────────────────────
+  const DEMO_SUBS = [
+    {
+      id: '1', name: 'Clio', category: 'Legal Tech', plan: 'Boutique',
+      price: 109, billing_cycle: 'monthly', renewal_date: '2026-06-15',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://app.clio.com', is_active: true,
+      notes: 'Primary practice management — matters, contacts, billing'
+    },
+    {
+      id: '2', name: 'Docketwise', category: 'Legal Tech', plan: 'Professional',
+      price: 99, billing_cycle: 'monthly', renewal_date: '2026-06-01',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://app.docketwise.com', is_active: true,
+      notes: 'Immigration case management and USCIS form filing'
+    },
+    {
+      id: '3', name: 'Harvey', category: 'AI', plan: 'Enterprise',
+      price: 200, billing_cycle: 'monthly', renewal_date: '2026-07-01',
+      login_email: 'admin@lawfirm.com', login_method: 'Google SSO',
+      website_url: 'https://harvey.ai', is_active: true,
+      notes: 'AI legal research, document drafting, contract analysis'
+    },
+    {
+      id: '4', name: 'Westlaw', category: 'Research', plan: 'Pro',
+      price: 350, billing_cycle: 'monthly', renewal_date: '2026-05-28',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://westlaw.com', is_active: true,
+      notes: 'Case law, statutes, secondary sources'
+    },
+    {
+      id: '5', name: 'LexisNexis', category: 'Research', plan: 'Small Firm',
+      price: 299, billing_cycle: 'annual', renewal_date: '2027-01-15',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://lexisnexis.com', is_active: true,
+      notes: 'Legal research — backup to Westlaw, strong on news/public records'
+    },
+    {
+      id: '6', name: 'MyCase', category: 'Legal Tech', plan: 'Pro',
+      price: 49, billing_cycle: 'monthly', renewal_date: '2026-06-10',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://mycase.com', is_active: true,
+      notes: 'Client portal, secure messaging, document sharing'
+    },
+    {
+      id: '7', name: 'TimeSolv', category: 'Billing', plan: 'Plus',
+      price: 39.95, billing_cycle: 'monthly', renewal_date: '2026-06-20',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://timesolv.com', is_active: true,
+      notes: 'Time tracking, invoicing, trust accounting'
+    },
+    {
+      id: '8', name: 'Smokeball', category: 'Legal Tech', plan: 'Grow',
+      price: 149, billing_cycle: 'monthly', renewal_date: '2026-07-05',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://smokeball.com', is_active: true,
+      notes: 'Document automation, email filing, productivity tracking'
+    },
+    {
+      id: '9', name: 'PracticePanther', category: 'Legal Tech', plan: 'Solo',
+      price: 49, billing_cycle: 'annual', renewal_date: '2025-12-31',
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://practicepanther.com', is_active: false,
+      notes: 'Former practice management — replaced by Clio'
+    },
+    {
+      id: '10', name: 'Nota', category: 'Finance', plan: 'Free',
+      price: 0, billing_cycle: 'free', renewal_date: null,
+      login_email: 'admin@lawfirm.com', login_method: 'email',
+      website_url: 'https://nota.com', is_active: true,
+      notes: 'IOLTA trust account management'
+    },
+  ];
+
+  // Fake usage metrics for select services
+  const DEMO_USAGE = new Map([
+    ['Clio', [
+      { metric_label: 'Active Matters', used_value: 847, limit_value: 1000, unit: 'matters', last_updated: new Date(Date.now() - 3600000).toISOString() }
+    ]],
+    ['Harvey', [
+      { metric_label: 'AI Queries', used_value: 1240, limit_value: 2000, unit: 'queries/mo', last_updated: new Date(Date.now() - 7200000).toISOString() }
+    ]],
+    ['Westlaw', [
+      { metric_label: 'Searches', used_value: 418, limit_value: 500, unit: 'searches/mo', last_updated: new Date(Date.now() - 43200000).toISOString() }
+    ]],
+    ['Docketwise', [
+      { metric_label: 'Active Cases', used_value: 156, limit_value: 250, unit: 'cases', last_updated: new Date(Date.now() - 3600000).toISOString() }
+    ]],
+    ['MyCase', [
+      { metric_label: 'Client Portals', used_value: 203, limit_value: 500, unit: 'portals', last_updated: new Date(Date.now() - 86400000).toISOString() }
+    ]],
+  ]);
+
+  // ── Helpers ────────────────────────────────────────────────
+  function fmtNum(n) {
+    if (n == null) return '—';
+    if (n >= 1000) return Number(n).toLocaleString();
+    return n % 1 === 0 ? String(n) : Number(n).toFixed(1);
+  }
+
+  function timeAgo(iso) {
+    const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+    if (mins < 60)   return `${mins}m ago`;
+    if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
+    return `${Math.round(mins / 1440)}d ago`;
+  }
+
+  function renderUsageCell(name) {
+    const metrics = DEMO_USAGE.get(name);
+    if (!metrics || metrics.length === 0) {
+      return `<td><span style="color:var(--muted);font-family:'DM Mono',monospace;font-size:0.78rem">—</span></td>`;
+    }
+    const m    = metrics[0];
+    const pct  = m.limit_value ? Math.min((m.used_value / m.limit_value) * 100, 100) : 0;
+    const color = pct >= 80 ? 'var(--warn)' : pct >= 50 ? '#e8c840' : 'var(--accent)';
+    return `<td>
+      <div class="usage-cell">
+        <div class="usage-nums">
+          <span style="color:${color}">${fmtNum(m.used_value)}</span>
+          <span style="color:var(--muted)"> / ${fmtNum(m.limit_value)} ${m.unit}</span>
+        </div>
+        <div class="usage-bar-track">
+          <div class="usage-bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div>
+        </div>
+        <div style="margin-top:4px;color:var(--muted);font-size:0.6rem;opacity:0.6">${timeAgo(m.last_updated)}</div>
+      </div>
+    </td>`;
+  }
+
+  // ── Stats ──────────────────────────────────────────────────
+  function updateStats(data) {
+    const active = data.filter(r => r.is_active);
+    const cost   = active
+      .filter(r => r.price && ['monthly', 'annual'].includes(r.billing_cycle))
+      .reduce((s, r) => s + (r.billing_cycle === 'annual' ? r.price / 12 : r.price), 0);
+    const soon   = active.filter(r => {
+      if (!r.renewal_date) return false;
+      const diff = (new Date(r.renewal_date) - new Date()) / 86400000;
+      return diff >= 0 && diff <= 30;
+    });
+    document.getElementById('stat-total').textContent = data.length;
+    document.getElementById('stat-active').textContent = active.length;
+    document.getElementById('stat-cost').textContent = cost > 0 ? `$${cost.toFixed(2)}/mo` : '$0';
+    document.getElementById('stat-soon').textContent = soon.length;
+  }
+
+  // ── Render ─────────────────────────────────────────────────
+  function renderTable() {
+    const q    = document.getElementById('search').value.toLowerCase();
+    const cat  = document.getElementById('filter-cat').value;
+    const stat = document.getElementById('filter-status').value;
+
+    const rows = DEMO_SUBS.filter(r => {
+      const matchQ = !q || r.name.toLowerCase().includes(q) || (r.notes || '').toLowerCase().includes(q) || (r.plan || '').toLowerCase().includes(q);
+      const matchC = !cat || r.category === cat;
+      const matchS = stat === '' || String(r.is_active) === stat;
+      return matchQ && matchC && matchS;
+    });
+
+    if (rows.length === 0) {
+      document.getElementById('tbody').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:60px;font-family:'DM Mono',monospace;color:var(--muted)">No subscriptions found.</td></tr>`;
+      return;
+    }
+
+    document.getElementById('tbody').innerHTML = rows.map(r => {
+      const priceHTML = r.billing_cycle === 'free' || r.price === 0
+        ? `<span class="price-cell price-free">FREE</span>`
+        : r.billing_cycle === 'usage'
+        ? `<span class="price-cell price-usage">Usage</span>`
+        : r.price
+        ? `<span class="price-cell">$${parseFloat(r.price).toFixed(2)}</span>`
+        : `<span class="price-cell" style="color:var(--muted)">—</span>`;
+
+      const renewal = r.renewal_date
+        ? (() => {
+            const diff = (new Date(r.renewal_date) - new Date()) / 86400000;
+            const cls  = diff >= 0 && diff < 30 ? 'date-cell date-soon' : 'date-cell';
+            return `<span class="${cls}">${r.renewal_date}</span>`;
+          })()
+        : `<span class="date-cell">—</span>`;
+
+      const statusBadge = r.is_active
+        ? `<span class="badge badge-active">active</span>`
+        : `<span class="badge badge-inactive">inactive</span>`;
+
+      return `<tr>
+        <td>
+          <div class="name-cell">${r.website_url ? `<a href="${r.website_url}" target="_blank" style="color:inherit;text-decoration:none">${r.name} ↗</a>` : r.name}</div>
+          ${r.notes ? `<div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:3px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.notes}</div>` : ''}
+        </td>
+        <td><span class="cat-pill">${r.category}</span></td>
+        <td><div class="plan-cell">${r.plan || '—'}</div></td>
+        ${renderUsageCell(r.name)}
+        <td>${priceHTML}</td>
+        <td>${renewal}</td>
+        <td><div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">${r.login_email}<br><span style="font-size:0.65rem;opacity:0.6">${r.login_method}</span></div></td>
+        <td>${statusBadge}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  updateStats(DEMO_SUBS);
+  renderTable();
+</script>
+</body>
+</html>
