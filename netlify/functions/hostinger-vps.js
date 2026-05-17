@@ -59,7 +59,22 @@ exports.handler = async () => {
     }, 0);
     const bwUsedTB = bwUsedBytes / 1099511627776;
 
+    // ── Static server info (from VM record, not metrics) ──
+    const ipv4 = Array.isArray(vm.ipv4) ? vm.ipv4 : [];
+    const primaryIp =
+      ipv4.find(x => x?.address)?.address ||
+      vm.main_ip || vm.ip || null;
+    const server = {
+      hostname:  vm.hostname || null,
+      ip:        primaryIp,
+      cpu_cores: vm.cpus ?? vm.cores ?? vm.cpu_cores ?? null,
+      os:        vm.template?.name || vm.os || null,
+      plan:      vm.plan || vm.plan_name || vm.product?.name || null,
+      state:     vm.state || null,
+    };
+
     const metrics = {
+      server,
       disk: {
         used_gb:  round(diskUsedGB, 1),
         total_gb: round(diskTotalGB, 0),
@@ -75,7 +90,7 @@ exports.handler = async () => {
         total_tb: round(bwTotalTB, 1),
         pct:      round((bwUsedTB / bwTotalTB) * 100, 3),
       },
-      cpu: { pct: round(cpuPct, 1) },
+      cpu: { pct: round(cpuPct, 1), cores: server.cpu_cores },
       fetched_at: now.toISOString(),
     };
 

@@ -142,6 +142,48 @@
     color: var(--muted);
   }
 
+  /* Server info card */
+  .server-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 26px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px 32px;
+  }
+  .server-card.loading { opacity: 0.45; }
+  .info-field { display: flex; flex-direction: column; gap: 4px; }
+  .info-field .lbl {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .info-field .val {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.86rem;
+    color: var(--text);
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .info-field .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.66rem;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .info-field .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
   /* Primary metrics — disk + bandwidth full width */
   .primary-grid {
     display: grid;
@@ -222,11 +264,16 @@
   /* Secondary (no sub-text, smaller value) */
   .metric-card.secondary .metric-value {
     font-size: 3.2rem;
+    margin-bottom: 6px;
   }
 
   .metric-card.secondary .metric-value span {
     font-size: 1.4rem;
     opacity: 0.6;
+  }
+
+  .metric-card.secondary .metric-sub {
+    margin-bottom: 16px;
   }
 
   /* Status bar at bottom */
@@ -288,6 +335,25 @@
 
   <div id="error-banner" class="error-card" style="display:none"></div>
 
+  <div class="server-card loading" id="server-card">
+    <div class="info-field">
+      <span class="lbl">Hostname</span>
+      <span class="val"><span id="srv-host">—</span><button class="copy-btn" onclick="copyVal('srv-host')">Copy</button></span>
+    </div>
+    <div class="info-field">
+      <span class="lbl">IP Address</span>
+      <span class="val"><span id="srv-ip">—</span><button class="copy-btn" onclick="copyVal('srv-ip')">Copy</button></span>
+    </div>
+    <div class="info-field">
+      <span class="lbl">Plan</span>
+      <span class="val" id="srv-plan">—</span>
+    </div>
+    <div class="info-field">
+      <span class="lbl">OS</span>
+      <span class="val" id="srv-os">—</span>
+    </div>
+  </div>
+
   <div class="primary-grid">
     <div class="metric-card loading" id="card-disk">
       <div class="metric-label">Disk Usage <span class="label-icon">💾</span></div>
@@ -310,12 +376,14 @@
     <div class="metric-card secondary loading" id="card-cpu">
       <div class="metric-label">CPU Usage <span class="label-icon">⚡</span></div>
       <div class="metric-value" id="cpu-value" style="color:var(--accent)">—<span>%</span></div>
+      <div class="metric-sub" id="cpu-sub">— cores</div>
       <div class="bar-track" style="margin-top:auto"><div class="bar-fill" id="cpu-bar" style="width:0%;background:var(--accent)"></div></div>
     </div>
 
     <div class="metric-card secondary loading" id="card-mem">
       <div class="metric-label">Memory Usage <span class="label-icon">🧠</span></div>
       <div class="metric-value" id="mem-value" style="color:var(--accent2)">—<span>%</span></div>
+      <div class="metric-sub" id="mem-sub">— GB used of — GB</div>
       <div class="bar-track" style="margin-top:auto"><div class="bar-fill" id="mem-bar" style="width:0%;background:var(--accent2)"></div></div>
     </div>
   </div>
@@ -387,6 +455,15 @@
   }
 
   function renderMetrics(d) {
+    // Server info card
+    const s = d.server || {};
+    document.getElementById('srv-host').textContent = s.hostname || '—';
+    document.getElementById('srv-ip').textContent   = s.ip       || '—';
+    document.getElementById('srv-plan').textContent = (s.plan ? String(s.plan).toUpperCase() : '—')
+      + (s.cpu_cores ? ` · ${s.cpu_cores} cores` : '');
+    document.getElementById('srv-os').textContent   = s.os || '—';
+    document.getElementById('server-card').classList.remove('loading');
+
     // Disk
     const diskPct = d.disk.pct;
     const diskColor = pctColor(diskPct) || 'var(--accent)';
@@ -415,6 +492,8 @@
     const cpuColor = pctColor(cpuPct) || 'var(--accent)';
     document.getElementById('cpu-value').style.color = cpuColor;
     document.getElementById('cpu-value').innerHTML = cpuPct.toFixed(1) + '<span>%</span>';
+    document.getElementById('cpu-sub').textContent =
+      (d.cpu.cores ? `${d.cpu.cores} core${d.cpu.cores === 1 ? '' : 's'}` : '— cores');
     document.getElementById('cpu-bar').style.width = Math.min(cpuPct, 100).toFixed(1) + '%';
     document.getElementById('cpu-bar').style.background = cpuColor;
     document.getElementById('card-cpu').classList.remove('loading');
@@ -424,9 +503,18 @@
     const memColor = pctColor(memPct) || 'var(--accent2)';
     document.getElementById('mem-value').style.color = memColor;
     document.getElementById('mem-value').innerHTML = memPct.toFixed(1) + '<span>%</span>';
+    document.getElementById('mem-sub').textContent =
+      `${d.memory.used_gb.toFixed(1)} GB used of ${d.memory.total_gb} GB`;
     document.getElementById('mem-bar').style.width = Math.min(memPct, 100).toFixed(1) + '%';
     document.getElementById('mem-bar').style.background = memColor;
     document.getElementById('card-mem').classList.remove('loading');
+  }
+
+  async function copyVal(id) {
+    const text = document.getElementById(id).textContent.trim();
+    if (!text || text === '—') return;
+    try { await navigator.clipboard.writeText(text); }
+    catch {}
   }
 
   fetchMetrics();
