@@ -84,8 +84,69 @@
     transition: all 0.15s;
     letter-spacing: 0.03em;
   }
+  .btn-primary { background: var(--accent); color: #000; font-weight: 500; }
+  .btn-primary:hover { background: #6fffbe; transform: translateY(-1px); }
   .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-danger { background: transparent; color: var(--warn); border: 1px solid var(--warn); font-size: 0.72rem; padding: 5px 12px; }
+  .btn-danger:hover { background: var(--warn); color: #fff; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 36px;
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+  }
+  .modal h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; }
+  .modal h2 span { color: var(--accent); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { outline: none; border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 72px; }
+  .form-group select option { background: var(--surface); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--accent); color: #000;
+    font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    padding: 12px 20px; border-radius: 8px;
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s; z-index: 999;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
 
   /* ── Main layout ── */
   main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; }
@@ -230,7 +291,10 @@
     <div class="logo">RMT<span>/</span>Networks</div>
     <span class="demo-tag">DEMO</span>
   </div>
-  <div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--accent)">● live view</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--accent)">● live view</span>
+    <button class="btn btn-primary" onclick="openModal()">+ Add Subscription</button>
+  </div>
 </header>
 
 <main>
@@ -497,8 +561,136 @@
     }).join('');
   }
 
+  // ── Modal ─────────────────────────────────────────────────
+  function openModal() {
+    ['f-name','f-plan','f-price','f-renewal','f-email','f-url','f-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-cat').value       = 'Legal Tech';
+    document.getElementById('f-billing').value   = 'monthly';
+    document.getElementById('f-login').value     = 'email';
+    document.getElementById('f-active').value    = 'true';
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+  function saveSubscription() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { showToast('Service name is required', true); return; }
+    DEMO_SUBS.push({
+      id: String(Date.now()),
+      name,
+      category:      document.getElementById('f-cat').value,
+      plan:          document.getElementById('f-plan').value || null,
+      price:         document.getElementById('f-price').value ? parseFloat(document.getElementById('f-price').value) : 0,
+      billing_cycle: document.getElementById('f-billing').value,
+      renewal_date:  document.getElementById('f-renewal').value || null,
+      login_email:   document.getElementById('f-email').value || 'demo@lawfirm.com',
+      login_method:  document.getElementById('f-login').value,
+      website_url:   document.getElementById('f-url').value || null,
+      notes:         document.getElementById('f-notes').value || null,
+      is_active:     document.getElementById('f-active').value === 'true',
+    });
+    closeModal();
+    updateStats(DEMO_SUBS);
+    renderTable();
+    showToast('Subscription added!');
+  }
+
+  function showToast(msg, err = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = err ? 'var(--warn)' : 'var(--accent)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
   updateStats(DEMO_SUBS);
   renderTable();
 </script>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Add <span>Subscription</span></h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Service Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Clio">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f-cat">
+          <option>Legal Tech</option>
+          <option>AI</option>
+          <option>Research</option>
+          <option>Billing</option>
+          <option>Finance</option>
+          <option>Automation</option>
+          <option>Hosting</option>
+          <option>Utilities</option>
+          <option>General</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Plan</label>
+        <input type="text" id="f-plan" placeholder="e.g. Pro, Boutique">
+      </div>
+      <div class="form-group">
+        <label>Monthly Price (USD)</label>
+        <input type="number" id="f-price" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Billing Cycle</label>
+        <select id="f-billing">
+          <option value="monthly">Monthly</option>
+          <option value="annual">Annual</option>
+          <option value="usage">Usage / Pay-as-you-go</option>
+          <option value="free">Free</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Renewal Date</label>
+        <input type="date" id="f-renewal">
+      </div>
+      <div class="form-group">
+        <label>Login Email</label>
+        <input type="email" id="f-email" placeholder="admin@lawfirm.com">
+      </div>
+      <div class="form-group">
+        <label>Login Method</label>
+        <select id="f-login">
+          <option value="email">Email / Password</option>
+          <option value="Google SSO">Google SSO</option>
+          <option value="GitHub SSO">GitHub SSO</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Website URL</label>
+        <input type="url" id="f-url" placeholder="https://...">
+      </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="f-notes" placeholder="Anything useful about this service..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Active?</label>
+        <select id="f-active">
+          <option value="true">Yes — Active</option>
+          <option value="false">No — Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSubscription()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
 </body>
 </html>
