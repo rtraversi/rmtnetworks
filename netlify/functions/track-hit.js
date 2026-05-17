@@ -1,20 +1,23 @@
-// Increments a hit counter in Supabase. Called from tracker-demo.html on page load.
+// Increments a hit counter in Supabase.
+// Pass ?metric=page_hits (default) or ?metric=proof_scan_hits to track different pages.
 exports.handler = async (event) => {
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_KEY;
 
+  const metric = event.queryStringParameters?.metric || 'page_hits';
+  const allowed = ['page_hits', 'proof_scan_hits'];
+  if (!allowed.includes(metric)) return { statusCode: 400, body: 'Invalid metric' };
+
   try {
-    // Fetch current value
     const getRes = await fetch(
-      `${SB_URL}/rest/v1/usage_metrics?service_name=eq.Demo&metric_name=eq.page_hits&select=used_value`,
+      `${SB_URL}/rest/v1/usage_metrics?service_name=eq.Demo&metric_name=eq.${metric}&select=used_value`,
       { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
     );
     const rows = await getRes.json();
     const current = rows[0]?.used_value ?? 0;
 
-    // Increment
     const patchRes = await fetch(
-      `${SB_URL}/rest/v1/usage_metrics?service_name=eq.Demo&metric_name=eq.page_hits`,
+      `${SB_URL}/rest/v1/usage_metrics?service_name=eq.Demo&metric_name=eq.${metric}`,
       {
         method: 'PATCH',
         headers: {

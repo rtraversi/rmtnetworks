@@ -690,7 +690,7 @@
   document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 
   // Hit counter — increment and display
-  fetch('/.netlify/functions/track-hit', { method: 'POST' })
+  fetch('/.netlify/functions/track-hit?metric=page_hits', { method: 'POST' })
     .then(r => r.json())
     .then(d => {
       if (d.hits) {

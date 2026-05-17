@@ -231,7 +231,9 @@
 <header>
   <div class="logo">RMT<span>/</span>Networks</div>
   <div style="display:flex;align-items:center;gap:20px">
-    <span id="demo-hits" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">👁 —</span>
+    <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted)">Tracker Demo: <span id="demo-hits">—</span></span>
+    <span style="color:var(--border)">|</span>
+    <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted)">Proof Scan: <span id="proof-hits">—</span></span>
     <button class="btn-logout" onclick="logout()">Sign out</button>
   </div>
 </header>
@@ -302,19 +304,28 @@
     window.location.replace('/');
   }
 
-  // Demo page hit counter
+  // Page hit counters
   (async () => {
     try {
       const cfg = await fetch('/.netlify/functions/config').then(r => r.json());
       const res = await fetch(
-        `${cfg.supabaseUrl}/rest/v1/usage_metrics?service_name=eq.Demo&metric_name=eq.page_hits&select=used_value`,
+        `${cfg.supabaseUrl}/rest/v1/usage_metrics?service_name=eq.Demo&select=metric_name,used_value`,
         { headers: { 'apikey': cfg.supabaseKey, 'Authorization': `Bearer ${cfg.supabaseKey}` } }
       );
       const rows = await res.json();
-      const hits = rows[0]?.used_value ?? 0;
-      const el = document.getElementById('demo-hits');
-      el.textContent = `👁 ${hits.toLocaleString()} demo views`;
-      el.style.color = hits > 0 ? 'var(--accent2)' : 'var(--muted)';
+      const byMetric = Object.fromEntries(rows.map(r => [r.metric_name, r.used_value]));
+
+      const demoHits  = byMetric['page_hits']       ?? 0;
+      const proofHits = byMetric['proof_scan_hits']  ?? 0;
+
+      const demoEl  = document.getElementById('demo-hits');
+      const proofEl = document.getElementById('proof-hits');
+
+      demoEl.textContent  = `👁 ${demoHits.toLocaleString()}`;
+      proofEl.textContent = `👁 ${proofHits.toLocaleString()}`;
+
+      if (demoHits  > 0) demoEl.style.color  = 'var(--accent2)';
+      if (proofHits > 0) proofEl.style.color = 'var(--accent2)';
     } catch {}
   })();
 </script>
