@@ -42,10 +42,12 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Init: Caddy is the sole internet-facing reverse proxy (not Traefik — Phase 1 must account for Traefik coexistence or migration on the existing VPS)
-- Init: Phase 0 folded into Phase 1; VPS prep and Caddy install are the first deliverable
+- Init: Phase 0 folded into Phase 1; VPS prep is the first deliverable
 - Init: n8n executions API — do NOT use status=running filter (rejected by implementation, GitHub #19664); post-filter in bridge
 - Init: Netlify basic-auth must use edge function — _headers Basic-Auth is Pro-plan-only
+- 2026-05-17: Use Traefik (not Caddy) — keep existing reverse proxy, add monitoring subdomains as Traefik routes
+- 2026-05-17: Template-first build — all configs parameterized with env var placeholders for client duplication
+- 2026-05-17: Multi-VPS ready — bridge and dashboard must support ?node= expansion; design data model now
 
 ### Pending Todos
 
@@ -53,9 +55,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 1: Traefik is already running on the VPS; Caddy install must resolve coexistence (port 443 conflict). Decide: run Caddy alongside Traefik on different ports, or migrate Traefik routes to Caddy for monitoring services only.
-- Phase 3 (Bridge planning): Probe live n8n executions API with curl before writing bridge client — response shape and valid status enum values may differ from docs.
-- Phase 5 (Heartbeats): Operator must enumerate critical n8n workflows and their cadences before Phase 6 planning begins.
+- Phase 4 (Bridge planning): Probe live n8n executions API with curl before writing bridge client — response shape and valid status enum values may differ from docs.
+- Phase 6 (Heartbeats): Operator must enumerate critical n8n workflows and their cadences before Phase 6 planning begins.
 
 ## Session Continuity
 

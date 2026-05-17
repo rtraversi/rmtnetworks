@@ -48,11 +48,14 @@ When something that matters breaks, I find out via Telegram within minutes; when
 
 - **Tech stack**: Node.js for the metrics bridge — consistent with the existing Netlify Functions tooling; no Python/Go on the VPS for this project.
 - **Hosting**: Single existing VPS hosts Uptime Kuma, Netdata, n8n, and the bridge. No new infra is provisioned by this project.
+- **Reverse proxy**: Traefik (already running). Do not introduce Caddy. Add monitoring subdomains as Traefik routes.
 - **Frontend**: Dashboard page lives in the existing rmtnetworks.com Netlify site. Same deploy flow as the subscription tracker.
-- **Auth**: Basic auth via Netlify (single shared password). Do not introduce user accounts for this surface.
+- **Auth**: Basic auth via Netlify edge function (single shared password). Do not use `_headers` Basic-Auth (Pro-only). Do not introduce user accounts.
 - **Alerting**: Telegram only. No email, no PagerDuty, no SMS.
 - **Budget**: Stay within the existing VPS resource envelope. The stack must coexist with whatever is already running there.
 - **Operator scale**: One person. Solutions that need a team to operate (rotations, on-call schedules, runbook reviews) are out.
+- **Template-first**: Every deliverable (Docker Compose snippets, Traefik labels, systemd units, bridge config, dashboard HTML) must use env var placeholders — no hardcoded hostnames, IPs, or client names. Goal: new client deployment = copy template + fill in vars.
+- **Multi-VPS ready**: Bridge URL schema, dashboard data model, and Kuma monitor grouping must support multiple nodes. Design for `?node=` parameterization now even though only one VPS is in scope for this milestone.
 
 ## Key Decisions
 
@@ -64,6 +67,9 @@ When something that matters breaks, I find out via Telegram within minutes; when
 | Telegram only — no email, no second recipient | Solo operator; second channel adds noise without information | — Pending |
 | Basic auth on the dashboard | Lighter than Supabase auth, stronger than obfuscation, and the page has no per-user state | — Pending |
 | Exclude rmtnetworks.com uptime from this project's monitors | The site itself isn't the ops risk surface; the automation and data layer behind it is | — Pending |
+| **Use Traefik (not Caddy) as the reverse proxy** | Traefik is already running on the VPS managing n8n traffic. Adding Caddy alongside risks port conflicts and adds operational complexity. Monitoring subdomains (kuma.rmtnetworks.com, bridge.rmtnetworks.com) will be added as Traefik routes. Kuma WebSocket support requires explicit Traefik middleware config. | ✅ Decided 2026-05-17 |
+| **Template-first build approach** | Every config file, Docker Compose service, systemd unit, bridge code, and dashboard component must be parameterized (env vars / placeholders) so it can be duplicated for a new client VPS with a find-and-replace. No hardcoded hostnames, IPs, or client-specific values in any file. | ✅ Decided 2026-05-17 |
+| **Multi-VPS architecture readiness** | The bridge and dashboard must be designed to support multiple VPS nodes without a full rebuild. Bridge endpoints should accept a `?node=` param; the dashboard should be able to render cards per-node. First deployment is single-node but the data model and URL schema must not foreclose expansion. | ✅ Decided 2026-05-17 |
 
 ## Evolution
 
