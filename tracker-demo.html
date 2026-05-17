@@ -359,6 +359,88 @@
   </div>
 </main>
 
+<!-- Modal — must be in DOM before the script runs -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Add <span>Subscription</span></h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Service Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Clio">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f-cat">
+          <option>Legal Tech</option>
+          <option>AI</option>
+          <option>Research</option>
+          <option>Billing</option>
+          <option>Finance</option>
+          <option>Automation</option>
+          <option>Hosting</option>
+          <option>Utilities</option>
+          <option>General</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Plan</label>
+        <input type="text" id="f-plan" placeholder="e.g. Pro, Boutique">
+      </div>
+      <div class="form-group">
+        <label>Monthly Price (USD)</label>
+        <input type="number" id="f-price" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Billing Cycle</label>
+        <select id="f-billing">
+          <option value="monthly">Monthly</option>
+          <option value="annual">Annual</option>
+          <option value="usage">Usage / Pay-as-you-go</option>
+          <option value="free">Free</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Renewal Date</label>
+        <input type="date" id="f-renewal">
+      </div>
+      <div class="form-group">
+        <label>Login Email</label>
+        <input type="email" id="f-email" placeholder="admin@lawfirm.com">
+      </div>
+      <div class="form-group">
+        <label>Login Method</label>
+        <select id="f-login">
+          <option value="email">Email / Password</option>
+          <option value="Google SSO">Google SSO</option>
+          <option value="GitHub SSO">GitHub SSO</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Website URL</label>
+        <input type="url" id="f-url" placeholder="https://...">
+      </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="f-notes" placeholder="Anything useful about this service..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Active?</label>
+        <select id="f-active">
+          <option value="true">Yes — Active</option>
+          <option value="false">No — Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSubscription()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
 <script>
   // ── Demo data ──────────────────────────────────────────────
   const DEMO_SUBS = [
@@ -609,88 +691,5 @@
   updateStats(DEMO_SUBS);
   renderTable();
 </script>
-
-<!-- Modal -->
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <h2>Add <span>Subscription</span></h2>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Service Name *</label>
-        <input type="text" id="f-name" placeholder="e.g. Clio">
-      </div>
-      <div class="form-group">
-        <label>Category</label>
-        <select id="f-cat">
-          <option>Legal Tech</option>
-          <option>AI</option>
-          <option>Research</option>
-          <option>Billing</option>
-          <option>Finance</option>
-          <option>Automation</option>
-          <option>Hosting</option>
-          <option>Utilities</option>
-          <option>General</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Plan</label>
-        <input type="text" id="f-plan" placeholder="e.g. Pro, Boutique">
-      </div>
-      <div class="form-group">
-        <label>Monthly Price (USD)</label>
-        <input type="number" id="f-price" placeholder="0.00" step="0.01" min="0">
-      </div>
-      <div class="form-group">
-        <label>Billing Cycle</label>
-        <select id="f-billing">
-          <option value="monthly">Monthly</option>
-          <option value="annual">Annual</option>
-          <option value="usage">Usage / Pay-as-you-go</option>
-          <option value="free">Free</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Renewal Date</label>
-        <input type="date" id="f-renewal">
-      </div>
-      <div class="form-group">
-        <label>Login Email</label>
-        <input type="email" id="f-email" placeholder="admin@lawfirm.com">
-      </div>
-      <div class="form-group">
-        <label>Login Method</label>
-        <select id="f-login">
-          <option value="email">Email / Password</option>
-          <option value="Google SSO">Google SSO</option>
-          <option value="GitHub SSO">GitHub SSO</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="form-group full">
-        <label>Website URL</label>
-        <input type="url" id="f-url" placeholder="https://...">
-      </div>
-      <div class="form-group full">
-        <label>Notes</label>
-        <textarea id="f-notes" placeholder="Anything useful about this service..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>Active?</label>
-        <select id="f-active">
-          <option value="true">Yes — Active</option>
-          <option value="false">No — Inactive</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSubscription()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
 </body>
 </html>
