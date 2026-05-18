@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USCIS Case Intake</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:        #0f1f3d;
+    --navy-mid:    #1a3a6b;
+    --accent:      #c8973a;
+    --accent-deep: #a87a26;
+    --gray-50:     #fafbfc;
+    --gray-100:    #f3f5f8;
+    --gray-200:    #e6e9ef;
+    --gray-400:    #9ba3b2;
+    --gray-600:    #5a6478;
+    --gray-700:    #3d4455;
+    --gray-900:    #1a1f2e;
+    --white:       #ffffff;
+    --red:         #b03030;
+    --green:       #1e6b3a;
+    --green-light: #edf7f1;
+    --shadow-sm:   0 1px 3px rgba(15,31,61,0.08);
+    --shadow:      0 2px 12px rgba(15,31,61,0.10);
+    --shadow-lg:   0 8px 32px rgba(15,31,61,0.13);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-700);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    line-height: 1.55;
+  }
+
+  .container { max-width: 860px; margin: 0 auto; }
+
+  /* Header */
+  .site-header {
+    background: var(--navy);
+    border-radius: 12px 12px 0 0;
+    padding: 32px 40px;
+    color: var(--white);
+  }
+  .site-header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+  }
+  .site-header p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 300;
+  }
+  .header-accent {
+    height: 4px;
+    background: var(--accent);
+    width: 56px;
+    margin-top: 14px;
+    border-radius: 2px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--white);
+    border-radius: 0 0 12px 12px;
+    padding: 40px;
+    box-shadow: var(--shadow);
+  }
+
+  .selector-wrap {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 32px;
+  }
+  .selector-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .selector-wrap select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--navy);
+    background: var(--white);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23c8973a' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18px center;
+    transition: border-color 0.15s;
+  }
+  .selector-wrap select:focus { outline: none; border-color: var(--accent); }
+
+  /* Form area */
+  .form-section { display: none; }
+  .form-section.active { display: block; animation: fadeIn 0.25s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .form-intro {
+    padding-bottom: 24px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .form-intro h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .form-intro p {
+    font-size: 14px;
+    color: var(--gray-600);
+  }
+  .case-tag {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+
+  fieldset {
+    border: none;
+    margin-bottom: 28px;
+  }
+  fieldset legend {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid var(--accent);
+    width: 100%;
+  }
+
+  .grid {
+    display: grid;
+    gap: 16px;
+  }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    body { padding: 20px 14px 60px; }
+    .card, .site-header { padding: 24px; }
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+  }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .field label .hint { font-weight: 400; color: var(--gray-400); font-size: 12px; margin-left: 6px; }
+  .field input[type="text"],
+  .field input[type="email"],
+  .field input[type="tel"],
+  .field input[type="date"],
+  .field input[type="number"],
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--gray-900);
+    background: var(--white);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field textarea { resize: vertical; min-height: 88px; }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(200,151,58,0.15);
+  }
+
+  .yn-group {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .yn-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+    color: var(--gray-700);
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .yn-group input[type="radio"] { accent-color: var(--accent); cursor: pointer; }
+
+  .check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+  }
+  .check-row input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); cursor: pointer; }
+  .check-row label { font-size: 14px; color: var(--gray-700); cursor: pointer; line-height: 1.5; }
+
+  .disclaimer {
+    background: var(--gray-50);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.6;
+    margin: 24px 0;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--gray-200);
+  }
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 12px 26px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--navy); color: var(--white); }
+  .btn-primary:hover { background: var(--navy-mid); }
+  .btn-ghost { background: transparent; color: var(--gray-600); border: 1px solid var(--gray-200); }
+  .btn-ghost:hover { color: var(--navy); border-color: var(--navy); }
+
+  /* Success state */
+  .success {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .success.show { display: block; }
+  .success .check {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--green-light);
+    color: var(--green);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    font-weight: 700;
+    margin-bottom: 18px;
+  }
+  .success h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .success p { font-size: 14px; color: var(--gray-600); max-width: 480px; margin: 0 auto 22px; }
+
+  /* Empty state when no case picked yet */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray-400);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  footer {
+    text-align: center;
+    padding: 24px 0 0;
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header class="site-header">
+    <h1>USCIS Case Intake</h1>
+    <p>Tell us about your case so we can prepare a tailored consultation.</p>
+    <div class="header-accent"></div>
+  </header>
+
+  <div class="card">
+
+    <div class="selector-wrap">
+      <div class="selector-label">Select your case type</div>
+      <select id="case-selector" onchange="selectCase(this.value)">
+        <option value="">— Choose one —</option>
+        <option value="daca">DACA (Deferred Action for Childhood Arrivals)</option>
+        <option value="n400">N-400 (Application for Naturalization)</option>
+        <option value="aos">AOS (Adjustment of Status — Green Card)</option>
+      </select>
+    </div>
+
+    <div id="empty-state" class="empty">Select a case type above to load the intake form.</div>
+
+    <!-- ─────────────────────── DACA ─────────────────────── -->
+    <form id="form-daca" class="form-section" onsubmit="handleSubmit(event, 'DACA')">
+      <div class="form-intro">
+        <span class="case-tag">Form I-821D + I-765</span>
+        <h2>DACA Intake</h2>
+        <p>Deferred Action for Childhood Arrivals — for individuals who came to the U.S. as children.</p>
+      </div>
+
+      <fieldset>
+        <legend>Personal Information</legend>
+        <div class="grid grid-2">
+          <div class="field"><label>Full legal name <span class="req">*</span></label><input type="text" name="full_name" required></div>
+          <div class="field"><label>Other names used <span class="hint">aliases, maiden names</span></label><input type="text" name="other_names"></div>
+          <div class="field"><label>Date of birth <span class="req">*</span></label><input type="date" name="dob" required></div>
+          <div class="field"><label>Country of birth <span class="req">*</span></label><input type="text" name="country_birth" required></div>
+          <div class="field"><label>Email <span class="req">*</span></label><input type="email" name="email" required></div>
+          <div class="field"><label>Phone <span class="req">*</span></label><input type="tel" name="phone" required></div>
+          <div class="field full"><label>Current U.S. address <span class="req">*</span></label><input type="text" name="address" required></div>
+          <div class="field"><label>Date you moved to current address</label><input type="date" name="address_since"></div>
+          <div class="field"><label>A-Number (if any) <span class="hint">A012345678</span></label><input type="text" name="a_number"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Immigration History</legend>
+        <div class="grid grid-2">
+          <div class="field"><label>Date you first entered the U.S. <span class="req">*</span></label><input type="date" name="entry_date" required></div>
+          <div class="field"><label>Place / port of entry</label><input type="text" name="entry_place"></div>
+          <div class="field full"><label>Status at entry</label>
+            <select name="entry_status">
+              <option value="">— Select —</option>
+              <option>Entered without inspection (EWI)</option>
+              <option>Tourist (B-1/B-2)</option>
+              <option>Student (F-1/M-1)</option>
+              <option>Other visa</option>
+              <option>Unknown</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label>Have you ever had DACA before? <span class="req">*</span></label>
+            <div class="yn-group">
+              <label><input type="radio" name="prior_daca" value="yes" required> Yes</label>
+              <label><input type="radio" name="prior_daca" value="no"> No</label>
+            </div>
+          </div>
+          <div class="field full"><label>Travel outside the U.S. since June 15, 2007 <span class="hint">dates, destinations</span></label><textarea name="travel_history" placeholder="None / or list any trips..."></textarea></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Eligibility Criteria</legend>
+        <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">Please answer each — these determine basic eligibility.</p>
+        <div class="check-row"><input type="checkbox" id="d1" name="elig_under31"><label for="d1">I was under 31 years old as of June 15, 2012</label></div>
+        <div class="check-row"><input type="checkbox" id="d2" name="elig_before16"><label for="d2">I came to the U.S. before my 16th birthday</label></div>
+        <div class="check-row"><input type="checkbox" id="d3" name="elig_residence"><label for="d3">I have continuously resided in the U.S. since June 15, 2007</label></div>
+        <div class="check-row"><input type="checkbox" id="d4" name="elig_present"><label for="d4">I was physically present in the U.S. on June 15, 2012 and at the time of filing</label></div>
+        <div class="check-row"><input type="checkbox" id="d5" name="elig_status"><label for="d5">I had no lawful status on June 15, 2012</label></div>
+        <div class="check-row"><input type="checkbox" id="d6" name="elig_education"><label for="d6">I am currently in school, have graduated, have a GED, or am an honorably discharged veteran</label></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Education Details</legend>
+        <div class="grid grid-2">
+          <div class="field"><label>Current school / most recent</label><input type="text" name="school_name"></div>
+          <div class="field"><label>Graduation date (if any)</label><input type="date" name="grad_date"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Criminal History</legend>
+        <div class="field full">
+          <label>Have you ever been arrested, charged, or convicted of any crime (including DUIs and misdemeanors)? <span class="req">*</span></label>
+          <div class="yn-group">
+            <label><input type="radio" name="criminal" value="yes" required> Yes</label>
+            <label><input type="radio" name="criminal" value="no"> No</label>
+          </div>
+        </div>
+        <div class="field full" style="margin-top:12px"><label>If yes, please describe</label><textarea name="criminal_detail" placeholder="Date, charge, outcome..."></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Anything Else?</legend>
+        <div class="field full"><textarea name="notes" placeholder="Questions for the attorney, concerns, special circumstances..."></textarea></div>
+      </fieldset>
+
+      <div class="disclaimer">
+        This intake form is for initial review only. Submitting it does not create an attorney-client relationship. We will follow up to schedule a consultation.
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" onclick="resetForm()">Clear</button>
+        <button type="submit" class="btn btn-primary">Submit Intake</button>
+      </div>
+    </form>
+
+    <!-- ─────────────────────── N-400 ─────────────────────── -->
+    <form id="form-n400" class="form-section" onsubmit="handleSubmit(event, 'N-400')">
+      <div class="form-intro">
+        <span class="case-tag">Form N-400</span>
+        <h2>Naturalization Intake</h2>
+        <p>For lawful permanent residents (green card holders) applying for U.S. citizenship.</p>
+      </div>
+
+      <fieldset>
+        <legend>Personal Information</legend>
+        <div class="grid grid-2">
+          <div class="field"><label>Full legal name <span class="req">*</span></label><input type="text" name="full_name" required></div>
+          <div class="field"><label>Other names used</label><input type="text" name="other_names"></div>
+          <div class="field"><label>Date of birth <span class="req">*</span></label><input type="date" name="dob" required></div>
+          <div class="field"><label>Country of birth <span class="req">*</span></label><input type="text" name="country_birth" required></div>
+          <div class="field"><label>Country of citizenship <span class="req">*</span></label><input type="text" name="country_citizenship" required></div>
+          <div class="field"><label>Sex</label>
+            <select name="sex"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select>
+          </div>
+          <div class="field"><label>Email <span class="req">*</span></label><input type="email" name="email" required></div>
+          <div class="field"><label>Phone <span class="req">*</span></label><input type="tel" name="phone" required></div>
+          <div class="field full"><label>Current U.S. address <span class="req">*</span></label><input type="text" name="address" required></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Permanent Resident Information</legend>
+        <div class="grid grid-2">
+          <div class="field"><label>A-Number <span class="req">*</span></label><input type="text" name="a_number" required placeholder="A012345678"></div>
+          <div class="field"><label>Date you became a permanent resident <span class="req">*</span></label><input type="date" name="lpr_date" required></div>
+          <div class="field full"><label>How did you become a permanent resident?</label>
+            <select name="lpr_basis">
+              <option value="">— Select —</option>
+              <option>Family-based (spouse, parent, child, sibling)</option>
+              <option>Employment-based</option>
+              <option>Asylum / refugee</option>
+              <option>Diversity visa lottery</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label>Eligibility basis <span class="req">*</span></label>
+            <div class="yn-group" style="flex-direction:column;align-items:flex-start;gap:6px">
+              <label><input type="radio" name="basis" value="5year" required> 5-year rule (LPR for 5+ years)</label>
+              <label><input type="radio" name="basis" value="3year"> 3-year rule (married to U.S. citizen for 3+ years)</label>
+              <label><input type="radio" name="basis" value="military"> Military service</label>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Marital & Family</legend>
+        <div class="grid grid-2">
+          <div class="field full"><label>Current marital status <span class="req">*</span></label>
+            <select name="marital_status" required>
+              <option value="">— Select —</option>
+              <option>Single (never married)</option>
+              <option>Married</option>
+              <option>Divorced</option>
+              <option>Widowed</option>
+              <option>Separated</option>
+            </select>
+          </div>
+          <div class="field"><label>Current spouse's full name</label><input type="text" name="spouse_name"></div>
+          <div class="field"><label>Spouse's date of birth</label><input type="date" name="spouse_dob"></div>
+          <div class="field"><label>Spouse's citizenship status</label>
+            <select name="spouse_status"><option value="">—</option><option>U.S. Citizen</option><option>Permanent Resident</option><option>Other</option></select>
+          </div>
+          <div class="field"><label>Date of marriage</label><input type="date" name="marriage_date"></div>
+          <div class="field full"><label>Number of prior marriages (you and/or spouse)</label><input type="number" name="prior_marriages" min="0" value="0"></div>
+          <div class="field full"><label>Children <span class="hint">name + DOB for each, or "none"</span></label><textarea name="children" placeholder="e.g.&#10;Maria Lopez — 2014-05-12&#10;Daniel Lopez — 2017-09-03"></textarea></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Address & Employment (Last 5 Years)</legend>
+        <div class="field full" style="margin-bottom:14px"><label>Addresses in the last 5 years <span class="req">*</span> <span class="hint">most recent first</span></label><textarea name="address_history" required placeholder="123 Main St, Anytown TX, 2022-present&#10;456 Oak Ave, Othertown CA, 2019-2022"></textarea></div>
+        <div class="field full"><label>Employment in the last 5 years <span class="req">*</span></label><textarea name="employment_history" required placeholder="Acme Co, Software Engineer, 2021-present&#10;Self-employed, 2019-2021"></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Travel Outside the U.S. (Last 5 Years)</legend>
+        <div class="grid grid-3">
+          <div class="field"><label>Total trips <span class="req">*</span></label><input type="number" name="trips_total" min="0" required></div>
+          <div class="field"><label>Longest trip (days) <span class="req">*</span></label><input type="number" name="trips_longest" min="0" required></div>
+          <div class="field"><label>Total days outside U.S. <span class="req">*</span></label><input type="number" name="trips_total_days" min="0" required></div>
+        </div>
+        <div class="field full" style="margin-top:12px"><label>Trips of 6+ months <span class="hint">dates and destinations</span></label><textarea name="long_trips" placeholder="None / or list..."></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Background</legend>
+        <div class="field full" style="margin-bottom:14px">
+          <label>Have you ever been arrested, cited, charged, or convicted of any crime (including traffic citations)? <span class="req">*</span></label>
+          <div class="yn-group">
+            <label><input type="radio" name="criminal" value="yes" required> Yes</label>
+            <label><input type="radio" name="criminal" value="no"> No</label>
+          </div>
+        </div>
+        <div class="field full" style="margin-bottom:14px"><label>If yes, please describe</label><textarea name="criminal_detail"></textarea></div>
+        <div class="field full" style="margin-bottom:14px">
+          <label>For males born after 1959: Did you register with Selective Service between ages 18-26?</label>
+          <div class="yn-group">
+            <label><input type="radio" name="selective_service" value="yes"> Yes</label>
+            <label><input type="radio" name="selective_service" value="no"> No</label>
+            <label><input type="radio" name="selective_service" value="na"> N/A</label>
+          </div>
+        </div>
+        <div class="field full">
+          <label>Have you served in the U.S. armed forces?</label>
+          <div class="yn-group">
+            <label><input type="radio" name="military" value="yes"> Yes</label>
+            <label><input type="radio" name="military" value="no"> No</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Test Accommodations</legend>
+        <div class="field full"><label>Do you need an accommodation for the English/civics test? <span class="hint">age 50+ exemptions, disability accommodations</span></label><textarea name="accommodations" placeholder="None, or describe..."></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Anything Else?</legend>
+        <div class="field full"><textarea name="notes" placeholder="Questions, concerns, special circumstances..."></textarea></div>
+      </fieldset>
+
+      <div class="disclaimer">
+        This intake form is for initial review only. Submitting it does not create an attorney-client relationship. We will follow up to schedule a consultation.
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" onclick="resetForm()">Clear</button>
+        <button type="submit" class="btn btn-primary">Submit Intake</button>
+      </div>
+    </form>
+
+    <!-- ─────────────────────── AOS ─────────────────────── -->
+    <form id="form-aos" class="form-section" onsubmit="handleSubmit(event, 'AOS')">
+      <div class="form-intro">
+        <span class="case-tag">Form I-485</span>
+        <h2>Adjustment of Status Intake</h2>
+        <p>Apply for a green card while remaining in the United States.</p>
+      </div>
+
+      <fieldset>
+        <legend>Personal Information</legend>
+        <div class="grid grid-2">
+          <div class="field"><label>Full legal name <span class="req">*</span></label><input type="text" name="full_name" required></div>
+          <div class="field"><label>Other names used</label><input type="text" name="other_names"></div>
+          <div class="field"><label>Date of birth <span class="req">*</span></label><input type="date" name="dob" required></div>
+          <div class="field"><label>Country of birth <span class="req">*</span></label><input type="text" name="country_birth" required></div>
+          <div class="field"><label>Country of citizenship <span class="req">*</span></label><input type="text" name="country_citizenship" required></div>
+          <div class="field"><label>A-Number (if any)</label><input type="text" name="a_number" placeholder="A012345678"></div>
+          <div class="field"><label>Email <span class="req">*</span></label><input type="email" name="email" required></div>
+          <div class="field"><label>Phone <span class="req">*</span></label><input type="tel" name="phone" required></div>
+          <div class="field full"><label>Current U.S. address <span class="req">*</span></label><input type="text" name="address" required></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Most Recent Entry to the U.S.</legend>
+        <div class="grid grid-2">
+          <div class="field"><label>Date of last entry <span class="req">*</span></label><input type="date" name="entry_date" required></div>
+          <div class="field"><label>Place / port of entry</label><input type="text" name="entry_place"></div>
+          <div class="field"><label>I-94 number <span class="hint">11-digit admission record</span></label><input type="text" name="i94_number"></div>
+          <div class="field"><label>Status at entry</label>
+            <select name="entry_status">
+              <option value="">— Select —</option>
+              <option>Tourist (B-1/B-2)</option>
+              <option>Student (F-1/M-1)</option>
+              <option>Work visa (H-1B, L-1, etc.)</option>
+              <option>Fiancé (K-1)</option>
+              <option>Parolee</option>
+              <option>Entered without inspection</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field full"><label>Current immigration status <span class="req">*</span></label><input type="text" name="current_status" required placeholder="e.g., F-1 student, H-1B, no status, pending asylum..."></div>
+          <div class="field"><label>Status expiration date</label><input type="date" name="status_expires"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Basis for Adjustment</legend>
+        <div class="field full" style="margin-bottom:14px">
+          <label>What is your basis for adjusting status? <span class="req">*</span></label>
+          <select name="aos_basis" required>
+            <option value="">— Select —</option>
+            <option>Family-based: spouse of U.S. citizen</option>
+            <option>Family-based: parent, child, or sibling of U.S. citizen</option>
+            <option>Family-based: relative of permanent resident</option>
+            <option>Employment-based (EB-1/EB-2/EB-3)</option>
+            <option>Asylum or refugee</option>
+            <option>Diversity visa lottery</option>
+            <option>Special Immigrant (SIJ, religious worker, etc.)</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="grid grid-2">
+          <div class="field"><label>Petitioner / sponsor name <span class="hint">if applicable</span></label><input type="text" name="petitioner_name"></div>
+          <div class="field"><label>Relationship to petitioner</label><input type="text" name="petitioner_relationship"></div>
+          <div class="field"><label>Petitioner's status</label>
+            <select name="petitioner_status"><option value="">—</option><option>U.S. Citizen</option><option>Permanent Resident</option><option>Employer</option><option>N/A</option></select>
+          </div>
+          <div class="field"><label>Has an I-130 or I-140 been filed/approved for you?</label>
+            <select name="petition_filed"><option value="">—</option><option>Not yet filed</option><option>Filed, pending</option><option>Approved</option><option>Don't know</option></select>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Marital Status</legend>
+        <div class="grid grid-2">
+          <div class="field full"><label>Marital status <span class="req">*</span></label>
+            <select name="marital_status" required>
+              <option value="">— Select —</option>
+              <option>Single (never married)</option>
+              <option>Married</option>
+              <option>Divorced</option>
+              <option>Widowed</option>
+              <option>Separated</option>
+            </select>
+          </div>
+          <div class="field"><label>Spouse's full name</label><input type="text" name="spouse_name"></div>
+          <div class="field"><label>Spouse's date of birth</label><input type="date" name="spouse_dob"></div>
+          <div class="field"><label>Spouse's citizenship status</label>
+            <select name="spouse_status"><option value="">—</option><option>U.S. Citizen</option><option>Permanent Resident</option><option>Other</option></select>
+          </div>
+          <div class="field"><label>Date of marriage</label><input type="date" name="marriage_date"></div>
+          <div class="field full"><label>Children <span class="hint">name + DOB for each; note if applying with you</span></label><textarea name="children" placeholder="Maria Lopez — 2014-05-12 (applying with me)"></textarea></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>History (Last 5 Years)</legend>
+        <div class="field full" style="margin-bottom:14px"><label>Addresses <span class="req">*</span></label><textarea name="address_history" required placeholder="123 Main St, Anytown TX, 2022-present&#10;..."></textarea></div>
+        <div class="field full"><label>Employment <span class="req">*</span></label><textarea name="employment_history" required placeholder="Acme Co, Software Engineer, 2021-present&#10;..."></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Background</legend>
+        <div class="field full" style="margin-bottom:14px">
+          <label>Have you ever been arrested, charged, or convicted of any crime in any country? <span class="req">*</span></label>
+          <div class="yn-group">
+            <label><input type="radio" name="criminal" value="yes" required> Yes</label>
+            <label><input type="radio" name="criminal" value="no"> No</label>
+          </div>
+        </div>
+        <div class="field full" style="margin-bottom:14px"><label>If yes, please describe</label><textarea name="criminal_detail"></textarea></div>
+        <div class="field full" style="margin-bottom:14px">
+          <label>Have you ever been denied a visa, refused entry, or removed/deported from the U.S.? <span class="req">*</span></label>
+          <div class="yn-group">
+            <label><input type="radio" name="immigration_violations" value="yes" required> Yes</label>
+            <label><input type="radio" name="immigration_violations" value="no"> No</label>
+          </div>
+        </div>
+        <div class="field full" style="margin-bottom:14px">
+          <label>Have you received any public benefits (SNAP, Medicaid, SSI, TANF) in the last 3 years?</label>
+          <div class="yn-group">
+            <label><input type="radio" name="public_benefits" value="yes"> Yes</label>
+            <label><input type="radio" name="public_benefits" value="no"> No</label>
+          </div>
+        </div>
+        <div class="field full">
+          <label>Have you completed your medical exam (Form I-693)?</label>
+          <div class="yn-group">
+            <label><input type="radio" name="medical_exam" value="yes"> Yes</label>
+            <label><input type="radio" name="medical_exam" value="no"> No</label>
+            <label><input type="radio" name="medical_exam" value="scheduled"> Scheduled</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Anything Else?</legend>
+        <div class="field full"><textarea name="notes" placeholder="Questions, concerns, special circumstances..."></textarea></div>
+      </fieldset>
+
+      <div class="disclaimer">
+        This intake form is for initial review only. Submitting it does not create an attorney-client relationship. We will follow up to schedule a consultation.
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" onclick="resetForm()">Clear</button>
+        <button type="submit" class="btn btn-primary">Submit Intake</button>
+      </div>
+    </form>
+
+    <!-- ─────────────────────── Success ─────────────────────── -->
+    <div id="success-state" class="success">
+      <div class="check">✓</div>
+      <h3>Intake received</h3>
+      <p>Thank you. We've recorded your information and will be in touch within one business day to schedule a consultation.</p>
+      <button type="button" class="btn btn-ghost" onclick="startOver()">Submit another</button>
+    </div>
+
+  </div>
+
+  <footer>USCIS Case Intake — sample form, not legal advice.</footer>
+</div>
+
+<script>
+  function selectCase(value) {
+    document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+    document.getElementById('empty-state').style.display = value ? 'none' : 'block';
+    document.getElementById('success-state').classList.remove('show');
+    if (value) {
+      const form = document.getElementById('form-' + value);
+      if (form) form.classList.add('active');
+      const url = new URL(window.location.href);
+      url.searchParams.set('case', value);
+      history.replaceState(null, '', url.toString());
+      window.scrollTo({ top: document.querySelector('.selector-wrap').offsetTop - 20, behavior: 'smooth' });
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('case');
+      history.replaceState(null, '', url.toString());
+    }
+  }
+
+  function resetForm() {
+    const active = document.querySelector('.form-section.active');
+    if (active) active.reset();
+  }
+
+  function handleSubmit(e, caseType) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    data.case_type = caseType;
+    data.submitted_at = new Date().toISOString();
+    console.log('Intake submission:', data);
+    // TODO: wire to backend (Supabase table, Netlify function, or n8n webhook).
+    document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('success-state').classList.add('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function startOver() {
+    document.getElementById('success-state').classList.remove('show');
+    document.getElementById('case-selector').value = '';
+    selectCase('');
+    document.querySelectorAll('form').forEach(f => f.reset());
+  }
+
+  // Deep link via ?case=daca|n400|aos
+  (function init() {
+    const params = new URLSearchParams(window.location.search);
+    const c = (params.get('case') || '').toLowerCase();
+    if (['daca', 'n400', 'aos'].includes(c)) {
+      document.getElementById('case-selector').value = c;
+      selectCase(c);
+    }
+  })();
+</script>
+
+</body>
+</html>
