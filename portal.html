@@ -54,6 +54,35 @@
     z-index: 100;
   }
 
+  .sub-header {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 12px 40px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    flex-wrap: wrap;
+  }
+  .sub-header .label {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.6rem;
+    margin-right: 2px;
+  }
+  .sub-header .stat { display: inline-flex; align-items: center; gap: 6px; }
+  .sub-header .stat .name { color: var(--muted); }
+  .sub-header .stat .val { color: var(--text); }
+  .sub-header .stat .val.has-hits { color: var(--accent2); }
+  .sub-header .divider { color: var(--border); }
+  @media (max-width: 640px) {
+    .sub-header { padding: 10px 20px; gap: 14px; }
+  }
+
   .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
   .logo span { color: var(--muted); font-weight: 400; }
 
@@ -230,13 +259,17 @@
 
 <header>
   <div class="logo">RMT<span>/</span>Networks</div>
-  <div style="display:flex;align-items:center;gap:20px">
-    <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted)">Tracker Demo: <span id="demo-hits">—</span></span>
-    <span style="color:var(--border)">|</span>
-    <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted)">Proof Scan: <span id="proof-hits">—</span></span>
-    <button class="btn-logout" onclick="logout()">Sign out</button>
-  </div>
+  <button class="btn-logout" onclick="logout()">Sign out</button>
 </header>
+
+<div class="sub-header">
+  <span class="label">Page Hits</span>
+  <span class="stat"><span class="name">Tracker Demo</span> <span class="val" id="demo-hits">—</span></span>
+  <span class="divider">·</span>
+  <span class="stat"><span class="name">Proof Scan</span> <span class="val" id="proof-hits">—</span></span>
+  <span class="divider">·</span>
+  <span class="stat"><span class="name">USCIS Intake</span> <span class="val" id="uscis-hits">—</span></span>
+</div>
 
 <main>
   <div class="page-header">
@@ -317,15 +350,16 @@
 
       const demoHits  = byMetric['page_hits']       ?? 0;
       const proofHits = byMetric['proof_scan_hits']  ?? 0;
+      const uscisHits = byMetric['uscis_hits']       ?? 0;
 
-      const demoEl  = document.getElementById('demo-hits');
-      const proofEl = document.getElementById('proof-hits');
-
-      demoEl.textContent  = `👁 ${demoHits.toLocaleString()}`;
-      proofEl.textContent = `👁 ${proofHits.toLocaleString()}`;
-
-      if (demoHits  > 0) demoEl.style.color  = 'var(--accent2)';
-      if (proofHits > 0) proofEl.style.color = 'var(--accent2)';
+      const set = (id, n) => {
+        const el = document.getElementById(id);
+        el.textContent = `👁 ${n.toLocaleString()}`;
+        if (n > 0) el.classList.add('has-hits');
+      };
+      set('demo-hits',  demoHits);
+      set('proof-hits', proofHits);
+      set('uscis-hits', uscisHits);
     } catch {}
   })();
 </script>

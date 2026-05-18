@@ -5,7 +5,7 @@ exports.handler = async (event) => {
   const SB_KEY = process.env.SUPABASE_KEY;
 
   const metric = event.queryStringParameters?.metric || 'page_hits';
-  const allowed = ['page_hits', 'proof_scan_hits'];
+  const allowed = ['page_hits', 'proof_scan_hits', 'uscis_hits'];
   if (!allowed.includes(metric)) return { statusCode: 400, body: 'Invalid metric' };
 
   try {

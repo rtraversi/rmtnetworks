@@ -784,6 +784,9 @@
       selectCase(c);
     }
   })();
+
+  // Fire-and-forget hit counter
+  fetch('/.netlify/functions/track-hit?metric=uscis_hits', { method: 'POST' }).catch(() => {});
 </script>
 
 </body>
