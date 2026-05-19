@@ -11,16 +11,7 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET);
-}
-
 exports.handler = async (event) => {
-  if (!authOk(event)) return json(401, { error: 'Unauthorized' });
   try {
     const deeds = await listDeeds();
     return json(200, { source: currentSource(), deeds });

@@ -4,20 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RMT Networks — Demos</title>
-<script>
-  (function() {
-    var token = sessionStorage.getItem('rmt_session');
-    if (!token) { window.location.replace('/'); return; }
-    fetch('/.netlify/functions/verify', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    }).then(function(r) {
-      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
-      else { document.body.style.visibility = 'visible'; }
-    }).catch(function() {
-      document.body.style.visibility = 'visible';
-    });
-  })();
-</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -40,7 +26,6 @@
     color: var(--text);
     font-family: 'Syne', sans-serif;
     min-height: 100vh;
-    visibility: hidden;
   }
 
   header {
@@ -250,8 +235,8 @@
 <header>
   <div class="logo">RMT<span>/</span>Networks</div>
   <div class="header-actions">
-    <a class="btn-secondary" href="/portal.html">← Portal</a>
-    <button class="btn-logout" onclick="logout()">Sign out</button>
+    <a class="btn-secondary" href="/">← Home</a>
+    <a class="btn-secondary" href="/portal.html">Client Login →</a>
   </div>
 </header>
 
@@ -315,12 +300,6 @@
   </div>
 </main>
 
-<script>
-  function logout() {
-    sessionStorage.removeItem('rmt_session');
-    window.location.replace('/');
-  }
-</script>
 
 </body>
 </html>

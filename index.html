@@ -200,6 +200,23 @@
     letter-spacing: 0.05em;
   }
 
+  .demo-link-wrap {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .demo-link {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.74rem;
+    color: var(--accent2);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    opacity: 0.85;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .demo-link:hover { opacity: 1; color: #7ab8ff; }
+
   @keyframes shake {
     0%,100% { transform: translateX(0); }
     20%      { transform: translateX(-7px); }
@@ -231,6 +248,10 @@
   <button class="btn-login" id="login-btn" onclick="doLogin()">Access Portal →</button>
 
   <div class="footer-note">rmtnetworks.com · private access only</div>
+
+  <div class="demo-link-wrap">
+    <a href="/demos.html" class="demo-link">View client demos →</a>
+  </div>
 </div>
 
 <script>
