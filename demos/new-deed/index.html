@@ -639,22 +639,29 @@ async function loadScenarios() {
 
 // ------- STEP 3 → 4 — Generate -----------------------------------------------
 function mergeDeed(extracted, scenario) {
-  // The scenario provides the NEW conveyance fields (parties, consideration, date, type).
-  // The legal description, tax map, and property address come from the extracted OLD deed
-  // (because the property is the same). Scenario values win when both are present
-  // for the property fields — useful if she edits in the vault.
+  // The scenario provides the NEW conveyance fields (new parties, consideration, date, type).
+  // The old deed's grantee becomes the new deed's grantor (current owners conveying out).
+  // The old deed's grantor + recording info become the chain-of-title "being" clause.
+  // Legal description, tax map, and property address always come from the extracted old deed.
   return {
-    deed_type:            scenario.deed_type           || extracted.deed_type,
-    grantor_name:         scenario.grantor_name        || extracted.grantee_name,  // old grantee becomes new grantor
+    deed_type:            scenario.deed_type           || 'Bargain and Sale Deed With Covenant Against Grantor\'s Acts',
+    // Chain-of-title: who conveyed TO the current grantors (the old deed's grantor)
+    prior_grantor_name:   extracted.grantor_name,
+    prior_deed_date:      extracted.conveyance_date,
+    prior_recording_info: extracted.recording_info,
+    // New deed grantor = old deed's grantee (the current owners who are now conveying)
+    grantor_name:         scenario.grantor_name        || extracted.grantee_name,
     grantor_address:      scenario.grantor_address     || extracted.grantee_address,
+    // New deed grantee = the new owner / trust / trustee from the scenario
     grantee_name:         scenario.grantee_name,
     grantee_address:      scenario.grantee_address,
     consideration_amount: scenario.consideration_amount ?? 0,
     consideration_words:  scenario.consideration_words,
     conveyance_date:      scenario.conveyance_date     || new Date().toISOString().slice(0,10),
+    // Property always from the extracted old deed (same parcel)
     property_address:     scenario.property_address    || extracted.property_address,
     property_city:        scenario.property_city       || extracted.property_city,
-    property_state:       scenario.property_state      || extracted.property_state || 'New York',
+    property_state:       scenario.property_state      || extracted.property_state  || 'New York',
     property_county:      scenario.property_county     || extracted.property_county || 'Westchester',
     tax_section:          scenario.tax_section         || extracted.tax_section,
     tax_block:            scenario.tax_block           || extracted.tax_block,
