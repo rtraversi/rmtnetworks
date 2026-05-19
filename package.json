@@ -1,12 +1,13 @@
 {
   "dependencies": {
+    "nodemailer": "^6.10.1",
+    "pdf-lib": "^1.17.1",
     "playwright": "^1.59.1"
   },
   "name": "rmtnetworks",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

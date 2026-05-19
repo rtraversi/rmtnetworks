@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RMT Networks — Portal</title>
+<title>RMT Networks — Demos</title>
 <script>
   (function() {
     var token = sessionStorage.getItem('rmt_session');
@@ -54,37 +54,25 @@
     z-index: 100;
   }
 
-  .sub-header {
-    display: flex;
-    align-items: center;
-    gap: 22px;
-    padding: 12px 40px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-    flex-wrap: wrap;
-  }
-  .sub-header .label {
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.6rem;
-    margin-right: 2px;
-  }
-  .sub-header .stat { display: inline-flex; align-items: center; gap: 6px; }
-  .sub-header .stat .name { color: var(--muted); }
-  .sub-header .stat .val { color: var(--text); }
-  .sub-header .stat .val.has-hits { color: var(--accent2); }
-  .sub-header .divider { color: var(--border); }
-  @media (max-width: 640px) {
-    .sub-header { padding: 10px 20px; gap: 14px; }
-  }
-
   .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
   .logo span { color: var(--muted); font-weight: 400; }
+
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+
+  .btn-secondary {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.74rem;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .btn-secondary:hover { color: var(--accent); border-color: var(--accent); }
 
   .btn-logout {
     font-family: 'DM Mono', monospace;
@@ -106,14 +94,12 @@
     padding: 64px 40px 80px;
   }
 
-  .page-header {
-    margin-bottom: 56px;
-  }
+  .page-header { margin-bottom: 56px; }
 
   .eyebrow {
     font-family: 'DM Mono', monospace;
     font-size: 0.68rem;
-    color: var(--accent);
+    color: var(--accent2);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     margin-bottom: 14px;
@@ -121,13 +107,12 @@
     align-items: center;
     gap: 8px;
   }
-
   .eyebrow::before {
     content: '';
     display: inline-block;
     width: 5px;
     height: 5px;
-    background: var(--accent);
+    background: var(--accent2);
     border-radius: 50%;
   }
 
@@ -145,7 +130,6 @@
     color: var(--muted);
   }
 
-  /* App tiles */
   .apps-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -182,7 +166,6 @@
     transform: translateY(-4px);
     box-shadow: 0 12px 40px rgba(0,0,0,0.35);
   }
-
   .app-tile:hover::after { opacity: 1; }
 
   .tile-icon {
@@ -199,13 +182,7 @@
   }
 
   .tile-body { flex: 1; }
-
-  .tile-name {
-    font-size: 1.05rem;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-
+  .tile-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
   .tile-desc {
     font-family: 'DM Mono', monospace;
     font-size: 0.72rem;
@@ -236,28 +213,28 @@
     opacity: 0;
     transition: opacity 0.2s;
   }
-
   .app-tile:hover .tile-cta { opacity: 1; }
 
-  /* Demo-hub tile — visually distinct entry point */
-  .app-tile.demo-hub {
-    background: linear-gradient(135deg, rgba(75,143,255,0.08) 0%, rgba(79,255,176,0.04) 100%);
-    border-color: rgba(75,143,255,0.35);
+  .app-tile.new-tile {
+    background: linear-gradient(135deg, rgba(79,255,176,0.06) 0%, rgba(75,143,255,0.04) 100%);
+    border-color: rgba(79,255,176,0.35);
   }
-  .app-tile.demo-hub:hover {
-    border-color: rgba(75,143,255,0.65);
+  .app-tile.new-tile .tile-icon {
+    background: rgba(79,255,176,0.12);
+    border-color: rgba(79,255,176,0.3);
   }
-  .app-tile.demo-hub .tile-icon {
-    background: rgba(75,143,255,0.12);
-    border-color: rgba(75,143,255,0.3);
-  }
-
-  /* Coming-soon placeholder tile */
-  .app-tile.placeholder {
-    border-style: dashed;
-    opacity: 0.45;
-    cursor: default;
-    pointer-events: none;
+  .badge-new {
+    display: inline-block;
+    background: var(--accent);
+    color: #000;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+    margin-left: 8px;
+    vertical-align: middle;
   }
 
   @media (max-width: 640px) {
@@ -272,83 +249,65 @@
 
 <header>
   <div class="logo">RMT<span>/</span>Networks</div>
-  <button class="btn-logout" onclick="logout()">Sign out</button>
+  <div class="header-actions">
+    <a class="btn-secondary" href="/portal.html">← Portal</a>
+    <button class="btn-logout" onclick="logout()">Sign out</button>
+  </div>
 </header>
-
-<div class="sub-header">
-  <span class="label">Page Hits</span>
-  <span class="stat"><span class="name">Tracker Demo</span> <span class="val" id="demo-hits">—</span></span>
-  <span class="divider">·</span>
-  <span class="stat"><span class="name">Proof Scan</span> <span class="val" id="proof-hits">—</span></span>
-  <span class="divider">·</span>
-  <span class="stat"><span class="name">USCIS Intake</span> <span class="val" id="uscis-hits">—</span></span>
-</div>
 
 <main>
   <div class="page-header">
-    <div class="eyebrow">Private Portal</div>
-    <h1>Your Applications</h1>
-    <p>Choose an app below to get started.</p>
+    <div class="eyebrow">Client Demos</div>
+    <h1>Demo Site</h1>
+    <p>Live sample automations &mdash; share these links with prospects to show what's possible.</p>
   </div>
 
   <div class="apps-grid">
 
-    <a class="app-tile demo-hub" href="/demos.html">
-      <div class="tile-icon">🧪</div>
+    <a class="app-tile new-tile" href="/demos/new-deed/">
+      <div class="tile-icon">📜</div>
       <div class="tile-body">
-        <div class="tile-name">Demo Site</div>
-        <div class="tile-desc">Client-facing demos &mdash; Proof-Scan, Tracker, USCIS Intake, and New Deed automation.</div>
+        <div class="tile-name">New Deed<span class="badge-new">NEW</span></div>
+        <div class="tile-desc">Upload an old deed, AI extracts the parties and legal description, and fills a new deed template — for estates/wills attorneys.</div>
       </div>
       <div class="tile-footer">
-        <span class="tile-tag">Showcase</span>
+        <span class="tile-tag">Estate Planning</span>
         <span class="tile-cta">Open →</span>
       </div>
     </a>
 
-    <a class="app-tile" href="/tracker.html">
-      <div class="tile-icon">📋</div>
+    <a class="app-tile" href="/proof-scan-sample.html">
+      <div class="tile-icon">🔍</div>
       <div class="tile-body">
-        <div class="tile-name">Subscription Tracker</div>
-        <div class="tile-desc">Manage all your service subscriptions — costs, renewal dates, login details, and monthly spend.</div>
+        <div class="tile-name">Proof-Scan Sample</div>
+        <div class="tile-desc">Document verification demo &mdash; scan and validate proof artifacts.</div>
       </div>
       <div class="tile-footer">
-        <span class="tile-tag">Finance</span>
+        <span class="tile-tag">Verification</span>
         <span class="tile-cta">Open →</span>
       </div>
     </a>
 
-    <a class="app-tile" href="/ideas.html">
-      <div class="tile-icon">💡</div>
+    <a class="app-tile" href="/tracker-demo.html">
+      <div class="tile-icon">📊</div>
       <div class="tile-body">
-        <div class="tile-name">Ideas</div>
-        <div class="tile-desc">Capture and track ideas — title, description, priority, and who added them.</div>
+        <div class="tile-name">Tracker Demo</div>
+        <div class="tile-desc">Visitor &amp; engagement tracking demo with live dashboard view.</div>
       </div>
       <div class="tile-footer">
-        <span class="tile-tag">Productivity</span>
+        <span class="tile-tag">Analytics</span>
         <span class="tile-cta">Open →</span>
       </div>
     </a>
 
-    <a class="app-tile" href="/vps.html">
-      <div class="tile-icon">🖥</div>
+    <a class="app-tile" href="/uscis.html">
+      <div class="tile-icon">🛂</div>
       <div class="tile-body">
-        <div class="tile-name">VPS Monitor</div>
-        <div class="tile-desc">Live Hostinger VPS stats — disk usage, bandwidth, CPU, and memory. Refreshes every 4 hours.</div>
+        <div class="tile-name">USCIS Intake</div>
+        <div class="tile-desc">Immigration intake workflow &mdash; client onboarding for immigration attorneys.</div>
       </div>
       <div class="tile-footer">
-        <span class="tile-tag">Infrastructure</span>
-        <span class="tile-cta">Open →</span>
-      </div>
-    </a>
-
-    <a class="app-tile" href="/clients.html">
-      <div class="tile-icon">👥</div>
-      <div class="tile-body">
-        <div class="tile-name">Clients</div>
-        <div class="tile-desc">Contact cards, Docker containers, and encrypted logins for every client automation.</div>
-      </div>
-      <div class="tile-footer">
-        <span class="tile-tag">CRM</span>
+        <span class="tile-tag">Immigration Law</span>
         <span class="tile-cta">Open →</span>
       </div>
     </a>
@@ -361,32 +320,6 @@
     sessionStorage.removeItem('rmt_session');
     window.location.replace('/');
   }
-
-  // Page hit counters
-  (async () => {
-    try {
-      const cfg = await fetch('/.netlify/functions/config').then(r => r.json());
-      const res = await fetch(
-        `${cfg.supabaseUrl}/rest/v1/usage_metrics?service_name=eq.Demo&select=metric_name,used_value`,
-        { headers: { 'apikey': cfg.supabaseKey, 'Authorization': `Bearer ${cfg.supabaseKey}` } }
-      );
-      const rows = await res.json();
-      const byMetric = Object.fromEntries(rows.map(r => [r.metric_name, r.used_value]));
-
-      const demoHits  = byMetric['page_hits']       ?? 0;
-      const proofHits = byMetric['proof_scan_hits']  ?? 0;
-      const uscisHits = byMetric['uscis_hits']       ?? 0;
-
-      const set = (id, n) => {
-        const el = document.getElementById(id);
-        el.textContent = `👁 ${n.toLocaleString()}`;
-        if (n > 0) el.classList.add('has-hits');
-      };
-      set('demo-hits',  demoHits);
-      set('proof-hits', proofHits);
-      set('uscis-hits', uscisHits);
-    } catch {}
-  })();
 </script>
 
 </body>
