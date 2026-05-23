@@ -1,12 +1,20 @@
 // Increments a hit counter in Supabase.
-// Pass ?metric=page_hits (default) or ?metric=proof_scan_hits to track different pages.
+// Pass ?metric=page_hits (default) or other metric names to track different pages.
 exports.handler = async (event) => {
+  const CORS = {
+    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS };
+
   const SB_URL = process.env.SUPABASE_URL;
   const SB_KEY = process.env.SUPABASE_KEY;
 
-  const metric = event.queryStringParameters?.metric || 'page_hits';
-  const allowed = ['page_hits', 'proof_scan_hits', 'uscis_hits'];
-  if (!allowed.includes(metric)) return { statusCode: 400, body: 'Invalid metric' };
+  const metric  = event.queryStringParameters?.metric || 'page_hits';
+  const allowed = ['page_hits', 'proof_scan_hits', 'uscis_hits', 'portal_demo_hits'];
+  if (!allowed.includes(metric)) return { statusCode: 400, headers: CORS, body: 'Invalid metric' };
 
   try {
     const getRes = await fetch(
@@ -21,10 +29,10 @@ exports.handler = async (event) => {
       {
         method: 'PATCH',
         headers: {
-          'apikey': SB_KEY,
+          'apikey':        SB_KEY,
           'Authorization': `Bearer ${SB_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
+          'Content-Type':  'application/json',
+          'Prefer':        'return=minimal',
         },
         body: JSON.stringify({ used_value: current + 1, last_updated: new Date().toISOString() }),
       }
@@ -34,10 +42,10 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS },
       body: JSON.stringify({ hits: current + 1 }),
     };
   } catch (e) {
-    return { statusCode: 500, body: e.message };
+    return { statusCode: 500, headers: CORS, body: e.message };
   }
 };

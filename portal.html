@@ -282,6 +282,8 @@
   <span class="stat"><span class="name">Proof Scan</span> <span class="val" id="proof-hits">—</span></span>
   <span class="divider">·</span>
   <span class="stat"><span class="name">USCIS Intake</span> <span class="val" id="uscis-hits">—</span></span>
+  <span class="divider">·</span>
+  <span class="stat"><span class="name">Portal Demo</span> <span class="val" id="portal-demo-hits">—</span></span>
 </div>
 
 <main>
@@ -373,18 +375,20 @@
       const rows = await res.json();
       const byMetric = Object.fromEntries(rows.map(r => [r.metric_name, r.used_value]));
 
-      const demoHits  = byMetric['page_hits']       ?? 0;
-      const proofHits = byMetric['proof_scan_hits']  ?? 0;
-      const uscisHits = byMetric['uscis_hits']       ?? 0;
+      const demoHits       = byMetric['page_hits']          ?? 0;
+      const proofHits      = byMetric['proof_scan_hits']    ?? 0;
+      const uscisHits      = byMetric['uscis_hits']         ?? 0;
+      const portalDemoHits = byMetric['portal_demo_hits']   ?? 0;
 
       const set = (id, n) => {
         const el = document.getElementById(id);
         el.textContent = `👁 ${n.toLocaleString()}`;
         if (n > 0) el.classList.add('has-hits');
       };
-      set('demo-hits',  demoHits);
-      set('proof-hits', proofHits);
-      set('uscis-hits', uscisHits);
+      set('demo-hits',        demoHits);
+      set('proof-hits',       proofHits);
+      set('uscis-hits',       uscisHits);
+      set('portal-demo-hits', portalDemoHits);
     } catch {}
   })();
 </script>

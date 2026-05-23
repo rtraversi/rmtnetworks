@@ -90,7 +90,7 @@
   /* ── Stats row ── */
   .stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px;
     margin-bottom: 36px;
   }
@@ -283,7 +283,7 @@
   @media (max-width: 768px) {
     main { padding: 20px; }
     header { padding: 20px; }
-    .stats { grid-template-columns: 1fr 1fr; }
+    .stats { grid-template-columns: 1fr 1fr 1fr; }
     .form-grid { grid-template-columns: 1fr; }
     th:nth-child(4), td:nth-child(4),
     th:nth-child(5), td:nth-child(5),
@@ -322,6 +322,10 @@
     <div class="stat-card">
       <div class="stat-label">Renewing Soon</div>
       <div class="stat-value warn" id="stat-soon">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Portal Demo Views</div>
+      <div class="stat-value" id="stat-demo-hits">—</div>
     </div>
   </div>
 
@@ -573,6 +577,12 @@
       allData = await subRes.json();
       updateStats();
       renderTable();
+
+      // Portal demo hit counter
+      const demoMetrics = usageData.get('Demo');
+      const demoHits    = demoMetrics?.find(r => r.metric_name === 'portal_demo_hits');
+      document.getElementById('stat-demo-hits').textContent =
+        demoHits != null ? Number(demoHits.used_value).toLocaleString() : '0';
       document.getElementById('conn-status').textContent = '● connected';
       document.getElementById('conn-status').style.color = 'var(--accent)';
     } catch (e) {
