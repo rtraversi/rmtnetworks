@@ -11,8 +11,12 @@
     fetch('/.netlify/functions/verify', {
       headers: { 'Authorization': 'Bearer ' + token }
     }).then(function(r) {
-      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
-      else { document.body.style.visibility = 'visible'; }
+      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
+      return r.json().then(function(d) {
+        // Capture the authenticated user so user-scoped tiles (e.g. Stripe — Rob only) can gate on it.
+        if (d && d.user) document.body.dataset.user = d.user;
+        document.body.style.visibility = 'visible';
+      });
     }).catch(function() {
       document.body.style.visibility = 'visible';
     });
@@ -260,6 +264,40 @@
     pointer-events: none;
   }
 
+  /* User-scoped tiles: hidden by default, revealed only when /verify identifies
+     the matching user. Server-side gating in the backing function is the real
+     enforcement; this is just to avoid showing a tile that will 401 on click. */
+  .app-tile.rob-only { display: none; }
+  body[data-user="Rob"] .app-tile.rob-only { display: flex; }
+
+  /* Stripe tile — inline live metrics rather than navigation copy */
+  .app-tile.stripe-tile .tile-metrics {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 14px;
+    margin-top: 6px;
+  }
+  .app-tile.stripe-tile .tile-metric-label { color: var(--muted); }
+  .app-tile.stripe-tile .tile-metric-val   { font-weight: 600; text-align: right; }
+  .app-tile.stripe-tile .tile-metric-val.accent { color: var(--accent); }
+  .app-tile.stripe-tile .tile-metric-val.warn   { color: var(--warn); }
+  .app-tile.stripe-tile .tile-mode {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .app-tile.stripe-tile .tile-mode.live { color: var(--accent); border-color: rgba(79,255,176,0.4); }
+  .app-tile.stripe-tile .tile-mode.test { color: var(--warn);   border-color: rgba(255,107,74,0.4); }
+
   @media (max-width: 640px) {
     main { padding: 36px 20px 60px; }
     header { padding: 20px; }
@@ -304,6 +342,29 @@
       <div class="tile-footer">
         <span class="tile-tag">Showcase</span>
         <span class="tile-cta">Open →</span>
+      </div>
+    </a>
+
+    <a class="app-tile stripe-tile rob-only" href="https://dashboard.stripe.com" target="_blank" rel="noopener" id="stripeTile">
+      <div class="tile-icon">💳</div>
+      <div class="tile-body">
+        <div class="tile-name">Stripe</div>
+        <div class="tile-metrics" id="stripeMetrics">
+          <span class="tile-metric-label">Received this month</span>
+          <span class="tile-metric-val accent" id="stripeReceivedMonth">—</span>
+          <span class="tile-metric-label">Outstanding</span>
+          <span class="tile-metric-val warn"   id="stripeOutstanding">—</span>
+          <span class="tile-metric-label">Lifetime received</span>
+          <span class="tile-metric-val"        id="stripeReceivedTotal">—</span>
+          <span class="tile-metric-label">Paid · Pending · Sent</span>
+          <span class="tile-metric-val"        id="stripeCounts">—</span>
+          <span class="tile-metric-label">Active subscriptions</span>
+          <span class="tile-metric-val"        id="stripeActiveSubs">—</span>
+        </div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-mode" id="stripeMode">—</span>
+        <span class="tile-cta">Open in Stripe →</span>
       </div>
     </a>
 
@@ -390,6 +451,58 @@
       set('uscis-hits',       uscisHits);
       set('portal-demo-hits', portalDemoHits);
     } catch {}
+  })();
+
+  // Stripe metrics — populates the Rob-only Stripe tile. The function itself
+  // also enforces Rob-only on the server side; the dataset gate just avoids a
+  // pointless 401 round-trip for anyone else.
+  (async () => {
+    if (document.body.dataset.user !== 'Rob') return;
+    const token = sessionStorage.getItem('rmt_session');
+    if (!token) return;
+
+    const elMetrics  = document.getElementById('stripeMetrics');
+    const showError  = (msg) => {
+      if (!elMetrics) return;
+      elMetrics.innerHTML =
+        '<span class="tile-metric-label" style="grid-column:1/-1;color:var(--warn);font-size:0.7rem">'
+        + (msg || 'Unable to load Stripe metrics') + '</span>';
+    };
+
+    try {
+      const r = await fetch('/.netlify/functions/stripe-metrics', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        if (r.status === 503) showError(err.hint || err.error || 'STRIPE_SECRET_KEY not set');
+        else                  showError(err.error || ('HTTP ' + r.status));
+        return;
+      }
+      const m = await r.json();
+
+      const fmt = (cents, currency) => new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: (currency || 'usd').toUpperCase(),
+        minimumFractionDigits: 0,
+      }).format((cents || 0) / 100);
+
+      document.getElementById('stripeReceivedMonth').textContent = fmt(m.received_this_month_cents, m.currency);
+      document.getElementById('stripeOutstanding').textContent   = fmt(m.total_outstanding_cents,   m.currency);
+      document.getElementById('stripeReceivedTotal').textContent = fmt(m.total_received_cents,      m.currency);
+      document.getElementById('stripeCounts').textContent =
+        (m.paid_count|0) + ' · ' + (m.pending_count|0) + ' · ' + (m.sent_count|0);
+      document.getElementById('stripeActiveSubs').textContent = (m.active_subscriptions|0).toString();
+
+      const mode = document.getElementById('stripeMode');
+      if (mode) {
+        if (m.livemode === true)       { mode.textContent = 'Live mode'; mode.classList.add('live'); }
+        else if (m.livemode === false) { mode.textContent = 'Test mode'; mode.classList.add('test'); }
+        else                           { mode.textContent = 'No invoices yet'; }
+      }
+    } catch (e) {
+      showError('Network error: ' + (e && e.message ? e.message : 'unknown'));
+    }
   })();
 </script>
 
