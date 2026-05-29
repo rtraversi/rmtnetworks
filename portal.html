@@ -453,11 +453,12 @@
     } catch {}
   })();
 
-  // Stripe metrics — populates the Rob-only Stripe tile. The function itself
-  // also enforces Rob-only on the server side; the dataset gate just avoids a
-  // pointless 401 round-trip for anyone else.
+  // Stripe metrics — populates the Rob-only Stripe tile. The function enforces
+  // Rob-only on the server side (KATY_SESSION_SECRET is explicitly rejected),
+  // and the CSS .rob-only gate hides the tile from anyone else, so we don't
+  // need to wait for the verify IIFE to set document.body.dataset.user before
+  // firing this fetch — Katy never sees the result and gets 401 either way.
   (async () => {
-    if (document.body.dataset.user !== 'Rob') return;
     const token = sessionStorage.getItem('rmt_session');
     if (!token) return;
 
