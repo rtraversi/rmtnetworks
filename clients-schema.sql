@@ -44,3 +44,19 @@ create table if not exists client_logins (
 
 create index if not exists idx_client_containers_client on client_containers(client_id);
 create index if not exists idx_client_logins_client     on client_logins(client_id);
+
+create table if not exists client_subscriptions (
+  id               uuid primary key default gen_random_uuid(),
+  client_id        uuid not null references clients(id) on delete cascade,
+  service          text not null,
+  signed_up_date   date,
+  billing_cycle    text not null default 'monthly' check (billing_cycle in ('monthly','annually')),
+  price            numeric(10,2),
+  expiration_date  date,
+  login            text,
+  website_url      text,
+  notes            text,
+  created_at       timestamptz not null default now()
+);
+
+create index if not exists idx_client_subscriptions_client on client_subscriptions(client_id);

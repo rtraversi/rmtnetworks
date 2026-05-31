@@ -351,6 +351,14 @@
       </div>
       <div id="d-logins"></div>
     </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Subscriptions <span class="count" id="d-sub-count"></span></h2>
+        <button class="btn btn-primary btn-tiny" onclick="openSubModal()">+ Add Subscription</button>
+      </div>
+      <div id="d-subscriptions"></div>
+    </div>
   </div>
 </main>
 
@@ -482,6 +490,62 @@
   </div>
 </div>
 
+<!-- Subscription modal -->
+<div class="modal-overlay" id="sub-modal">
+  <div class="modal">
+    <h2 id="sub-modal-title">Add <span>Subscription</span></h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Service / Site *</label>
+        <input type="text" id="sf-service" placeholder="e.g. Cloudflare, Make, Stripe">
+      </div>
+      <div class="form-group">
+        <label>Date Signed Up</label>
+        <input type="date" id="sf-signed-up">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Billing Cycle</label>
+        <select id="sf-billing" onchange="calcMonthlyCost()">
+          <option value="monthly">Monthly</option>
+          <option value="annually">Annually</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Price (per cycle, USD)</label>
+        <input type="number" id="sf-price" placeholder="0.00" step="0.01" min="0" oninput="calcMonthlyCost()">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Monthly Cost (auto-calculated)</label>
+        <input type="text" id="sf-monthly-cost" readonly placeholder="—" style="opacity:0.65;cursor:not-allowed">
+      </div>
+      <div class="form-group">
+        <label>Expiration Date</label>
+        <input type="date" id="sf-expiration">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Login (email / username)</label>
+      <input type="text" id="sf-login" placeholder="account@example.com">
+    </div>
+    <div class="form-group">
+      <label>Website URL</label>
+      <input type="text" id="sf-url" placeholder="https://...">
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="sf-notes" placeholder="API keys, account IDs, anything useful..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('sub-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSubscription()">Save Subscription</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -493,6 +557,8 @@
   let editingClientId = null;
   let editingContainerId = null;
   let editingLoginId = null;
+  let currentSubscriptions = [];
+  let editingSubId = null;
 
   const SESSION = sessionStorage.getItem('rmt_session') || '';
 
@@ -516,7 +582,7 @@
   async function loadClients() {
     await initConfig();
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*,client_containers(id),client_logins(id)&order=name.asc`, { headers: sbHeaders() });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*,client_containers(id),client_logins(id),client_subscriptions(id)&order=name.asc`, { headers: sbHeaders() });
       if (!res.ok) throw new Error(await res.text());
       allClients = await res.json();
       renderList();
@@ -547,6 +613,7 @@
       const sClass = `status-${c.status || 'active'}`;
       const ctnCount = (c.client_containers || []).length;
       const loginCount = (c.client_logins || []).length;
+      const subCount = (c.client_subscriptions || []).length;
       return `
         <div class="client-card" onclick="openDetail('${c.id}')">
           <div class="client-card-head">
@@ -564,6 +631,7 @@
             <div class="footer-counts">
               <span>📦 ${ctnCount}</span>
               <span>🔑 ${loginCount}</span>
+              <span>💳 ${subCount}</span>
             </div>
             <span style="color:var(--accent)">Open →</span>
           </div>
@@ -622,17 +690,20 @@
     if (!currentClient) return;
     const cid = currentClient.id;
     try {
-      const [ctnRes, lgnRes] = await Promise.all([
+      const [ctnRes, lgnRes, subRes] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/client_containers?client_id=eq.${cid}&order=name.asc`, { headers: sbHeaders() }),
         fetch(`/.netlify/functions/logins?client_id=${cid}`, { headers: { Authorization: `Bearer ${SESSION}` } }),
+        fetch(`${SUPABASE_URL}/rest/v1/client_subscriptions?client_id=eq.${cid}&order=service.asc`, { headers: sbHeaders() }),
       ]);
-      currentContainers = ctnRes.ok ? await ctnRes.json() : [];
-      currentLogins     = lgnRes.ok ? await lgnRes.json() : [];
+      currentContainers    = ctnRes.ok ? await ctnRes.json() : [];
+      currentLogins        = lgnRes.ok ? await lgnRes.json() : [];
+      currentSubscriptions = subRes.ok ? await subRes.json() : [];
     } catch (e) {
-      currentContainers = []; currentLogins = [];
+      currentContainers = []; currentLogins = []; currentSubscriptions = [];
     }
     renderContainers();
     renderLogins();
+    renderSubscriptions();
   }
 
   function renderContainers() {
@@ -694,6 +765,115 @@
             </tr>`).join('')}
         </tbody>
       </table>`;
+  }
+
+  function renderSubscriptions() {
+    document.getElementById('d-sub-count').textContent = `(${currentSubscriptions.length})`;
+    const box = document.getElementById('d-subscriptions');
+    if (currentSubscriptions.length === 0) {
+      box.innerHTML = `<div class="empty-row">No subscriptions yet</div>`;
+      return;
+    }
+    box.innerHTML = `
+      <table class="data-table">
+        <thead><tr>
+          <th>Service</th><th>Signed Up</th><th>Billing</th><th>Price</th><th>Monthly Cost</th><th>Expires</th><th>Login</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${currentSubscriptions.map(s => {
+            const monthly = s.price != null
+              ? (s.billing_cycle === 'annually' ? s.price / 12 : parseFloat(s.price))
+              : null;
+            const expiring = (() => {
+              if (!s.expiration_date) return false;
+              return (new Date(s.expiration_date) - new Date()) / 86400000 <= 30;
+            })();
+            return `
+              <tr>
+                <td><strong>${escapeHtml(s.service || '')}</strong>${s.website_url ? ` <a href="${s.website_url}" target="_blank" rel="noopener" style="color:var(--accent2);margin-left:6px">↗</a>` : ''}</td>
+                <td>${s.signed_up_date || '—'}</td>
+                <td><span class="status-badge" style="background:${s.billing_cycle === 'annually' ? 'rgba(75,143,255,0.12);color:var(--accent2)' : 'rgba(79,255,176,0.1);color:var(--accent)'}">${s.billing_cycle === 'annually' ? 'Annual' : 'Monthly'}</span></td>
+                <td>${s.price != null ? `$${parseFloat(s.price).toFixed(2)}${s.billing_cycle === 'annually' ? '/yr' : '/mo'}` : '—'}</td>
+                <td>${monthly != null ? `<span style="color:var(--accent)">$${monthly.toFixed(2)}/mo</span>` : '—'}</td>
+                <td><span${expiring ? ' style="color:var(--warn)"' : ''}>${s.expiration_date || '—'}</span></td>
+                <td>${escapeHtml(s.login || '—')}</td>
+                <td><div class="row-actions">
+                  <button class="icon-btn" onclick="editSubscription('${s.id}')">Edit</button>
+                  <button class="icon-btn" onclick="deleteSubscription('${s.id}')" style="color:var(--warn);border-color:var(--warn)">Del</button>
+                </div></td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function calcMonthlyCost() {
+    const price = parseFloat(document.getElementById('sf-price').value);
+    const billing = document.getElementById('sf-billing').value;
+    const el = document.getElementById('sf-monthly-cost');
+    if (isNaN(price) || price === 0) { el.value = '—'; return; }
+    const monthly = billing === 'annually' ? price / 12 : price;
+    el.value = `$${monthly.toFixed(2)}/mo`;
+  }
+
+  function openSubModal(id = null) {
+    editingSubId = id;
+    document.getElementById('sub-modal-title').innerHTML = id ? 'Edit <span>Subscription</span>' : 'Add <span>Subscription</span>';
+    const s = id ? currentSubscriptions.find(x => x.id === id) : {};
+    document.getElementById('sf-service').value    = s?.service        || '';
+    document.getElementById('sf-signed-up').value  = s?.signed_up_date || '';
+    document.getElementById('sf-billing').value    = s?.billing_cycle  || 'monthly';
+    document.getElementById('sf-price').value      = s?.price          ?? '';
+    document.getElementById('sf-expiration').value = s?.expiration_date || '';
+    document.getElementById('sf-login').value      = s?.login          || '';
+    document.getElementById('sf-url').value        = s?.website_url    || '';
+    document.getElementById('sf-notes').value      = s?.notes          || '';
+    calcMonthlyCost();
+    openModal('sub-modal');
+  }
+  function editSubscription(id) { openSubModal(id); }
+
+  async function saveSubscription() {
+    const service = document.getElementById('sf-service').value.trim();
+    if (!service) { toast('Service name is required', true); return; }
+    const priceRaw = document.getElementById('sf-price').value.trim();
+    const payload = {
+      client_id:       currentClient.id,
+      service,
+      signed_up_date:  document.getElementById('sf-signed-up').value    || null,
+      billing_cycle:   document.getElementById('sf-billing').value,
+      price:           priceRaw ? parseFloat(priceRaw) : null,
+      expiration_date: document.getElementById('sf-expiration').value   || null,
+      login:           document.getElementById('sf-login').value.trim() || null,
+      website_url:     document.getElementById('sf-url').value.trim()   || null,
+      notes:           document.getElementById('sf-notes').value.trim() || null,
+    };
+    try {
+      let res;
+      if (editingSubId) {
+        const { client_id, ...patch } = payload;
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_subscriptions?id=eq.${editingSubId}`, { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(patch) });
+      } else {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_subscriptions`, { method: 'POST', headers: sbHeaders(), body: JSON.stringify(payload) });
+      }
+      if (!res.ok) throw new Error(await res.text());
+      closeModal('sub-modal');
+      await loadChildren();
+      await loadClients();
+      toast(editingSubId ? 'Subscription updated' : 'Subscription saved');
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function deleteSubscription(id) {
+    const s = currentSubscriptions.find(x => x.id === id);
+    if (!confirm(`Delete subscription "${s.service}"?`)) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_subscriptions?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
+      if (!res.ok) throw new Error(await res.text());
+      await loadChildren();
+      await loadClients();
+      toast('Deleted');
+    } catch (e) { toast('Error: ' + e.message, true); }
   }
 
   async function revealPassword(id) {
