@@ -330,6 +330,11 @@
       </div>
     </div>
 
+    <div class="section" id="d-spend-section" style="display:none">
+      <div class="section-head"><h2>Monthly Spend</h2></div>
+      <div id="d-spend-summary"></div>
+    </div>
+
     <div class="section">
       <div class="section-head"><h2>Contact</h2></div>
       <div class="contact-grid" id="d-contact"></div>
@@ -507,9 +512,10 @@
     <div class="form-row">
       <div class="form-group">
         <label>Billing Cycle</label>
-        <select id="sf-billing" onchange="calcMonthlyCost()">
+        <select id="sf-billing" onchange="onBillingChange()">
           <option value="monthly">Monthly</option>
           <option value="annually">Annually</option>
+          <option value="payg">PAYG (Pay As You Go)</option>
         </select>
       </div>
       <div class="form-group">
@@ -582,7 +588,7 @@
   async function loadClients() {
     await initConfig();
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*,client_containers(id),client_logins(id),client_subscriptions(id)&order=name.asc`, { headers: sbHeaders() });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*,client_containers(id),client_logins(id),client_subscriptions(id,price,billing_cycle)&order=name.asc`, { headers: sbHeaders() });
       if (!res.ok) throw new Error(await res.text());
       allClients = await res.json();
       renderList();
@@ -614,6 +620,10 @@
       const ctnCount = (c.client_containers || []).length;
       const loginCount = (c.client_logins || []).length;
       const subCount = (c.client_subscriptions || []).length;
+      const monthlyTotal = (c.client_subscriptions || []).reduce((sum, s) => {
+        if (!s.price) return sum;
+        return sum + (s.billing_cycle === 'annually' ? parseFloat(s.price) / 12 : parseFloat(s.price));
+      }, 0);
       return `
         <div class="client-card" onclick="openDetail('${c.id}')">
           <div class="client-card-head">
@@ -632,6 +642,7 @@
               <span>📦 ${ctnCount}</span>
               <span>🔑 ${loginCount}</span>
               <span>💳 ${subCount}</span>
+              ${monthlyTotal > 0 ? `<span style="color:var(--accent)">$${monthlyTotal.toFixed(2)}/mo</span>` : ''}
             </div>
             <span style="color:var(--accent)">Open →</span>
           </div>
@@ -792,7 +803,7 @@
               <tr>
                 <td><strong>${escapeHtml(s.service || '')}</strong>${s.website_url ? ` <a href="${s.website_url}" target="_blank" rel="noopener" style="color:var(--accent2);margin-left:6px">↗</a>` : ''}</td>
                 <td>${s.signed_up_date || '—'}</td>
-                <td><span class="status-badge" style="background:${s.billing_cycle === 'annually' ? 'rgba(75,143,255,0.12);color:var(--accent2)' : 'rgba(79,255,176,0.1);color:var(--accent)'}">${s.billing_cycle === 'annually' ? 'Annual' : 'Monthly'}</span></td>
+                <td><span class="status-badge" style="background:${s.billing_cycle === 'annually' ? 'rgba(75,143,255,0.12);color:var(--accent2)' : s.billing_cycle === 'payg' ? 'rgba(255,107,74,0.15);color:var(--warn)' : 'rgba(79,255,176,0.1);color:var(--accent)'}">${s.billing_cycle === 'annually' ? 'Annual' : s.billing_cycle === 'payg' ? 'PAYG' : 'Monthly'}</span></td>
                 <td>${s.price != null ? `$${parseFloat(s.price).toFixed(2)}${s.billing_cycle === 'annually' ? '/yr' : '/mo'}` : '—'}</td>
                 <td>${monthly != null ? `<span style="color:var(--accent)">$${monthly.toFixed(2)}/mo</span>` : '—'}</td>
                 <td><span${expiring ? ' style="color:var(--warn)"' : ''}>${s.expiration_date || '—'}</span></td>
@@ -805,6 +816,24 @@
           }).join('')}
         </tbody>
       </table>`;
+    updateSubSummary();
+  }
+
+  function updateSubSummary() {
+    const section = document.getElementById('d-spend-section');
+    const box = document.getElementById('d-spend-summary');
+    if (currentSubscriptions.length === 0) { section.style.display = 'none'; return; }
+    const total = currentSubscriptions.reduce((sum, s) => {
+      if (!s.price) return sum;
+      return sum + (s.billing_cycle === 'annually' ? parseFloat(s.price) / 12 : parseFloat(s.price));
+    }, 0);
+    const count = currentSubscriptions.length;
+    section.style.display = '';
+    box.innerHTML = `
+      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+        <span style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--accent)">$${total.toFixed(2)}<span style="font-size:1rem;opacity:0.7">/mo</span></span>
+        <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">${count} subscription${count !== 1 ? 's' : ''}</span>
+      </div>`;
   }
 
   function calcMonthlyCost() {
@@ -816,18 +845,43 @@
     el.value = `$${monthly.toFixed(2)}/mo`;
   }
 
+  function setDefaultExpiration(billing, base) {
+    const d = new Date(base);
+    if (billing === 'monthly') d.setDate(d.getDate() + 30);
+    else if (billing === 'annually') d.setFullYear(d.getFullYear() + 1);
+    else { document.getElementById('sf-expiration').value = ''; return; }
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('sf-expiration').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+
+  function onBillingChange() {
+    calcMonthlyCost();
+    if (!editingSubId) {
+      const signedUp = document.getElementById('sf-signed-up').value;
+      const base = signedUp ? new Date(signedUp + 'T00:00:00') : new Date();
+      setDefaultExpiration(document.getElementById('sf-billing').value, base);
+    }
+  }
+
   function openSubModal(id = null) {
     editingSubId = id;
     document.getElementById('sub-modal-title').innerHTML = id ? 'Edit <span>Subscription</span>' : 'Add <span>Subscription</span>';
     const s = id ? currentSubscriptions.find(x => x.id === id) : {};
-    document.getElementById('sf-service').value    = s?.service        || '';
-    document.getElementById('sf-signed-up').value  = s?.signed_up_date || '';
-    document.getElementById('sf-billing').value    = s?.billing_cycle  || 'monthly';
-    document.getElementById('sf-price').value      = s?.price          ?? '';
-    document.getElementById('sf-expiration').value = s?.expiration_date || '';
-    document.getElementById('sf-login').value      = s?.login          || '';
-    document.getElementById('sf-url').value        = s?.website_url    || '';
-    document.getElementById('sf-notes').value      = s?.notes          || '';
+    document.getElementById('sf-service').value = s?.service       || '';
+    document.getElementById('sf-billing').value = s?.billing_cycle || 'monthly';
+    document.getElementById('sf-price').value   = s?.price         ?? '';
+    document.getElementById('sf-login').value   = s?.login         || '';
+    document.getElementById('sf-url').value     = s?.website_url   || '';
+    document.getElementById('sf-notes').value   = s?.notes         || '';
+    if (id) {
+      document.getElementById('sf-signed-up').value  = s?.signed_up_date  || '';
+      document.getElementById('sf-expiration').value = s?.expiration_date || '';
+    } else {
+      const today = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('sf-signed-up').value = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+      setDefaultExpiration('monthly', today);
+    }
     calcMonthlyCost();
     openModal('sub-modal');
   }

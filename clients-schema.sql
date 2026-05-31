@@ -50,7 +50,7 @@ create table if not exists client_subscriptions (
   client_id        uuid not null references clients(id) on delete cascade,
   service          text not null,
   signed_up_date   date,
-  billing_cycle    text not null default 'monthly' check (billing_cycle in ('monthly','annually')),
+  billing_cycle    text not null default 'monthly' check (billing_cycle in ('monthly','annually','payg')),
   price            numeric(10,2),
   expiration_date  date,
   login            text,
