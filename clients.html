@@ -335,6 +335,13 @@
       <div id="d-spend-summary"></div>
     </div>
 
+    <div class="section" id="d-anthropic-section" style="display:none">
+      <div class="section-head">
+        <h2>API Usage <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— this month</span></h2>
+      </div>
+      <div id="d-anthropic-usage"></div>
+    </div>
+
     <div class="section">
       <div class="section-head"><h2>Contact</h2></div>
       <div class="contact-grid" id="d-contact"></div>
@@ -660,6 +667,43 @@
     renderDetailHead();
     renderContact();
     await loadChildren();
+    loadAnthropicUsage();
+  }
+
+  async function loadAnthropicUsage() {
+    const slug    = currentClient?.anthropic_client_slug;
+    const section = document.getElementById('d-anthropic-section');
+    const box     = document.getElementById('d-anthropic-usage');
+    if (!slug) { section.style.display = 'none'; return; }
+
+    section.style.display = '';
+    box.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">Loading...</div>`;
+
+    try {
+      const res = await fetch(`/.netlify/functions/anthropic-usage?client=${encodeURIComponent(slug)}`, {
+        headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      const periodLabel = data.period.starting_at.split('T')[0];
+      const rows = data.breakdown
+        .filter(b => b.dollars > 0)
+        .map(b => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+            <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">${escapeHtml(b.model)}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--text)">$${b.dollars.toFixed(4)}</span>
+          </div>`).join('');
+
+      box.innerHTML = `
+        <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+          <span style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--accent2)">$${data.total_dollars.toFixed(4)}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">since ${periodLabel}</span>
+        </div>
+        ${rows || '<div style="font-family:\'DM Mono\',monospace;font-size:0.75rem;color:var(--muted);font-style:italic">No usage recorded this month</div>'}`;
+    } catch (e) {
+      box.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--warn)">Could not load: ${escapeHtml(e.message)}</div>`;
+    }
   }
 
   function closeDetail() {
