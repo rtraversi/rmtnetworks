@@ -2,16 +2,16 @@
 //
 // GET  Authorization: Bearer <rmt session token (Rob's only — Katy is rejected)>
 //
-// Returns aggregated invoice + subscription numbers for the portal tile:
-//   sent_count, paid_count, pending_count
+// Returns aggregated invoice + subscription + payment-link numbers for the portal tile:
+//   sent_count, paid_count, pending_count, payment_link_count
 //   total_received_cents, total_outstanding_cents, received_this_month_cents
 //   active_subscriptions
 //   livemode (true/false — reflects which Stripe key is active)
-//   currency (lowercase, from the first invoice — assumes single-currency setup)
+//   currency (lowercase, from the first invoice/charge — assumes single-currency setup)
 //
 // Pages through Stripe's invoices.list (limit 100 per page, capped at 10 pages =
-// 1,000 invoices). At >1,000 invoices we should switch to cached running totals
-// instead of paging every page-load.
+// 1,000 invoices) AND paymentIntents.list for non-invoice payments (e.g. Payment Links).
+// PaymentIntents that reference an invoice are excluded to avoid double-counting.
 
 'use strict';
 
@@ -38,8 +38,6 @@ function isRob(authHeader) {
   return token === process.env.SESSION_SECRET;
 }
 
-// Page through invoices.list with a safety cap so a runaway loop can't burn
-// through the function budget.
 async function listAllInvoices(stripe, { maxPages = 10, pageSize = 100 } = {}) {
   const all = [];
   let startingAfter;
@@ -53,6 +51,25 @@ async function listAllInvoices(stripe, { maxPages = 10, pageSize = 100 } = {}) {
     startingAfter = res.data[res.data.length - 1].id;
   }
   return { invoices: all, truncated: true };
+}
+
+// Fetch succeeded PaymentIntents that are NOT linked to an invoice (i.e. Payment Links,
+// manual charges, etc.). Invoice-linked PIs are already counted via invoices.list.
+async function listNonInvoicePayments(stripe, { maxPages = 10, pageSize = 100 } = {}) {
+  const all = [];
+  let startingAfter;
+  for (let page = 0; page < maxPages; page++) {
+    const res = await stripe.paymentIntents.list({
+      limit:          pageSize,
+      starting_after: startingAfter,
+    });
+    // Only keep succeeded PIs with no invoice attachment
+    const relevant = res.data.filter(pi => pi.status === 'succeeded' && !pi.invoice);
+    all.push(...relevant);
+    if (!res.has_more || res.data.length === 0) return { payments: all, truncated: false };
+    startingAfter = res.data[res.data.length - 1].id;
+  }
+  return { payments: all, truncated: true };
 }
 
 exports.handler = async (event) => {
@@ -74,48 +91,62 @@ exports.handler = async (event) => {
   const stripe = new Stripe(stripeKey, { apiVersion: '2024-11-20.acacia' });
 
   try {
-    // Month-start in UTC (paid_at is a unix timestamp)
     const now        = new Date();
     const monthStart = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) / 1000);
 
-    const { invoices, truncated } = await listAllInvoices(stripe);
+    // Run invoice fetch and payment-intent fetch in parallel
+    const [
+      { invoices, truncated: invoicesTruncated },
+      { payments, truncated: paymentsTruncated },
+    ] = await Promise.all([
+      listAllInvoices(stripe),
+      listNonInvoicePayments(stripe).catch(() => ({ payments: [], truncated: false })),
+    ]);
 
-    // Status buckets (https://docs.stripe.com/api/invoices/object#invoice_object-status)
+    // --- Invoice buckets ---
     const paid          = invoices.filter(i => i.status === 'paid');
     const open          = invoices.filter(i => i.status === 'open');
     const draft         = invoices.filter(i => i.status === 'draft');
     const uncollectible = invoices.filter(i => i.status === 'uncollectible');
+    const sent          = invoices.filter(i => i.status && i.status !== 'draft');
 
-    // "Sent" = anything that's left the draft stage (open/paid/uncollectible/void)
-    const sent = invoices.filter(i => i.status && i.status !== 'draft');
+    const sumPaid  = paid.reduce((s, i) => s + (i.amount_paid ?? 0), 0);
+    const sumOpen  = open.reduce((s, i) => s + (i.amount_due  ?? 0), 0);
+    const sumDraft = draft.reduce((s, i) => s + (i.amount_due  ?? 0), 0);
 
-    const sumPaid    = paid.reduce((s, i) => s + (i.amount_paid ?? 0),      0);
-    const sumOpen    = open.reduce((s, i) => s + (i.amount_due  ?? 0),      0);
-    const sumDraft   = draft.reduce((s, i) => s + (i.amount_due ?? 0),      0);
-    const outstanding = sumOpen + sumDraft;
+    const paidThisMonth    = paid.filter(i => (i.status_transitions?.paid_at ?? 0) >= monthStart);
+    const sumPaidThisMonth = paidThisMonth.reduce((s, i) => s + (i.amount_paid ?? 0), 0);
 
-    const paidThisMonth      = paid.filter(i => (i.status_transitions?.paid_at ?? 0) >= monthStart);
-    const sumPaidThisMonth   = paidThisMonth.reduce((s, i) => s + (i.amount_paid ?? 0), 0);
+    // --- Non-invoice payments (Payment Links, etc.) ---
+    // PaymentIntent.created is when the PI was created; for payment links this is
+    // essentially when the customer paid (the PI succeeds synchronously on completion).
+    const sumPayments          = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
+    const paymentsThisMonth    = payments.filter(p => (p.created ?? 0) >= monthStart);
+    const sumPaymentsThisMonth = paymentsThisMonth.reduce((s, p) => s + (p.amount ?? 0), 0);
 
-    // Active subscriptions (single quick page — Stripe defaults to 10, raise to 100)
+    // --- Active subscriptions ---
     let activeSubsCount = 0;
     try {
       const subs = await stripe.subscriptions.list({ status: 'active', limit: 100 });
-      activeSubsCount = subs.data.length + (subs.has_more ? 1 : 0); // approximate; bump if >100
-    } catch { /* non-critical — leave 0 */ }
+      activeSubsCount = subs.data.length + (subs.has_more ? 1 : 0);
+    } catch { /* non-critical */ }
+
+    const currency = invoices[0]?.currency ?? payments[0]?.currency ?? 'usd';
+    const livemode = invoices[0]?.livemode ?? payments[0]?.livemode ?? null;
 
     return json(200, {
-      currency:                   invoices[0]?.currency ?? 'usd',
-      livemode:                   invoices[0]?.livemode ?? null,
+      currency,
+      livemode,
       sent_count:                 sent.length,
       paid_count:                 paid.length,
       pending_count:              open.length + draft.length,
       uncollectible_count:        uncollectible.length,
-      total_received_cents:       sumPaid,
-      total_outstanding_cents:    outstanding,
-      received_this_month_cents:  sumPaidThisMonth,
+      payment_link_count:         payments.length,
+      total_received_cents:       sumPaid + sumPayments,
+      total_outstanding_cents:    sumOpen + sumDraft,
+      received_this_month_cents:  sumPaidThisMonth + sumPaymentsThisMonth,
       active_subscriptions:       activeSubsCount,
-      truncated_at_1000:          truncated,
+      truncated_at_1000:          invoicesTruncated || paymentsTruncated,
       generated_at:               new Date().toISOString(),
     });
   } catch (err) {

@@ -358,7 +358,7 @@
           <span class="tile-metric-val"        id="stripeReceivedTotal">—</span>
           <span class="tile-metric-label">Paid · Pending · Sent</span>
           <span class="tile-metric-val"        id="stripeCounts">—</span>
-          <span class="tile-metric-label">Active subscriptions</span>
+          <span class="tile-metric-label">Payment links · Subscriptions</span>
           <span class="tile-metric-val"        id="stripeActiveSubs">—</span>
         </div>
       </div>
@@ -493,7 +493,8 @@
       document.getElementById('stripeReceivedTotal').textContent = fmt(m.total_received_cents,      m.currency);
       document.getElementById('stripeCounts').textContent =
         (m.paid_count|0) + ' · ' + (m.pending_count|0) + ' · ' + (m.sent_count|0);
-      document.getElementById('stripeActiveSubs').textContent = (m.active_subscriptions|0).toString();
+      document.getElementById('stripeActiveSubs').textContent =
+        (m.payment_link_count|0) + ' · ' + (m.active_subscriptions|0);
 
       const mode = document.getElementById('stripeMode');
       if (mode) {
