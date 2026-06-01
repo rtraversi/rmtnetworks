@@ -94,6 +94,7 @@ exports.handler = async (event) => {
         username: body.username || null,
         url: body.url || null,
         notes: body.notes || null,
+        category: body.category || null,
         password_encrypted: body.password ? encrypt(body.password) : null,
       };
       const res = await sbFetch('/client_logins', { method: 'POST', body: JSON.stringify(row) });
@@ -106,7 +107,7 @@ exports.handler = async (event) => {
       if (!qp.id) return json(400, { error: 'id required' });
       const body = JSON.parse(event.body || '{}');
       const patch = {};
-      ['app', 'username', 'url', 'notes'].forEach(k => { if (k in body) patch[k] = body[k] || null; });
+      ['app', 'username', 'url', 'notes', 'category'].forEach(k => { if (k in body) patch[k] = body[k] || null; });
       if ('password' in body) patch.password_encrypted = body.password ? encrypt(body.password) : null;
       const res = await sbFetch(`/client_logins?id=eq.${encodeURIComponent(qp.id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
       if (!res.ok) return json(500, { error: await res.text() });

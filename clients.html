@@ -125,9 +125,9 @@
     padding: 3px 9px; border-radius: 20px;
     letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; flex-shrink: 0;
   }
-  .status-active { background: rgba(79,255,176,0.15); color: var(--accent); }
-  .status-paused { background: rgba(232,200,64,0.15); color: #e8c840; }
-  .status-former { background: rgba(90,96,112,0.2); color: var(--muted); }
+  .status-active  { background: rgba(79,255,176,0.15);  color: var(--accent); }
+  .status-paused  { background: rgba(232,200,64,0.15);  color: #e8c840; }
+  .status-former  { background: rgba(90,96,112,0.2);    color: var(--muted); }
 
   .client-meta {
     font-family: 'DM Mono', monospace; font-size: 0.72rem;
@@ -142,7 +142,7 @@
     padding-top: 10px; border-top: 1px solid var(--border);
     font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted);
   }
-  .footer-counts { display: flex; gap: 12px; }
+  .footer-counts { display: flex; gap: 12px; flex-wrap: wrap; }
 
   /* ── Detail view ── */
   .detail-view { display: none; }
@@ -172,6 +172,34 @@
     color: var(--muted); margin-left: 8px; font-weight: 400;
   }
 
+  /* ── Contract / CRM grid ── */
+  .contract-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px; margin-bottom: 14px;
+  }
+  .contract-field { display: flex; flex-direction: column; gap: 4px; }
+  .contract-field .lbl {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .contract-field .val {
+    font-family: 'DM Mono', monospace; font-size: 0.82rem; color: var(--text);
+  }
+  .contract-field .val.empty { color: var(--muted); opacity: 0.5; font-style: italic; }
+  .contract-field a { color: var(--accent2); text-decoration: none; }
+  .contract-field a:hover { text-decoration: underline; }
+  .scope-block {
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    color: var(--text); line-height: 1.7; white-space: pre-wrap;
+  }
+  .scope-label {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  /* ── Contact section ── */
   .contact-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 14px;
@@ -194,7 +222,31 @@
     color: var(--text); line-height: 1.6; white-space: pre-wrap;
   }
 
-  /* tables for containers + logins */
+  /* ── Support contracts ── */
+  .hours-bar-wrap {
+    width: 80px; height: 6px;
+    background: var(--border); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px;
+  }
+  .hours-bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .hours-ok   { background: var(--accent); }
+  .hours-low  { background: #e8c840; }
+  .hours-gone { background: var(--warn); }
+
+  /* ── Login groups ── */
+  .login-group { margin-bottom: 18px; }
+  .login-group:last-child { margin-bottom: 0; }
+  .login-group-header {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 6px 0 8px; border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+  .login-group-header .grp-count { color: var(--muted); opacity: 0.6; }
+
+  /* ── Tables ── */
   .data-table { width: 100%; border-collapse: collapse; }
   .data-table th {
     text-align: left; font-family: 'DM Mono', monospace; font-size: 0.62rem;
@@ -207,7 +259,7 @@
   }
   .data-table tr:last-child td { border-bottom: none; }
   .data-table tr:hover td { background: rgba(79,255,176,0.025); }
-  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
   .pw-mask { letter-spacing: 0.15em; color: var(--muted); }
   .pw-shown { color: var(--accent); }
   .icon-btn {
@@ -242,12 +294,19 @@
   .modal-overlay.open { display: flex; }
   .modal {
     background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 14px; padding: 36px; width: 100%; max-width: 560px; margin: 0 auto;
+    border-radius: 14px; padding: 36px; width: 100%; max-width: 620px; margin: 0 auto;
   }
   .modal h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; }
   .modal h2 span { color: var(--accent); }
+  .modal-section-label {
+    font-family: 'DM Mono', monospace; font-size: 0.64rem;
+    color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border); padding-bottom: 6px;
+    margin: 20px 0 14px;
+  }
   .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
   .form-group label { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
   .form-group input, .form-group select, .form-group textarea {
     background: var(--surface); border: 1px solid var(--border);
@@ -272,11 +331,18 @@
   }
   #toast.show { transform: translateY(0); opacity: 1; }
 
+  /* ── Section divider label ── */
+  .section-divider {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+    margin: 0 0 6px; opacity: 0.7;
+  }
+
   @media (max-width: 640px) {
     main { padding: 20px; }
     header { padding: 20px; }
-    .form-row { grid-template-columns: 1fr; }
-    .data-table th:nth-child(3), .data-table td:nth-child(3) { display: none; } /* hide one col on small */
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    .data-table th:nth-child(3), .data-table td:nth-child(3) { display: none; }
   }
 </style>
 </head>
@@ -299,7 +365,6 @@
       <span class="icon">👥</span>
       <h1>Clients</h1>
     </div>
-
     <div class="toolbar">
       <input class="search-input" id="search" placeholder="Search by name, company, email..." oninput="renderList()">
       <select class="filter-select" id="filter-status" onchange="renderList()">
@@ -309,7 +374,6 @@
         <option value="former">Former</option>
       </select>
     </div>
-
     <div id="clients-grid">
       <div class="state-msg"><div class="big">⟳</div>Loading...</div>
     </div>
@@ -330,32 +394,47 @@
       </div>
     </div>
 
+    <!-- Contract / Engagement -->
+    <div class="section" id="d-contract-section">
+      <div class="section-head"><h2>Engagement</h2></div>
+      <div class="contract-grid" id="d-contract-grid"></div>
+      <div id="d-scope-wrap" style="display:none">
+        <div class="scope-label">Scope of Work</div>
+        <div class="scope-block" id="d-scope"></div>
+      </div>
+    </div>
+
+    <!-- Stripe Income -->
+    <div class="section" id="d-stripe-section" style="display:none">
+      <div class="section-head">
+        <h2>Income <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— via Stripe</span></h2>
+      </div>
+      <div id="d-stripe-income"></div>
+    </div>
+
+    <!-- Monthly Spend -->
     <div class="section" id="d-spend-section" style="display:none">
-      <div class="section-head"><h2>Monthly Spend</h2></div>
+      <div class="section-head"><h2>Monthly Costs</h2></div>
       <div id="d-spend-summary"></div>
     </div>
 
-    <div class="section" id="d-anthropic-section" style="display:none">
+    <!-- Support Contracts -->
+    <div class="section">
       <div class="section-head">
-        <h2>API Usage <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— this month</span></h2>
+        <h2>Support Contracts <span class="count" id="d-support-count"></span></h2>
+        <button class="btn btn-primary btn-tiny" onclick="openSupportModal()">+ Add Contract</button>
       </div>
-      <div id="d-anthropic-usage"></div>
+      <div id="d-support"></div>
     </div>
 
+    <!-- Contact -->
     <div class="section">
       <div class="section-head"><h2>Contact</h2></div>
       <div class="contact-grid" id="d-contact"></div>
       <div class="notes-block" id="d-notes"></div>
     </div>
 
-    <div class="section">
-      <div class="section-head">
-        <h2>Containers <span class="count" id="d-container-count"></span></h2>
-        <button class="btn btn-primary btn-tiny" onclick="openContainerModal()">+ Add Container</button>
-      </div>
-      <div id="d-containers"></div>
-    </div>
-
+    <!-- Logins -->
     <div class="section">
       <div class="section-head">
         <h2>Logins <span class="count" id="d-login-count"></span></h2>
@@ -364,6 +443,7 @@
       <div id="d-logins"></div>
     </div>
 
+    <!-- Subscriptions (costs) -->
     <div class="section">
       <div class="section-head">
         <h2>Subscriptions <span class="count" id="d-sub-count"></span></h2>
@@ -374,41 +454,24 @@
   </div>
 </main>
 
-<!-- Client modal -->
+<!-- ── Client modal ── -->
 <div class="modal-overlay" id="client-modal">
   <div class="modal">
     <h2 id="client-modal-title">Add <span>Client</span></h2>
+
+    <div class="modal-section-label">Contact Info</div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Name *</label>
-        <input type="text" id="cf-name" placeholder="Contact name">
-      </div>
-      <div class="form-group">
-        <label>Company</label>
-        <input type="text" id="cf-company" placeholder="Acme Inc.">
-      </div>
+      <div class="form-group"><label>Name *</label><input type="text" id="cf-name" placeholder="Contact name"></div>
+      <div class="form-group"><label>Company</label><input type="text" id="cf-company" placeholder="Acme Inc."></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="cf-email" placeholder="name@example.com">
-      </div>
-      <div class="form-group">
-        <label>Phone</label>
-        <input type="text" id="cf-phone" placeholder="+1 555 555 5555">
-      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="cf-email" placeholder="name@example.com"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="cf-phone" placeholder="+1 555 555 5555"></div>
     </div>
-    <div class="form-group">
-      <label>Address</label>
-      <input type="text" id="cf-address" placeholder="Street, City, State, Zip">
-    </div>
+    <div class="form-group"><label>Address</label><input type="text" id="cf-address" placeholder="Street, City, State, Zip"></div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Website</label>
-        <input type="text" id="cf-website" placeholder="https://...">
-      </div>
-      <div class="form-group">
-        <label>Status</label>
+      <div class="form-group"><label>Website</label><input type="text" id="cf-website" placeholder="https://..."></div>
+      <div class="form-group"><label>Status</label>
         <select id="cf-status">
           <option value="active">Active</option>
           <option value="paused">Paused</option>
@@ -416,10 +479,34 @@
         </select>
       </div>
     </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea id="cf-notes" placeholder="Anything else worth remembering"></textarea>
+
+    <div class="modal-section-label">Engagement</div>
+    <div class="form-row">
+      <div class="form-group"><label>Date Hired</label><input type="date" id="cf-date-hired"></div>
+      <div class="form-group"><label>Contracted Rate (USD)</label><input type="number" id="cf-rate" placeholder="500.00" step="0.01" min="0"></div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label>Billing Cycle</label>
+        <select id="cf-billing">
+          <option value="monthly">Monthly</option>
+          <option value="annually">Annually</option>
+          <option value="project">Per Project</option>
+          <option value="hourly">Hourly</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Contract Renewal Date</label><input type="date" id="cf-renewal"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Payment Terms</label><input type="text" id="cf-payment-terms" placeholder="e.g. Due on receipt, Net 30"></div>
+      <div class="form-group"><label>Next Follow-up Date</label><input type="date" id="cf-followup"></div>
+    </div>
+    <div class="form-group"><label>Contract / Doc URL</label><input type="text" id="cf-contract-url" placeholder="https://docs.google.com/..."></div>
+    <div class="form-group"><label>Stripe Customer Email</label><input type="email" id="cf-stripe-email" placeholder="Same email they paid with on Stripe"></div>
+    <div class="form-group"><label>Scope of Work</label><textarea id="cf-scope" placeholder="Paste what was promised — deliverables, access, ongoing tasks..." style="min-height:120px"></textarea></div>
+
+    <div class="modal-section-label">Notes</div>
+    <div class="form-group"><textarea id="cf-notes" placeholder="Anything else worth remembering"></textarea></div>
+
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('client-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveClient()">Save Client</button>
@@ -427,59 +514,29 @@
   </div>
 </div>
 
-<!-- Container modal -->
-<div class="modal-overlay" id="container-modal">
-  <div class="modal">
-    <h2 id="container-modal-title">Add <span>Container</span></h2>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Name *</label>
-        <input type="text" id="kf-name" placeholder="n8n-prod">
-      </div>
-      <div class="form-group">
-        <label>Image / Stack</label>
-        <input type="text" id="kf-image" placeholder="n8nio/n8n:latest">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Port</label>
-        <input type="number" id="kf-port" placeholder="5678">
-      </div>
-      <div class="form-group">
-        <label>Host / VPS</label>
-        <input type="text" id="kf-host" placeholder="hostinger-prod-1">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>URL</label>
-      <input type="text" id="kf-url" placeholder="https://n8n.client.com">
-    </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea id="kf-notes" placeholder="Anything else worth remembering"></textarea>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('container-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveContainer()">Save Container</button>
-    </div>
-  </div>
-</div>
-
-<!-- Login modal -->
+<!-- ── Login modal ── -->
 <div class="modal-overlay" id="login-modal">
   <div class="modal">
     <h2 id="login-modal-title">Add <span>Login</span></h2>
     <div class="form-row">
-      <div class="form-group">
-        <label>App / Service *</label>
-        <input type="text" id="lf-app" placeholder="n8n, Portainer, Stripe...">
-      </div>
-      <div class="form-group">
-        <label>Username</label>
-        <input type="text" id="lf-username" placeholder="admin">
+      <div class="form-group"><label>App / Service *</label><input type="text" id="lf-app" placeholder="Supabase, Stripe, Resend..."></div>
+      <div class="form-group"><label>Category</label>
+        <input type="text" id="lf-category" placeholder="e.g. Database, Hosting, Email" list="category-options">
+        <datalist id="category-options">
+          <option value="Automation">
+          <option value="Database">
+          <option value="Design">
+          <option value="DNS / Domain">
+          <option value="Email">
+          <option value="Hosting">
+          <option value="Payments">
+          <option value="AI / APIs">
+          <option value="Security">
+          <option value="Other">
+        </datalist>
       </div>
     </div>
+    <div class="form-group"><label>Username</label><input type="text" id="lf-username" placeholder="admin"></div>
     <div class="form-group">
       <label>Password <span id="lf-pwhint" style="text-transform:none;letter-spacing:0;color:var(--muted)"></span></label>
       <div class="password-wrap">
@@ -487,14 +544,8 @@
         <button class="icon-btn" type="button" onclick="togglePwInput()" id="lf-pwtoggle">👁</button>
       </div>
     </div>
-    <div class="form-group">
-      <label>URL</label>
-      <input type="text" id="lf-url" placeholder="https://login.example.com">
-    </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea id="lf-notes" placeholder="2FA backup codes, MFA method, etc."></textarea>
-    </div>
+    <div class="form-group"><label>URL</label><input type="text" id="lf-url" placeholder="https://login.example.com"></div>
+    <div class="form-group"><label>Notes</label><textarea id="lf-notes" placeholder="2FA backup codes, MFA method, API key details..."></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('login-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveLogin()">Save Login</button>
@@ -502,59 +553,54 @@
   </div>
 </div>
 
-<!-- Subscription modal -->
+<!-- ── Subscription modal ── -->
 <div class="modal-overlay" id="sub-modal">
   <div class="modal">
     <h2 id="sub-modal-title">Add <span>Subscription</span></h2>
     <div class="form-row">
-      <div class="form-group">
-        <label>Service / Site *</label>
-        <input type="text" id="sf-service" placeholder="e.g. Cloudflare, Make, Stripe">
-      </div>
-      <div class="form-group">
-        <label>Date Signed Up</label>
-        <input type="date" id="sf-signed-up">
-      </div>
+      <div class="form-group"><label>Service / Site *</label><input type="text" id="sf-service" placeholder="e.g. Cloudflare, Make, Stripe"></div>
+      <div class="form-group"><label>Date Signed Up</label><input type="date" id="sf-signed-up"></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Billing Cycle</label>
+      <div class="form-group"><label>Billing Cycle</label>
         <select id="sf-billing" onchange="onBillingChange()">
           <option value="monthly">Monthly</option>
           <option value="annually">Annually</option>
           <option value="payg">PAYG (Pay As You Go)</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>Price (per cycle, USD)</label>
-        <input type="number" id="sf-price" placeholder="0.00" step="0.01" min="0" oninput="calcMonthlyCost()">
-      </div>
+      <div class="form-group"><label>Price (per cycle, USD)</label><input type="number" id="sf-price" placeholder="0.00" step="0.01" min="0" oninput="calcMonthlyCost()"></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Monthly Cost (auto-calculated)</label>
-        <input type="text" id="sf-monthly-cost" readonly placeholder="—" style="opacity:0.65;cursor:not-allowed">
-      </div>
-      <div class="form-group">
-        <label>Expiration Date</label>
-        <input type="date" id="sf-expiration">
-      </div>
+      <div class="form-group"><label>Monthly Cost (auto-calc)</label><input type="text" id="sf-monthly-cost" readonly placeholder="—" style="opacity:0.65;cursor:not-allowed"></div>
+      <div class="form-group"><label>Expiration Date</label><input type="date" id="sf-expiration"></div>
     </div>
-    <div class="form-group">
-      <label>Login (email / username)</label>
-      <input type="text" id="sf-login" placeholder="account@example.com">
-    </div>
-    <div class="form-group">
-      <label>Website URL</label>
-      <input type="text" id="sf-url" placeholder="https://...">
-    </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea id="sf-notes" placeholder="API keys, account IDs, anything useful..."></textarea>
-    </div>
+    <div class="form-group"><label>Login (email / username)</label><input type="text" id="sf-login" placeholder="account@example.com"></div>
+    <div class="form-group"><label>Website URL</label><input type="text" id="sf-url" placeholder="https://..."></div>
+    <div class="form-group"><label>Notes</label><textarea id="sf-notes" placeholder="API keys, account IDs, anything useful..."></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('sub-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveSubscription()">Save Subscription</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Support contract modal ── -->
+<div class="modal-overlay" id="support-modal">
+  <div class="modal">
+    <h2 id="support-modal-title">Add <span>Support Contract</span></h2>
+    <div class="form-row">
+      <div class="form-group"><label>Purchase Date</label><input type="date" id="sc-date"></div>
+      <div class="form-group"><label>Hours Purchased</label><input type="number" id="sc-hours" placeholder="10" step="0.5" min="0.5"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Rate per Hour (USD)</label><input type="number" id="sc-rate" placeholder="100.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Hours Used</label><input type="number" id="sc-used" placeholder="0" step="0.5" min="0"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="sc-notes" placeholder="What this contract covers, any special terms..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('support-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSupportContract()">Save Contract</button>
     </div>
   </div>
 </div>
@@ -564,14 +610,14 @@
 <script>
   let SUPABASE_URL = '', SUPABASE_KEY = '';
   let allClients = [];
-  let currentClient = null;       // the client currently open in detail view
-  let currentContainers = [];
+  let currentClient = null;
   let currentLogins = [];
-  let editingClientId = null;
-  let editingContainerId = null;
-  let editingLoginId = null;
   let currentSubscriptions = [];
+  let currentSupportContracts = [];
+  let editingClientId = null;
+  let editingLoginId = null;
   let editingSubId = null;
+  let editingSupportId = null;
 
   const SESSION = sessionStorage.getItem('rmt_session') || '';
 
@@ -595,18 +641,21 @@
   async function loadClients() {
     await initConfig();
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*,client_containers(id),client_logins(id),client_subscriptions(id,price,billing_cycle)&order=name.asc`, { headers: sbHeaders() });
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle),client_support_contracts(id,hours_purchased,hours_used)&order=name.asc`,
+        { headers: sbHeaders() }
+      );
       if (!res.ok) throw new Error(await res.text());
       allClients = await res.json();
       renderList();
     } catch (e) {
       document.getElementById('clients-grid').innerHTML =
-        `<div class="state-msg"><div class="big">⚠</div>Could not load clients.<br>${e.message}</div>`;
+        `<div class="state-msg"><div class="big">⚠</div>Could not load clients.<br>${escapeHtml(e.message)}</div>`;
     }
   }
 
   function renderList() {
-    const q = (document.getElementById('search').value || '').toLowerCase().trim();
+    const q  = (document.getElementById('search').value || '').toLowerCase().trim();
     const st = document.getElementById('filter-status').value;
     const filtered = allClients.filter(c => {
       if (st && c.status !== st) return false;
@@ -624,13 +673,21 @@
     }
     grid.innerHTML = `<div class="clients-grid">${filtered.map(c => {
       const sClass = `status-${c.status || 'active'}`;
-      const ctnCount = (c.client_containers || []).length;
       const loginCount = (c.client_logins || []).length;
-      const subCount = (c.client_subscriptions || []).length;
+      const subCount   = (c.client_subscriptions || []).length;
       const monthlyTotal = (c.client_subscriptions || []).reduce((sum, s) => {
         if (!s.price) return sum;
         return sum + (s.billing_cycle === 'annually' ? parseFloat(s.price) / 12 : parseFloat(s.price));
       }, 0);
+
+      // Support hours remaining across all active contracts
+      const supportContracts = c.client_support_contracts || [];
+      const hoursLeft = supportContracts.reduce((sum, sc) => {
+        const rem = parseFloat(sc.hours_purchased) - parseFloat(sc.hours_used || 0);
+        return sum + Math.max(0, rem);
+      }, 0);
+      const hasSupport = supportContracts.length > 0;
+
       return `
         <div class="client-card" onclick="openDetail('${c.id}')">
           <div class="client-card-head">
@@ -643,18 +700,30 @@
           <div class="client-meta">
             ${c.email ? `<div class="line"><span class="icon">✉</span>${escapeHtml(c.email)}</div>` : ''}
             ${c.phone ? `<div class="line"><span class="icon">☎</span>${escapeHtml(c.phone)}</div>` : ''}
+            ${c.contracted_monthly_rate ? `<div class="line" style="color:var(--accent)"><span class="icon">$</span>${formatRate(c.contracted_monthly_rate, c.contract_billing_cycle)}</div>` : ''}
           </div>
           <div class="client-card-footer">
             <div class="footer-counts">
-              <span>📦 ${ctnCount}</span>
               <span>🔑 ${loginCount}</span>
               <span>💳 ${subCount}</span>
-              ${monthlyTotal > 0 ? `<span style="color:var(--accent)">$${monthlyTotal.toFixed(2)}/mo</span>` : ''}
+              ${hasSupport ? `<span style="color:${hoursLeft < 2 ? 'var(--warn)' : 'var(--muted)'}">⏱ ${hoursLeft.toFixed(1)}h left</span>` : ''}
+              ${monthlyTotal > 0 ? `<span style="color:var(--muted)">$${monthlyTotal.toFixed(2)}/mo costs</span>` : ''}
             </div>
             <span style="color:var(--accent)">Open →</span>
           </div>
         </div>`;
     }).join('')}</div>`;
+  }
+
+  function formatRate(rate, cycle) {
+    const r = parseFloat(rate);
+    if (!r) return '—';
+    switch (cycle) {
+      case 'annually': return `$${r.toFixed(2)}/yr`;
+      case 'project':  return `$${r.toFixed(2)} project`;
+      case 'hourly':   return `$${r.toFixed(2)}/hr`;
+      default:         return `$${r.toFixed(2)}/mo`;
+    }
   }
 
   // ── Detail view ──────────────────────────────────────────────────
@@ -665,45 +734,10 @@
     document.getElementById('detail-view').classList.add('active');
     document.getElementById('add-client-btn').style.display = 'none';
     renderDetailHead();
+    renderContract();
     renderContact();
     await loadChildren();
-    loadAnthropicUsage();
-  }
-
-  async function loadAnthropicUsage() {
-    const slug    = currentClient?.anthropic_client_slug;
-    const section = document.getElementById('d-anthropic-section');
-    const box     = document.getElementById('d-anthropic-usage');
-    if (!slug) { section.style.display = 'none'; return; }
-
-    section.style.display = '';
-    box.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">Loading...</div>`;
-
-    try {
-      const res = await fetch(`/.netlify/functions/anthropic-usage?client=${encodeURIComponent(slug)}`, {
-        headers: { Authorization: `Bearer ${SESSION}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-
-      const periodLabel = data.period.starting_at.split('T')[0];
-      const rows = data.breakdown
-        .filter(b => b.dollars > 0)
-        .map(b => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
-            <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">${escapeHtml(b.model)}</span>
-            <span style="font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--text)">$${b.dollars.toFixed(4)}</span>
-          </div>`).join('');
-
-      box.innerHTML = `
-        <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:14px">
-          <span style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--accent2)">$${data.total_dollars.toFixed(4)}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">since ${periodLabel}</span>
-        </div>
-        ${rows || '<div style="font-family:\'DM Mono\',monospace;font-size:0.75rem;color:var(--muted);font-style:italic">No usage recorded this month</div>'}`;
-    } catch (e) {
-      box.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--warn)">Could not load: ${escapeHtml(e.message)}</div>`;
-    }
+    loadStripeIncome();
   }
 
   function closeDetail() {
@@ -722,6 +756,37 @@
     badge.className = `status-badge status-${c.status || 'active'}`;
   }
 
+  function renderContract() {
+    const c = currentClient;
+    const fields = [
+      { lbl: 'Date Hired',     val: c.date_hired              || null },
+      { lbl: 'Contracted Rate',val: c.contracted_monthly_rate  ? formatRate(c.contracted_monthly_rate, c.contract_billing_cycle) : null },
+      { lbl: 'Billing',        val: c.contract_billing_cycle   ? capitalize(c.contract_billing_cycle) : null },
+      { lbl: 'Renewal Date',   val: c.contract_renewal_date   || null },
+      { lbl: 'Payment Terms',  val: c.payment_terms           || null },
+      { lbl: 'Next Follow-up', val: c.next_followup_date      || null },
+    ];
+    const linkField = c.contract_url
+      ? `<div class="contract-field"><span class="lbl">Contract / Doc</span><span class="val"><a href="${escapeHtml(c.contract_url)}" target="_blank" rel="noopener">Open Document ↗</a></span></div>`
+      : '';
+
+    document.getElementById('d-contract-grid').innerHTML =
+      fields.map(f => `
+        <div class="contract-field">
+          <span class="lbl">${f.lbl}</span>
+          <span class="val ${f.val ? '' : 'empty'}">${f.val ? escapeHtml(f.val) : '—'}</span>
+        </div>`).join('') + linkField;
+
+    const scopeWrap = document.getElementById('d-scope-wrap');
+    const scopeEl   = document.getElementById('d-scope');
+    if (c.scope_of_work) {
+      scopeWrap.style.display = '';
+      scopeEl.textContent = c.scope_of_work;
+    } else {
+      scopeWrap.style.display = 'none';
+    }
+  }
+
   function renderContact() {
     const c = currentClient;
     const fields = [
@@ -738,55 +803,73 @@
     ).join('');
     const notes = document.getElementById('d-notes');
     if (c.notes) { notes.style.display = ''; notes.textContent = c.notes; }
-    else { notes.style.display = 'none'; notes.textContent = ''; }
+    else { notes.style.display = 'none'; }
+  }
+
+  async function loadStripeIncome() {
+    const email   = currentClient?.stripe_customer_email;
+    const section = document.getElementById('d-stripe-section');
+    const box     = document.getElementById('d-stripe-income');
+    if (!email) { section.style.display = 'none'; return; }
+
+    section.style.display = '';
+    box.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">Loading...</div>`;
+
+    try {
+      const res = await fetch(`/.netlify/functions/stripe-client?email=${encodeURIComponent(email)}`, {
+        headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      if (!data.found) {
+        box.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted);font-style:italic">No Stripe customer found for ${escapeHtml(email)}</div>`;
+        return;
+      }
+
+      const fmt = cents => `$${(cents / 100).toFixed(2)}`;
+      const recentRows = data.payments.slice(0, 10).map(p => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+          <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">${p.date}${p.description ? ' — ' + escapeHtml(p.description) : ''}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--accent)">${fmt(p.amount_cents)}</span>
+        </div>`).join('');
+
+      box.innerHTML = `
+        <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:16px">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">This Month</div>
+            <div style="font-family:'DM Mono',monospace;font-size:1.8rem;font-weight:500;color:var(--accent)">${fmt(data.this_month_cents)}</div>
+          </div>
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Total Lifetime</div>
+            <div style="font-family:'DM Mono',monospace;font-size:1.8rem;font-weight:500;color:var(--text)">${fmt(data.total_cents)}</div>
+          </div>
+        </div>
+        ${recentRows || '<div style="font-family:\'DM Mono\',monospace;font-size:0.75rem;color:var(--muted);font-style:italic">No payments on record</div>'}
+        ${data.payments.length > 10 ? `<div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:8px">Showing 10 of ${data.payments.length} payments</div>` : ''}`;
+    } catch (e) {
+      box.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--warn)">Could not load: ${escapeHtml(e.message)}</div>`;
+    }
   }
 
   async function loadChildren() {
     if (!currentClient) return;
     const cid = currentClient.id;
     try {
-      const [ctnRes, lgnRes, subRes] = await Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/client_containers?client_id=eq.${cid}&order=name.asc`, { headers: sbHeaders() }),
+      const [lgnRes, subRes, supRes] = await Promise.all([
         fetch(`/.netlify/functions/logins?client_id=${cid}`, { headers: { Authorization: `Bearer ${SESSION}` } }),
         fetch(`${SUPABASE_URL}/rest/v1/client_subscriptions?client_id=eq.${cid}&order=service.asc`, { headers: sbHeaders() }),
+        fetch(`${SUPABASE_URL}/rest/v1/client_support_contracts?client_id=eq.${cid}&order=purchased_date.desc`, { headers: sbHeaders() }),
       ]);
-      currentContainers    = ctnRes.ok ? await ctnRes.json() : [];
-      currentLogins        = lgnRes.ok ? await lgnRes.json() : [];
-      currentSubscriptions = subRes.ok ? await subRes.json() : [];
-    } catch (e) {
-      currentContainers = []; currentLogins = []; currentSubscriptions = [];
+      currentLogins            = lgnRes.ok ? await lgnRes.json() : [];
+      currentSubscriptions     = subRes.ok ? await subRes.json() : [];
+      currentSupportContracts  = supRes.ok ? await supRes.json() : [];
+    } catch {
+      currentLogins = []; currentSubscriptions = []; currentSupportContracts = [];
     }
-    renderContainers();
     renderLogins();
     renderSubscriptions();
-  }
-
-  function renderContainers() {
-    document.getElementById('d-container-count').textContent = `(${currentContainers.length})`;
-    const box = document.getElementById('d-containers');
-    if (currentContainers.length === 0) {
-      box.innerHTML = `<div class="empty-row">No containers yet</div>`;
-      return;
-    }
-    box.innerHTML = `
-      <table class="data-table">
-        <thead><tr>
-          <th>Name</th><th>Image / Stack</th><th>Port</th><th>Host</th><th></th>
-        </tr></thead>
-        <tbody>
-          ${currentContainers.map(k => `
-            <tr>
-              <td><strong>${escapeHtml(k.name || '')}</strong>${k.url ? ` <a href="${k.url}" target="_blank" rel="noopener" style="color:var(--accent2);margin-left:6px">↗</a>` : ''}</td>
-              <td>${escapeHtml(k.image || '—')}</td>
-              <td>${k.port ?? '—'}</td>
-              <td>${escapeHtml(k.host || '—')}</td>
-              <td><div class="row-actions">
-                <button class="icon-btn" onclick="editContainer('${k.id}')">Edit</button>
-                <button class="icon-btn" onclick="deleteContainer('${k.id}')" style="color:var(--warn);border-color:var(--warn)">Del</button>
-              </div></td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`;
+    renderSupportContracts();
   }
 
   function renderLogins() {
@@ -796,28 +879,90 @@
       box.innerHTML = `<div class="empty-row">No logins yet</div>`;
       return;
     }
+
+    // Group by category
+    const groups = {};
+    for (const l of currentLogins) {
+      const cat = l.category || 'Other';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(l);
+    }
+    const sortedCats = Object.keys(groups).sort((a, b) => {
+      if (a === 'Other') return 1;
+      if (b === 'Other') return -1;
+      return a.localeCompare(b);
+    });
+
+    box.innerHTML = sortedCats.map(cat => `
+      <div class="login-group">
+        <div class="login-group-header">${escapeHtml(cat)} <span class="grp-count">(${groups[cat].length})</span></div>
+        <table class="data-table">
+          <thead><tr>
+            <th>App</th><th>Username</th><th>Password</th><th>URL</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${groups[cat].map(l => `
+              <tr>
+                <td><strong>${escapeHtml(l.app || '')}</strong></td>
+                <td>${escapeHtml(l.username || '—')}</td>
+                <td id="pw-cell-${l.id}">
+                  ${l.has_password
+                    ? `<span class="pw-mask">●●●●●●●●</span>
+                       <button class="icon-btn" style="margin-left:8px" onclick="revealPassword('${l.id}')">👁 Show</button>`
+                    : '<span style="color:var(--muted)">—</span>'}
+                </td>
+                <td>${l.url ? `<a href="${l.url}" target="_blank" rel="noopener" style="color:var(--accent2)">${escapeHtml(l.url)}</a>` : '—'}</td>
+                <td><div class="row-actions">
+                  <button class="icon-btn" onclick="editLogin('${l.id}')">Edit</button>
+                  <button class="icon-btn" onclick="deleteLogin('${l.id}')" style="color:var(--warn);border-color:var(--warn)">Del</button>
+                </div></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`).join('');
+  }
+
+  function renderSupportContracts() {
+    document.getElementById('d-support-count').textContent = `(${currentSupportContracts.length})`;
+    const box = document.getElementById('d-support');
+    if (currentSupportContracts.length === 0) {
+      box.innerHTML = `<div class="empty-row">No support contracts yet</div>`;
+      return;
+    }
     box.innerHTML = `
       <table class="data-table">
         <thead><tr>
-          <th>App</th><th>Username</th><th>Password</th><th>URL</th><th></th>
+          <th>Purchased</th><th>Hours</th><th>Rate</th><th>Value</th><th>Progress</th><th></th>
         </tr></thead>
         <tbody>
-          ${currentLogins.map(l => `
-            <tr>
-              <td><strong>${escapeHtml(l.app || '')}</strong></td>
-              <td>${escapeHtml(l.username || '—')}</td>
-              <td id="pw-cell-${l.id}">
-                ${l.has_password
-                  ? `<span class="pw-mask">●●●●●●●●</span>
-                     <button class="icon-btn" style="margin-left:8px" onclick="revealPassword('${l.id}')">👁 Show</button>`
-                  : '<span style="color:var(--muted)">—</span>'}
-              </td>
-              <td>${l.url ? `<a href="${l.url}" target="_blank" rel="noopener" style="color:var(--accent2)">${escapeHtml(l.url)}</a>` : '—'}</td>
-              <td><div class="row-actions">
-                <button class="icon-btn" onclick="editLogin('${l.id}')">Edit</button>
-                <button class="icon-btn" onclick="deleteLogin('${l.id}')" style="color:var(--warn);border-color:var(--warn)">Del</button>
-              </div></td>
-            </tr>`).join('')}
+          ${currentSupportContracts.map(sc => {
+            const bought  = parseFloat(sc.hours_purchased);
+            const used    = parseFloat(sc.hours_used || 0);
+            const remain  = Math.max(0, bought - used);
+            const pct     = bought > 0 ? Math.min(100, (used / bought) * 100) : 0;
+            const barClass = pct >= 90 ? 'hours-gone' : pct >= 70 ? 'hours-low' : 'hours-ok';
+            const value   = bought * parseFloat(sc.rate_per_hour);
+            return `
+              <tr>
+                <td>${sc.purchased_date || '—'}</td>
+                <td>${bought}h</td>
+                <td>$${parseFloat(sc.rate_per_hour).toFixed(2)}/hr</td>
+                <td>$${value.toFixed(2)}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div class="hours-bar-wrap"><div class="hours-bar-fill ${barClass}" style="width:${pct.toFixed(0)}%"></div></div>
+                    <span style="font-size:0.7rem;color:${remain < 2 ? 'var(--warn)' : 'var(--muted)'}">${remain.toFixed(1)}h left</span>
+                  </div>
+                  ${sc.notes ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:3px">${escapeHtml(sc.notes)}</div>` : ''}
+                </td>
+                <td><div class="row-actions">
+                  <button class="icon-btn" onclick="logHours('${sc.id}', 0.5)">+½h</button>
+                  <button class="icon-btn" onclick="logHours('${sc.id}', 1)">+1h</button>
+                  <button class="icon-btn" onclick="editSupport('${sc.id}')">Edit</button>
+                  <button class="icon-btn" onclick="deleteSupport('${sc.id}')" style="color:var(--warn);border-color:var(--warn)">Del</button>
+                </div></td>
+              </tr>`;
+          }).join('')}
         </tbody>
       </table>`;
   }
@@ -832,17 +977,16 @@
     box.innerHTML = `
       <table class="data-table">
         <thead><tr>
-          <th>Service</th><th>Signed Up</th><th>Billing</th><th>Price</th><th>Monthly Cost</th><th>Expires</th><th>Login</th><th></th>
+          <th>Service</th><th>Signed Up</th><th>Billing</th><th>Price</th><th>Monthly</th><th>Expires</th><th>Login</th><th></th>
         </tr></thead>
         <tbody>
           ${currentSubscriptions.map(s => {
             const monthly = s.price != null
               ? (s.billing_cycle === 'annually' ? s.price / 12 : parseFloat(s.price))
               : null;
-            const expiring = (() => {
-              if (!s.expiration_date) return false;
-              return (new Date(s.expiration_date) - new Date()) / 86400000 <= 30;
-            })();
+            const expiring = s.expiration_date
+              ? (new Date(s.expiration_date) - new Date()) / 86400000 <= 30
+              : false;
             return `
               <tr>
                 <td><strong>${escapeHtml(s.service || '')}</strong>${s.website_url ? ` <a href="${s.website_url}" target="_blank" rel="noopener" style="color:var(--accent2);margin-left:6px">↗</a>` : ''}</td>
@@ -871,15 +1015,86 @@
       if (!s.price) return sum;
       return sum + (s.billing_cycle === 'annually' ? parseFloat(s.price) / 12 : parseFloat(s.price));
     }, 0);
-    const count = currentSubscriptions.length;
     section.style.display = '';
     box.innerHTML = `
       <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
-        <span style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--accent)">$${total.toFixed(2)}<span style="font-size:1rem;opacity:0.7">/mo</span></span>
-        <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">${count} subscription${count !== 1 ? 's' : ''}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--warn)">$${total.toFixed(2)}<span style="font-size:1rem;opacity:0.7">/mo</span></span>
+        <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">${currentSubscriptions.length} subscription${currentSubscriptions.length !== 1 ? 's' : ''}</span>
       </div>`;
   }
 
+  // ── Support contract CRUD ─────────────────────────────────────────
+  function openSupportModal(id = null) {
+    editingSupportId = id;
+    document.getElementById('support-modal-title').innerHTML = id ? 'Edit <span>Support Contract</span>' : 'Add <span>Support Contract</span>';
+    const sc = id ? currentSupportContracts.find(x => x.id === id) : {};
+    const today = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('sc-date').value  = sc?.purchased_date  || `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+    document.getElementById('sc-hours').value = sc?.hours_purchased ?? 10;
+    document.getElementById('sc-rate').value  = sc?.rate_per_hour   ?? 100;
+    document.getElementById('sc-used').value  = sc?.hours_used      ?? 0;
+    document.getElementById('sc-notes').value = sc?.notes           || '';
+    openModal('support-modal');
+  }
+  function editSupport(id) { openSupportModal(id); }
+
+  async function saveSupportContract() {
+    const hours = parseFloat(document.getElementById('sc-hours').value);
+    const used  = parseFloat(document.getElementById('sc-used').value  || '0');
+    if (!hours || hours <= 0) { toast('Hours purchased required', true); return; }
+    if (used > hours)         { toast('Hours used cannot exceed hours purchased', true); return; }
+    const payload = {
+      client_id:       currentClient.id,
+      purchased_date:  document.getElementById('sc-date').value  || null,
+      hours_purchased: hours,
+      rate_per_hour:   parseFloat(document.getElementById('sc-rate').value) || 100,
+      hours_used:      used,
+      notes:           document.getElementById('sc-notes').value.trim() || null,
+    };
+    try {
+      let res;
+      if (editingSupportId) {
+        const { client_id, ...patch } = payload;
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_support_contracts?id=eq.${editingSupportId}`, { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(patch) });
+      } else {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_support_contracts`, { method: 'POST', headers: sbHeaders(), body: JSON.stringify(payload) });
+      }
+      if (!res.ok) throw new Error(await res.text());
+      closeModal('support-modal');
+      await loadChildren();
+      await loadClients();
+      toast(editingSupportId ? 'Contract updated' : 'Contract saved');
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function logHours(id, increment) {
+    const sc = currentSupportContracts.find(x => x.id === id);
+    if (!sc) return;
+    const newUsed = Math.min(parseFloat(sc.hours_used || 0) + increment, parseFloat(sc.hours_purchased));
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_support_contracts?id=eq.${id}`, {
+        method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ hours_used: newUsed }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await loadChildren();
+      await loadClients();
+      toast(`Logged ${increment}h`);
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function deleteSupport(id) {
+    if (!confirm('Delete this support contract?')) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_support_contracts?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
+      if (!res.ok) throw new Error(await res.text());
+      await loadChildren();
+      await loadClients();
+      toast('Deleted');
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  // ── Subscription CRUD ────────────────────────────────────────────
   function calcMonthlyCost() {
     const price = parseFloat(document.getElementById('sf-price').value);
     const billing = document.getElementById('sf-billing').value;
@@ -974,6 +1189,7 @@
     } catch (e) { toast('Error: ' + e.message, true); }
   }
 
+  // ── Password reveal ──────────────────────────────────────────────
   async function revealPassword(id) {
     const cell = document.getElementById('pw-cell-' + id);
     try {
@@ -998,19 +1214,28 @@
     catch { toast('Copy failed', true); }
   }
 
-  // ── Client modal ─────────────────────────────────────────────────
+  // ── Client CRUD ──────────────────────────────────────────────────
   function openClientModal(id = null) {
     editingClientId = id;
     document.getElementById('client-modal-title').innerHTML = id ? 'Edit <span>Client</span>' : 'Add <span>Client</span>';
     const c = id ? allClients.find(x => x.id === id) : {};
-    document.getElementById('cf-name').value    = c?.name    || '';
-    document.getElementById('cf-company').value = c?.company || '';
-    document.getElementById('cf-email').value   = c?.email   || '';
-    document.getElementById('cf-phone').value   = c?.phone   || '';
-    document.getElementById('cf-address').value = c?.address || '';
-    document.getElementById('cf-website').value = c?.website || '';
-    document.getElementById('cf-status').value  = c?.status  || 'active';
-    document.getElementById('cf-notes').value   = c?.notes   || '';
+    document.getElementById('cf-name').value          = c?.name                   || '';
+    document.getElementById('cf-company').value       = c?.company                || '';
+    document.getElementById('cf-email').value         = c?.email                  || '';
+    document.getElementById('cf-phone').value         = c?.phone                  || '';
+    document.getElementById('cf-address').value       = c?.address                || '';
+    document.getElementById('cf-website').value       = c?.website                || '';
+    document.getElementById('cf-status').value        = c?.status                 || 'active';
+    document.getElementById('cf-date-hired').value   = c?.date_hired             || '';
+    document.getElementById('cf-rate').value          = c?.contracted_monthly_rate ?? '';
+    document.getElementById('cf-billing').value       = c?.contract_billing_cycle || 'monthly';
+    document.getElementById('cf-renewal').value       = c?.contract_renewal_date  || '';
+    document.getElementById('cf-payment-terms').value = c?.payment_terms          || '';
+    document.getElementById('cf-followup').value      = c?.next_followup_date     || '';
+    document.getElementById('cf-contract-url').value  = c?.contract_url           || '';
+    document.getElementById('cf-stripe-email').value  = c?.stripe_customer_email  || '';
+    document.getElementById('cf-scope').value         = c?.scope_of_work          || '';
+    document.getElementById('cf-notes').value         = c?.notes                  || '';
     openModal('client-modal');
   }
 
@@ -1019,16 +1244,26 @@
   async function saveClient() {
     const name = document.getElementById('cf-name').value.trim();
     if (!name) { toast('Name is required', true); return; }
+    const rateRaw = document.getElementById('cf-rate').value.trim();
     const payload = {
       name,
-      company: document.getElementById('cf-company').value.trim() || null,
-      email:   document.getElementById('cf-email').value.trim()   || null,
-      phone:   document.getElementById('cf-phone').value.trim()   || null,
-      address: document.getElementById('cf-address').value.trim() || null,
-      website: document.getElementById('cf-website').value.trim() || null,
-      status:  document.getElementById('cf-status').value,
-      notes:   document.getElementById('cf-notes').value.trim()   || null,
-      updated_at: new Date().toISOString(),
+      company:                document.getElementById('cf-company').value.trim()       || null,
+      email:                  document.getElementById('cf-email').value.trim()         || null,
+      phone:                  document.getElementById('cf-phone').value.trim()         || null,
+      address:                document.getElementById('cf-address').value.trim()       || null,
+      website:                document.getElementById('cf-website').value.trim()       || null,
+      status:                 document.getElementById('cf-status').value,
+      date_hired:             document.getElementById('cf-date-hired').value           || null,
+      contracted_monthly_rate: rateRaw ? parseFloat(rateRaw) : null,
+      contract_billing_cycle: document.getElementById('cf-billing').value,
+      contract_renewal_date:  document.getElementById('cf-renewal').value             || null,
+      payment_terms:          document.getElementById('cf-payment-terms').value.trim() || null,
+      next_followup_date:     document.getElementById('cf-followup').value            || null,
+      contract_url:           document.getElementById('cf-contract-url').value.trim() || null,
+      stripe_customer_email:  document.getElementById('cf-stripe-email').value.trim().toLowerCase() || null,
+      scope_of_work:          document.getElementById('cf-scope').value.trim()        || null,
+      notes:                  document.getElementById('cf-notes').value.trim()        || null,
+      updated_at:             new Date().toISOString(),
     };
     try {
       let res;
@@ -1038,13 +1273,11 @@
         res = await fetch(`${SUPABASE_URL}/rest/v1/clients`, { method: 'POST', headers: sbHeaders(), body: JSON.stringify(payload) });
       }
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json();
-      const row = Array.isArray(saved) ? saved[0] : saved;
       closeModal('client-modal');
       await loadClients();
       if (currentClient && editingClientId === currentClient.id) {
-        currentClient = allClients.find(c => c.id === currentClient.id) || row;
-        renderDetailHead(); renderContact();
+        currentClient = allClients.find(c => c.id === currentClient.id) || currentClient;
+        renderDetailHead(); renderContract(); renderContact();
       }
       toast(editingClientId ? 'Client updated' : 'Client saved');
     } catch (e) { toast('Error: ' + e.message, true); }
@@ -1052,7 +1285,7 @@
 
   async function deleteCurrentClient() {
     if (!currentClient) return;
-    if (!confirm(`Delete "${currentClient.name}" and all their containers + logins?`)) return;
+    if (!confirm(`Delete "${currentClient.name}" and all their data?`)) return;
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${currentClient.id}`, { method: 'DELETE', headers: sbHeaders() });
       if (!res.ok) throw new Error(await res.text());
@@ -1062,75 +1295,18 @@
     } catch (e) { toast('Error: ' + e.message, true); }
   }
 
-  // ── Container modal ──────────────────────────────────────────────
-  function openContainerModal(id = null) {
-    editingContainerId = id;
-    document.getElementById('container-modal-title').innerHTML = id ? 'Edit <span>Container</span>' : 'Add <span>Container</span>';
-    const k = id ? currentContainers.find(x => x.id === id) : {};
-    document.getElementById('kf-name').value  = k?.name  || '';
-    document.getElementById('kf-image').value = k?.image || '';
-    document.getElementById('kf-port').value  = k?.port  ?? '';
-    document.getElementById('kf-host').value  = k?.host  || '';
-    document.getElementById('kf-url').value   = k?.url   || '';
-    document.getElementById('kf-notes').value = k?.notes || '';
-    openModal('container-modal');
-  }
-  function editContainer(id) { openContainerModal(id); }
-
-  async function saveContainer() {
-    const name = document.getElementById('kf-name').value.trim();
-    if (!name) { toast('Container name is required', true); return; }
-    const portRaw = document.getElementById('kf-port').value.trim();
-    const payload = {
-      client_id: currentClient.id,
-      name,
-      image: document.getElementById('kf-image').value.trim() || null,
-      port:  portRaw ? Number(portRaw) : null,
-      host:  document.getElementById('kf-host').value.trim()  || null,
-      url:   document.getElementById('kf-url').value.trim()   || null,
-      notes: document.getElementById('kf-notes').value.trim() || null,
-    };
-    try {
-      let res;
-      if (editingContainerId) {
-        const { client_id, ...patch } = payload;
-        res = await fetch(`${SUPABASE_URL}/rest/v1/client_containers?id=eq.${editingContainerId}`, { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(patch) });
-      } else {
-        res = await fetch(`${SUPABASE_URL}/rest/v1/client_containers`, { method: 'POST', headers: sbHeaders(), body: JSON.stringify(payload) });
-      }
-      if (!res.ok) throw new Error(await res.text());
-      closeModal('container-modal');
-      await loadChildren();
-      await loadClients();  // refresh card counts
-      toast(editingContainerId ? 'Container updated' : 'Container saved');
-    } catch (e) { toast('Error: ' + e.message, true); }
-  }
-
-  async function deleteContainer(id) {
-    const k = currentContainers.find(x => x.id === id);
-    if (!confirm(`Delete container "${k.name}"?`)) return;
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_containers?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
-      if (!res.ok) throw new Error(await res.text());
-      await loadChildren();
-      await loadClients();
-      toast('Deleted');
-    } catch (e) { toast('Error: ' + e.message, true); }
-  }
-
-  // ── Login modal ──────────────────────────────────────────────────
+  // ── Login CRUD ───────────────────────────────────────────────────
   function openLoginModal(id = null) {
     editingLoginId = id;
     document.getElementById('login-modal-title').innerHTML = id ? 'Edit <span>Login</span>' : 'Add <span>Login</span>';
     const l = id ? currentLogins.find(x => x.id === id) : {};
     document.getElementById('lf-app').value      = l?.app      || '';
+    document.getElementById('lf-category').value = l?.category || '';
     document.getElementById('lf-username').value = l?.username || '';
     document.getElementById('lf-password').value = '';
     document.getElementById('lf-url').value      = l?.url      || '';
     document.getElementById('lf-notes').value    = l?.notes    || '';
-    document.getElementById('lf-pwhint').textContent = id
-      ? (l?.has_password ? '(leave blank to keep current)' : '')
-      : '';
+    document.getElementById('lf-pwhint').textContent = id ? (l?.has_password ? '(leave blank to keep current)' : '') : '';
     document.getElementById('lf-password').type = 'password';
     document.getElementById('lf-pwtoggle').textContent = '👁';
     openModal('login-modal');
@@ -1150,13 +1326,12 @@
     const pwRaw = document.getElementById('lf-password').value;
     const payload = {
       app,
+      category: document.getElementById('lf-category').value.trim() || null,
       username: document.getElementById('lf-username').value.trim() || null,
       url:      document.getElementById('lf-url').value.trim()      || null,
       notes:    document.getElementById('lf-notes').value.trim()    || null,
     };
-    // Only send password if user entered one (so editing without retyping keeps the current ciphertext)
     if (pwRaw !== '') payload.password = pwRaw;
-
     try {
       let res;
       if (editingLoginId) {
@@ -1218,6 +1393,10 @@
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function capitalize(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   }
 
   loadClients();
