@@ -97,6 +97,22 @@
   }
   select:focus { outline: none; border-color: var(--accent); }
 
+  /* ── Detail tabs ── */
+  .detail-tabs {
+    display: flex; gap: 0; margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    padding: 10px 20px; cursor: pointer; margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s; letter-spacing: 0.03em;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   /* ── Client cards grid ── */
   .clients-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -394,63 +410,79 @@
       </div>
     </div>
 
-    <!-- Contract / Engagement -->
-    <div class="section" id="d-contract-section">
-      <div class="section-head"><h2>Engagement</h2></div>
-      <div class="contract-grid" id="d-contract-grid"></div>
-      <div id="d-scope-wrap" style="display:none">
-        <div class="scope-label">Scope of Work</div>
-        <div class="scope-block" id="d-scope"></div>
+    <!-- Tabs -->
+    <div class="detail-tabs">
+      <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" data-tab="logins" onclick="switchTab('logins')">Logins &amp; Subscriptions</button>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div id="tab-overview" class="tab-panel active">
+
+      <!-- 1. Monthly Costs -->
+      <div class="section" id="d-spend-section" style="display:none">
+        <div class="section-head"><h2>Monthly Costs</h2></div>
+        <div id="d-spend-summary"></div>
       </div>
-    </div>
 
-    <!-- Stripe Income -->
-    <div class="section" id="d-stripe-section" style="display:none">
-      <div class="section-head">
-        <h2>Income <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— via Stripe</span></h2>
+      <!-- Stripe Income -->
+      <div class="section" id="d-stripe-section" style="display:none">
+        <div class="section-head">
+          <h2>Income <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— via Stripe</span></h2>
+        </div>
+        <div id="d-stripe-income"></div>
       </div>
-      <div id="d-stripe-income"></div>
-    </div>
 
-    <!-- Monthly Spend -->
-    <div class="section" id="d-spend-section" style="display:none">
-      <div class="section-head"><h2>Monthly Costs</h2></div>
-      <div id="d-spend-summary"></div>
-    </div>
-
-    <!-- Support Contracts -->
-    <div class="section">
-      <div class="section-head">
-        <h2>Support Contracts <span class="count" id="d-support-count"></span></h2>
-        <button class="btn btn-primary btn-tiny" onclick="openSupportModal()">+ Add Contract</button>
+      <!-- 2. Contact -->
+      <div class="section">
+        <div class="section-head"><h2>Contact</h2></div>
+        <div class="contact-grid" id="d-contact"></div>
+        <div class="notes-block" id="d-notes"></div>
       </div>
-      <div id="d-support"></div>
-    </div>
 
-    <!-- Contact -->
-    <div class="section">
-      <div class="section-head"><h2>Contact</h2></div>
-      <div class="contact-grid" id="d-contact"></div>
-      <div class="notes-block" id="d-notes"></div>
-    </div>
-
-    <!-- Logins -->
-    <div class="section">
-      <div class="section-head">
-        <h2>Logins <span class="count" id="d-login-count"></span></h2>
-        <button class="btn btn-primary btn-tiny" onclick="openLoginModal()">+ Add Login</button>
+      <!-- 3. Engagement -->
+      <div class="section">
+        <div class="section-head"><h2>Engagement</h2></div>
+        <div class="contract-grid" id="d-contract-grid"></div>
+        <div id="d-scope-wrap" style="display:none">
+          <div class="scope-label">Scope of Work</div>
+          <div class="scope-block" id="d-scope"></div>
+        </div>
       </div>
-      <div id="d-logins"></div>
-    </div>
 
-    <!-- Subscriptions (costs) -->
-    <div class="section">
-      <div class="section-head">
-        <h2>Subscriptions <span class="count" id="d-sub-count"></span></h2>
-        <button class="btn btn-primary btn-tiny" onclick="openSubModal()">+ Add Subscription</button>
+      <!-- 4. Support Contracts -->
+      <div class="section">
+        <div class="section-head">
+          <h2>Support Contracts <span class="count" id="d-support-count"></span></h2>
+          <button class="btn btn-primary btn-tiny" onclick="openSupportModal()">+ Add Contract</button>
+        </div>
+        <div id="d-support"></div>
       </div>
-      <div id="d-subscriptions"></div>
-    </div>
+
+    </div><!-- /tab-overview -->
+
+    <!-- LOGINS & SUBSCRIPTIONS TAB -->
+    <div id="tab-logins" class="tab-panel">
+
+      <!-- Logins -->
+      <div class="section">
+        <div class="section-head">
+          <h2>Logins <span class="count" id="d-login-count"></span></h2>
+          <button class="btn btn-primary btn-tiny" onclick="openLoginModal()">+ Add Login</button>
+        </div>
+        <div id="d-logins"></div>
+      </div>
+
+      <!-- Subscriptions -->
+      <div class="section">
+        <div class="section-head">
+          <h2>Subscriptions <span class="count" id="d-sub-count"></span></h2>
+          <button class="btn btn-primary btn-tiny" onclick="openSubModal()">+ Add Subscription</button>
+        </div>
+        <div id="d-subscriptions"></div>
+      </div>
+
+    </div><!-- /tab-logins -->
   </div>
 </main>
 
@@ -642,7 +674,7 @@
     await initConfig();
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle),client_support_contracts(id,hours_purchased,hours_used)&order=name.asc`,
+        `${SUPABASE_URL}/rest/v1/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle)&order=name.asc`,
         { headers: sbHeaders() }
       );
       if (!res.ok) throw new Error(await res.text());
@@ -680,14 +712,6 @@
         return sum + (s.billing_cycle === 'annually' ? parseFloat(s.price) / 12 : parseFloat(s.price));
       }, 0);
 
-      // Support hours remaining across all active contracts
-      const supportContracts = c.client_support_contracts || [];
-      const hoursLeft = supportContracts.reduce((sum, sc) => {
-        const rem = parseFloat(sc.hours_purchased) - parseFloat(sc.hours_used || 0);
-        return sum + Math.max(0, rem);
-      }, 0);
-      const hasSupport = supportContracts.length > 0;
-
       return `
         <div class="client-card" onclick="openDetail('${c.id}')">
           <div class="client-card-head">
@@ -706,7 +730,6 @@
             <div class="footer-counts">
               <span>🔑 ${loginCount}</span>
               <span>💳 ${subCount}</span>
-              ${hasSupport ? `<span style="color:${hoursLeft < 2 ? 'var(--warn)' : 'var(--muted)'}">⏱ ${hoursLeft.toFixed(1)}h left</span>` : ''}
               ${monthlyTotal > 0 ? `<span style="color:var(--muted)">$${monthlyTotal.toFixed(2)}/mo costs</span>` : ''}
             </div>
             <span style="color:var(--accent)">Open →</span>
@@ -733,6 +756,7 @@
     document.getElementById('list-view').classList.add('hidden');
     document.getElementById('detail-view').classList.add('active');
     document.getElementById('add-client-btn').style.display = 'none';
+    switchTab('overview');
     renderDetailHead();
     renderContract();
     renderContact();
@@ -1397,6 +1421,11 @@
 
   function capitalize(s) {
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
   }
 
   loadClients();
