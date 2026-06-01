@@ -10,10 +10,11 @@ exports.handler = async (event) => {
   const SB_KEY = process.env.SUPABASE_KEY;
   const results = [];
 
-  async function patchMetric(service, metric, usedValue) {
-    const url = `${SB_URL}/rest/v1/usage_metrics`
+  async function patchMetric(service, metric, usedValue, clientId = null) {
+    let url = `${SB_URL}/rest/v1/usage_metrics`
       + `?service_name=eq.${encodeURIComponent(service)}`
       + `&metric_name=eq.${encodeURIComponent(metric)}`;
+    if (clientId) url += `&client_id=eq.${encodeURIComponent(clientId)}`;
     const res = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -26,6 +27,18 @@ exports.handler = async (event) => {
     });
     if (!res.ok) throw new Error(`Supabase PATCH failed (${res.status}): ${await res.text()}`);
   }
+
+  // Client config — one entry per managed client.
+  // Env var names use the client slug as prefix (e.g. SFL_CF_ACCOUNT_ID).
+  // Add a new entry here when onboarding a client with R2/B2 monitoring.
+  const CLIENTS = [
+    {
+      slug: 'SFL',
+      id:   'f2e8af49-2211-443f-9349-4615185e1d53',
+      r2: { accountId: 'SFL_CF_ACCOUNT_ID', apiToken: 'SFL_CF_API_TOKEN', bucket: 'SFL_CF_R2_BUCKET' },
+      b2: { appKeyId:  'SFL_B2_APP_KEY_ID',  appKey:   'SFL_B2_APP_KEY',   bucket: 'SFL_B2_BUCKET_NAME' },
+    },
+  ];
 
   // ── 1. Cloudinary ──────────────────────────────────────────────────────────
   if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
@@ -159,7 +172,78 @@ exports.handler = async (event) => {
     results.push({ service: 'Netlify', ok: null, reason: 'NETLIFY_TOKEN or NETLIFY_ACCOUNT_SLUG not set' });
   }
 
-  // ── 5. n8n executions & workflows ────────────────────────────────────────
+  // ── 5 & 6. Per-client infrastructure (R2 + B2) ───────────────────────────
+  for (const client of CLIENTS) {
+    // Cloudflare R2
+    const r2 = client.r2;
+    if (process.env[r2.accountId] && process.env[r2.apiToken] && process.env[r2.bucket]) {
+      try {
+        const res = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(process.env[r2.accountId])}/r2/buckets/${encodeURIComponent(process.env[r2.bucket])}/usage`,
+          { headers: { 'Authorization': `Bearer ${process.env[r2.apiToken]}` } }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        const d     = await res.json();
+        const usage = d.result ?? d;
+        const bytes = (usage.payloadSize ?? 0) + (usage.metadataSize ?? 0);
+        const gb    = Math.round((bytes / 1073741824) * 1000) / 1000;
+        const objs  = usage.objectCount ?? 0;
+
+        await patchMetric('Cloudflare R2', 'storage_gb',   gb,   client.id);
+        await patchMetric('Cloudflare R2', 'object_count', objs, client.id);
+        results.push({ client: client.slug, service: 'Cloudflare R2', ok: true, storage_gb: gb, object_count: objs });
+      } catch (e) {
+        results.push({ client: client.slug, service: 'Cloudflare R2', ok: false, error: e.message });
+      }
+    } else {
+      results.push({ client: client.slug, service: 'Cloudflare R2', ok: null, reason: `Missing ${r2.accountId}, ${r2.apiToken}, or ${r2.bucket}` });
+    }
+
+    // Backblaze B2 — no storage-size endpoint; check last uploaded file as backup health signal
+    const b2 = client.b2;
+    if (process.env[b2.appKeyId] && process.env[b2.appKey] && process.env[b2.bucket]) {
+      try {
+        const creds   = Buffer.from(`${process.env[b2.appKeyId]}:${process.env[b2.appKey]}`).toString('base64');
+        const authRes = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
+          headers: { 'Authorization': `Basic ${creds}` },
+        });
+        if (!authRes.ok) throw new Error(`Auth HTTP ${authRes.status}`);
+        const auth   = await authRes.json();
+        const apiUrl = auth.apiInfo?.storageApi?.apiUrl ?? auth.apiUrl;
+        const token  = auth.authorizationToken;
+
+        const bucketsRes = await fetch(
+          `${apiUrl}/b2api/v3/b2_list_buckets?accountId=${encodeURIComponent(auth.accountId)}&bucketName=${encodeURIComponent(process.env[b2.bucket])}`,
+          { headers: { 'Authorization': token } }
+        );
+        if (!bucketsRes.ok) throw new Error(`list_buckets HTTP ${bucketsRes.status}`);
+        const bkt = ((await bucketsRes.json()).buckets ?? [])[0];
+        if (!bkt) throw new Error(`Bucket "${process.env[b2.bucket]}" not found`);
+
+        const filesRes = await fetch(
+          `${apiUrl}/b2api/v3/b2_list_file_names?bucketId=${encodeURIComponent(bkt.bucketId)}&maxFileCount=100`,
+          { headers: { 'Authorization': token } }
+        );
+        if (!filesRes.ok) throw new Error(`list_file_names HTTP ${filesRes.status}`);
+        const files = (await filesRes.json()).files ?? [];
+
+        let latestTs = 0, latestName = null;
+        for (const f of files) {
+          if ((f.uploadTimestamp ?? 0) > latestTs) { latestTs = f.uploadTimestamp; latestName = f.fileName; }
+        }
+
+        const lastBackupSec = latestTs ? Math.floor(latestTs / 1000) : 0;
+        await patchMetric('Backblaze B2', 'last_backup_ts', lastBackupSec, client.id);
+        results.push({ client: client.slug, service: 'Backblaze B2', ok: true, last_backup: latestTs ? new Date(latestTs).toISOString() : null, last_file: latestName, files_sampled: files.length });
+      } catch (e) {
+        results.push({ client: client.slug, service: 'Backblaze B2', ok: false, error: e.message });
+      }
+    } else {
+      results.push({ client: client.slug, service: 'Backblaze B2', ok: null, reason: `Missing ${b2.appKeyId}, ${b2.appKey}, or ${b2.bucket}` });
+    }
+  }
+
+  // ── 7. n8n executions & workflows ────────────────────────────────────────
   if (process.env.N8N_API_KEY && process.env.N8N_BASE_URL) {
     try {
       const n8nBase    = process.env.N8N_BASE_URL.replace(/\/$/, '') + '/api/v1';

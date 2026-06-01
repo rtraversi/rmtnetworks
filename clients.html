@@ -251,6 +251,27 @@
   .hours-low  { background: #e8c840; }
   .hours-gone { background: var(--warn); }
 
+  /* ── Usage tab ── */
+  .usage-service { margin-bottom: 20px; }
+  .usage-service:last-child { margin-bottom: 0; }
+  .usage-service-name {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 10px;
+  }
+  .usage-row {
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 12px; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+  }
+  .usage-row:last-child { border-bottom: none; }
+  .usage-label { color: var(--muted); }
+  .usage-val   { color: var(--text); font-weight: 500; text-align: right; }
+  .usage-age   { color: var(--muted); font-size: 0.65rem; text-align: right; min-width: 54px; }
+  .usage-warn  { color: var(--warn); }
+  .usage-ok    { color: var(--accent); }
+
   /* ── Login groups ── */
   .login-group { margin-bottom: 18px; }
   .login-group:last-child { margin-bottom: 0; }
@@ -414,6 +435,7 @@
     <div class="detail-tabs">
       <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
       <button class="tab-btn" data-tab="logins" onclick="switchTab('logins')">Logins &amp; Subscriptions</button>
+      <button class="tab-btn" data-tab="usage" onclick="switchTab('usage')">Usage</button>
     </div>
 
     <!-- OVERVIEW TAB -->
@@ -483,6 +505,16 @@
       </div>
 
     </div><!-- /tab-logins -->
+
+    <!-- USAGE TAB -->
+    <div id="tab-usage" class="tab-panel">
+      <div class="section">
+        <div class="section-head"><h2>Infrastructure Usage</h2></div>
+        <div id="d-usage-content">
+          <div class="empty-row">Select the Usage tab to load metrics.</div>
+        </div>
+      </div>
+    </div><!-- /tab-usage -->
   </div>
 </main>
 
@@ -1426,6 +1458,73 @@
   function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
+    if (tab === 'usage') loadUsageMetrics();
+  }
+
+  async function loadUsageMetrics() {
+    if (!currentClient) return;
+    const el = document.getElementById('d-usage-content');
+    el.innerHTML = '<div class="empty-row">Loading...</div>';
+
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/usage_metrics?client_id=eq.${currentClient.id}&select=service_name,metric_name,used_value,last_updated&order=service_name.asc,metric_name.asc`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const metrics = await res.json();
+
+      if (!metrics.length) {
+        el.innerHTML = '<div class="empty-row">No usage data yet — metrics populate via the daily cron.</div>';
+        return;
+      }
+
+      const byService = {};
+      for (const m of metrics) {
+        (byService[m.service_name] = byService[m.service_name] || []).push(m);
+      }
+
+      el.innerHTML = Object.entries(byService).map(([svc, rows]) => `
+        <div class="usage-service">
+          <div class="usage-service-name">${escapeHtml(svc)}</div>
+          ${rows.map(r => {
+            const { label, display, cls } = formatUsageMetric(r.metric_name, r.used_value);
+            return `
+              <div class="usage-row">
+                <span class="usage-label">${label}</span>
+                <span class="usage-val ${cls}">${display}</span>
+                <span class="usage-age">${r.last_updated ? timeAgo(r.last_updated) : '—'}</span>
+              </div>`;
+          }).join('')}
+        </div>`).join('');
+    } catch (e) {
+      el.innerHTML = `<div class="empty-row" style="color:var(--warn)">Failed to load: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  function formatUsageMetric(key, val) {
+    if (key === 'storage_gb') {
+      return { label: 'Storage', display: `${val ?? '—'} GB`, cls: '' };
+    }
+    if (key === 'object_count') {
+      return { label: 'Objects', display: (val ?? 0).toLocaleString(), cls: '' };
+    }
+    if (key === 'last_backup_ts') {
+      if (!val) return { label: 'Last Backup', display: 'Never', cls: 'usage-warn' };
+      const d      = new Date(val * 1000);
+      const ageDays = Math.floor((Date.now() - d.getTime()) / 86400000);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const cls     = ageDays > 7 ? 'usage-warn' : ageDays > 2 ? '' : 'usage-ok';
+      return { label: 'Last Backup', display: dateStr, cls };
+    }
+    return { label: key, display: val ?? '—', cls: '' };
+  }
+
+  function timeAgo(iso) {
+    const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
+    if (h < 1)  return 'just now';
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
   }
 
   loadClients();
