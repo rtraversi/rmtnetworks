@@ -375,6 +375,53 @@
     margin: 0 0 6px; opacity: 0.7;
   }
 
+  /* ── Catalog rows & toggles ── */
+  .catalog-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 0; border-bottom: 1px solid var(--border);
+  }
+  .catalog-row:last-child { border-bottom: none; }
+  .catalog-icon { font-size: 1.3rem; width: 28px; text-align: center; flex-shrink: 0; }
+  .catalog-info { flex: 1; min-width: 0; }
+  .catalog-name { font-size: 0.88rem; font-weight: 600; margin-bottom: 2px; }
+  .catalog-cost {
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted);
+  }
+  .catalog-cost span[onclick] { cursor: pointer; border-bottom: 1px dashed var(--border); }
+  .catalog-cost span[onclick]:hover { color: var(--text); border-color: var(--accent); }
+  .catalog-badge {
+    font-family: 'DM Mono', monospace; font-size: 0.58rem;
+    padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .badge-available   { color: var(--accent); border-color: rgba(79,255,176,0.35); }
+  .badge-in-progress { color: #e8c840; border-color: rgba(232,200,64,0.35); }
+  .catalog-group-label {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 14px 0 8px; border-bottom: 1px solid var(--border);
+  }
+  .catalog-group-label:first-child { padding-top: 0; }
+  .toggle {
+    position: relative; width: 38px; height: 21px; flex-shrink: 0; cursor: pointer;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: var(--border);
+    border-radius: 21px; transition: background 0.2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 15px; height: 15px; background: var(--muted);
+    border-radius: 50%; left: 3px; top: 3px;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle input:checked ~ .toggle-slider { background: rgba(79,255,176,0.2); }
+  .toggle input:checked ~ .toggle-slider::before {
+    transform: translateX(17px); background: var(--accent);
+  }
+
   @media (max-width: 640px) {
     main { padding: 20px; }
     header { padding: 20px; }
@@ -436,6 +483,8 @@
       <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
       <button class="tab-btn" data-tab="logins" onclick="switchTab('logins')">Logins &amp; Subscriptions</button>
       <button class="tab-btn" data-tab="usage" onclick="switchTab('usage')">Usage</button>
+      <button class="tab-btn" data-tab="apps" onclick="switchTab('apps')">Apps</button>
+      <button class="tab-btn" data-tab="portal" onclick="switchTab('portal')">Portal</button>
     </div>
 
     <!-- OVERVIEW TAB -->
@@ -515,6 +564,22 @@
         </div>
       </div>
     </div><!-- /tab-usage -->
+
+    <!-- APPS TAB -->
+    <div id="tab-apps" class="tab-panel">
+      <div class="section">
+        <div class="section-head"><h2>Service Apps</h2></div>
+        <div id="d-apps-content"><div class="empty-row">Loading...</div></div>
+      </div>
+    </div><!-- /tab-apps -->
+
+    <!-- PORTAL TAB -->
+    <div id="tab-portal" class="tab-panel">
+      <div class="section">
+        <div class="section-head"><h2>Portal Modules</h2></div>
+        <div id="d-modules-content"><div class="empty-row">Loading...</div></div>
+      </div>
+    </div><!-- /tab-portal -->
   </div>
 </main>
 
@@ -682,6 +747,8 @@
   let editingLoginId = null;
   let editingSubId = null;
   let editingSupportId = null;
+  let appsCatalog = [], modulesCatalog = [];
+  let currentClientApps = [], currentClientModules = [];
 
   const SESSION = sessionStorage.getItem('rmt_session') || '';
 
@@ -912,20 +979,31 @@
     if (!currentClient) return;
     const cid = currentClient.id;
     try {
-      const [lgnRes, subRes, supRes] = await Promise.all([
+      const [lgnRes, subRes, supRes, catAppsRes, catModsRes, cliAppsRes, cliModsRes] = await Promise.all([
         fetch(`/.netlify/functions/logins?client_id=${cid}`, { headers: { Authorization: `Bearer ${SESSION}` } }),
         fetch(`${SUPABASE_URL}/rest/v1/client_subscriptions?client_id=eq.${cid}&order=service.asc`, { headers: sbHeaders() }),
         fetch(`${SUPABASE_URL}/rest/v1/client_support_contracts?client_id=eq.${cid}&order=purchased_date.desc`, { headers: sbHeaders() }),
+        fetch(`${SUPABASE_URL}/rest/v1/apps_catalog?active=eq.true&order=sort_order.asc`, { headers: sbHeaders() }),
+        fetch(`${SUPABASE_URL}/rest/v1/modules_catalog?order=sort_order.asc`, { headers: sbHeaders() }),
+        fetch(`${SUPABASE_URL}/rest/v1/client_apps?client_id=eq.${cid}`, { headers: sbHeaders() }),
+        fetch(`${SUPABASE_URL}/rest/v1/client_modules?client_id=eq.${cid}`, { headers: sbHeaders() }),
       ]);
-      currentLogins            = lgnRes.ok ? await lgnRes.json() : [];
-      currentSubscriptions     = subRes.ok ? await subRes.json() : [];
-      currentSupportContracts  = supRes.ok ? await supRes.json() : [];
+      currentLogins           = lgnRes.ok     ? await lgnRes.json()     : [];
+      currentSubscriptions    = subRes.ok     ? await subRes.json()     : [];
+      currentSupportContracts = supRes.ok     ? await supRes.json()     : [];
+      appsCatalog             = catAppsRes.ok ? await catAppsRes.json() : [];
+      modulesCatalog          = catModsRes.ok ? await catModsRes.json() : [];
+      currentClientApps       = cliAppsRes.ok ? await cliAppsRes.json() : [];
+      currentClientModules    = cliModsRes.ok ? await cliModsRes.json() : [];
     } catch {
       currentLogins = []; currentSubscriptions = []; currentSupportContracts = [];
+      appsCatalog = []; modulesCatalog = []; currentClientApps = []; currentClientModules = [];
     }
     renderLogins();
     renderSubscriptions();
     renderSupportContracts();
+    renderApps();
+    renderModules();
   }
 
   function renderLogins() {
@@ -1065,18 +1143,67 @@
 
   function updateSubSummary() {
     const section = document.getElementById('d-spend-section');
-    const box = document.getElementById('d-spend-summary');
-    if (currentSubscriptions.length === 0) { section.style.display = 'none'; return; }
-    const total = currentSubscriptions.reduce((sum, s) => {
+    const box     = document.getElementById('d-spend-summary');
+
+    const appsTotal = appsCatalog.reduce((sum, app) => {
+      const ca = currentClientApps.find(a => a.app_id === app.id);
+      if (!ca?.enabled) return sum;
+      const c = ca.cost_override ?? app.monthly_cost;
+      return sum + (c != null ? parseFloat(c) : 0);
+    }, 0);
+
+    const modsMonthly = modulesCatalog.reduce((sum, mod) => {
+      if (mod.category === 'core') return sum;
+      const cm = currentClientModules.find(m => m.module_id === mod.id);
+      if (!cm?.enabled) return sum;
+      const c = cm.monthly_cost_override ?? mod.monthly_cost;
+      return sum + (c != null ? parseFloat(c) : 0);
+    }, 0);
+
+    const oneTimeTotal = modulesCatalog.reduce((sum, mod) => {
+      if (mod.category === 'core') return sum;
+      const cm = currentClientModules.find(m => m.module_id === mod.id);
+      if (!cm?.enabled) return sum;
+      const c = cm.one_time_cost_override ?? mod.one_time_cost;
+      return sum + (c != null ? parseFloat(c) : 0);
+    }, 0);
+
+    const subsTotal = currentSubscriptions.reduce((sum, s) => {
       if (!s.price) return sum;
       return sum + (s.billing_cycle === 'annually' ? parseFloat(s.price) / 12 : parseFloat(s.price));
     }, 0);
+
+    const hasApps = currentClientApps.some(a => a.enabled);
+    const hasMods = currentClientModules.some(m => m.enabled);
+
+    if (!hasApps && !hasMods && currentSubscriptions.length === 0) {
+      section.style.display = 'none'; return;
+    }
+
     section.style.display = '';
-    box.innerHTML = `
-      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
-        <span style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--warn)">$${total.toFixed(2)}<span style="font-size:1rem;opacity:0.7">/mo</span></span>
-        <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">${currentSubscriptions.length} subscription${currentSubscriptions.length !== 1 ? 's' : ''}</span>
-      </div>`;
+
+    if (hasApps || hasMods) {
+      const mgmt        = appsTotal * 0.25;
+      const recommended = appsTotal + mgmt + modsMonthly;
+      box.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr auto;gap:5px 28px;font-family:'DM Mono',monospace;font-size:0.78rem;max-width:300px">
+          ${appsTotal > 0 ? `
+            <span style="color:var(--muted)">Apps</span><span style="text-align:right">$${appsTotal.toFixed(2)}/mo</span>
+            <span style="color:var(--muted);padding-left:10px">+ Mgmt (25%)</span><span style="text-align:right;color:var(--muted)">$${mgmt.toFixed(2)}/mo</span>` : ''}
+          ${modsMonthly > 0 ? `<span style="color:var(--muted)">Modules</span><span style="text-align:right">$${modsMonthly.toFixed(2)}/mo</span>` : ''}
+          <span style="padding-top:10px;border-top:1px solid var(--border);font-weight:600">Recommended</span>
+          <span style="text-align:right;padding-top:10px;border-top:1px solid var(--border);color:var(--accent);font-weight:600;font-size:1.1rem">$${recommended.toFixed(2)}<span style="font-size:0.7rem;opacity:0.6">/mo</span></span>
+          ${oneTimeTotal > 0 ? `
+            <span style="color:var(--muted);margin-top:8px">Setup fees (one-time)</span>
+            <span style="text-align:right;margin-top:8px;color:var(--accent2)">$${oneTimeTotal.toLocaleString()}</span>` : ''}
+        </div>`;
+    } else {
+      box.innerHTML = `
+        <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+          <span style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--warn)">$${subsTotal.toFixed(2)}<span style="font-size:1rem;opacity:0.7">/mo</span></span>
+          <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted)">${currentSubscriptions.length} subscription${currentSubscriptions.length !== 1 ? 's' : ''}</span>
+        </div>`;
+    }
   }
 
   // ── Support contract CRUD ─────────────────────────────────────────
@@ -1423,6 +1550,179 @@
       await loadClients();
       toast('Deleted');
     } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  // ── Apps tab ────────────────────────────────────────────────────
+  function renderApps() {
+    const el = document.getElementById('d-apps-content');
+    if (!el) return;
+    if (!appsCatalog.length) {
+      el.innerHTML = '<div class="empty-row">No apps in catalog yet.</div>'; return;
+    }
+    el.innerHTML = appsCatalog.map(app => {
+      const ca      = currentClientApps.find(a => a.app_id === app.id);
+      const enabled = ca?.enabled ?? false;
+      const cost    = ca?.cost_override ?? app.monthly_cost;
+      const costStr = cost != null ? `$${parseFloat(cost).toFixed(2)}/mo` : '—';
+      return `
+        <div class="catalog-row">
+          <div class="catalog-icon">${escapeHtml(app.icon || '📦')}</div>
+          <div class="catalog-info">
+            <div class="catalog-name">${escapeHtml(app.name)}</div>
+            <div class="catalog-cost">
+              <span onclick="editAppCost('${app.id}')" title="Click to set cost">${costStr}</span>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleApp('${app.id}')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Portal modules tab ───────────────────────────────────────────
+  function renderModules() {
+    const el = document.getElementById('d-modules-content');
+    if (!el) return;
+    if (!modulesCatalog.length) {
+      el.innerHTML = '<div class="empty-row">No modules in catalog yet.</div>'; return;
+    }
+    const core    = modulesCatalog.filter(m => m.category === 'core');
+    const premium = modulesCatalog.filter(m => m.category === 'premium');
+
+    const row = (mod) => {
+      const cm      = currentClientModules.find(m => m.module_id === mod.id);
+      const enabled = mod.category === 'core' ? true : (cm?.enabled ?? false);
+      const ot      = cm?.one_time_cost_override ?? mod.one_time_cost;
+      const mo      = cm?.monthly_cost_override  ?? mod.monthly_cost;
+      const otStr   = ot != null ? `$${parseFloat(ot).toLocaleString()} setup` : '— setup';
+      const moStr   = mo != null ? `$${parseFloat(mo).toFixed(2)}/mo` : '—/mo';
+      const badgeMap = { available: 'available', in_progress: 'in-progress', not_started: 'not-started', deprecated: 'not-started' };
+      const badgeClass = badgeMap[mod.dev_status] || 'not-started';
+      const badgeLabel = (mod.dev_status || 'not started').replace(/_/g, ' ');
+
+      const costBlock = mod.category === 'core'
+        ? '<div class="catalog-cost">Included</div>'
+        : `<div class="catalog-cost">
+             <span onclick="editModuleCost('${mod.id}','one_time')" title="Set setup fee">${otStr}</span>
+             &nbsp;·&nbsp;
+             <span onclick="editModuleCost('${mod.id}','monthly')" title="Set monthly cost">${moStr}</span>
+           </div>`;
+
+      return `
+        <div class="catalog-row">
+          <div class="catalog-icon">${escapeHtml(mod.icon || '🧩')}</div>
+          <div class="catalog-info">
+            <div class="catalog-name">${escapeHtml(mod.name)}</div>
+            ${costBlock}
+          </div>
+          ${mod.category === 'core'
+            ? '<span class="catalog-badge badge-available" style="opacity:0.5">Always on</span>'
+            : `<span class="catalog-badge badge-${escapeHtml(badgeClass)}">${escapeHtml(badgeLabel)}</span>
+               <label class="toggle">
+                 <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleModule('${mod.id}')">
+                 <span class="toggle-slider"></span>
+               </label>`}
+        </div>`;
+    };
+
+    let html = '';
+    if (core.length)    html += `<div class="catalog-group-label">Core</div>${core.map(row).join('')}`;
+    if (premium.length) html += `<div class="catalog-group-label">Premium Modules</div>${premium.map(row).join('')}`;
+    el.innerHTML = html;
+  }
+
+  async function toggleApp(appId) {
+    const ca  = currentClientApps.find(a => a.app_id === appId);
+    const now = !(ca?.enabled ?? false);
+    try {
+      let res;
+      if (ca) {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_apps?id=eq.${ca.id}`, {
+          method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ enabled: now }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        ca.enabled = now;
+      } else {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_apps`, {
+          method: 'POST', headers: sbHeaders(),
+          body: JSON.stringify({ client_id: currentClient.id, app_id: appId, enabled: now }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const rec = await res.json();
+        currentClientApps.push(Array.isArray(rec) ? rec[0] : rec);
+      }
+      renderApps();
+      updateSubSummary();
+    } catch(e) { toast('Error: ' + e.message, true); renderApps(); }
+  }
+
+  async function toggleModule(modId) {
+    const cm  = currentClientModules.find(m => m.module_id === modId);
+    const now = !(cm?.enabled ?? false);
+    try {
+      let res;
+      if (cm) {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_modules?id=eq.${cm.id}`, {
+          method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ enabled: now }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        cm.enabled = now;
+      } else {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_modules`, {
+          method: 'POST', headers: sbHeaders(),
+          body: JSON.stringify({ client_id: currentClient.id, module_id: modId, enabled: now }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const rec = await res.json();
+        currentClientModules.push(Array.isArray(rec) ? rec[0] : rec);
+      }
+      renderModules();
+      updateSubSummary();
+    } catch(e) { toast('Error: ' + e.message, true); renderModules(); }
+  }
+
+  async function editAppCost(appId) {
+    const app = appsCatalog.find(a => a.id === appId);
+    if (!app) return;
+    const cur = app.monthly_cost != null ? String(app.monthly_cost) : '';
+    const val = prompt(`Monthly cost for "${app.name}" (leave blank to clear):`, cur);
+    if (val === null) return;
+    const parsed = val.trim() === '' ? null : parseFloat(val.replace(/[$,\s]/g, ''));
+    if (val.trim() !== '' && isNaN(parsed)) { toast('Invalid number', true); return; }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/apps_catalog?id=eq.${appId}`, {
+        method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ monthly_cost: parsed }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      app.monthly_cost = parsed;
+      renderApps();
+      updateSubSummary();
+      toast('Cost updated');
+    } catch(e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function editModuleCost(modId, field) {
+    const mod   = modulesCatalog.find(m => m.id === modId);
+    if (!mod) return;
+    const key   = field === 'one_time' ? 'one_time_cost' : 'monthly_cost';
+    const label = field === 'one_time' ? 'One-time setup fee' : 'Monthly cost';
+    const cur   = mod[key] != null ? String(mod[key]) : '';
+    const val   = prompt(`${label} for "${mod.name}" (leave blank to clear):`, cur);
+    if (val === null) return;
+    const parsed = val.trim() === '' ? null : parseFloat(val.replace(/[$,\s]/g, ''));
+    if (val.trim() !== '' && isNaN(parsed)) { toast('Invalid number', true); return; }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/modules_catalog?id=eq.${modId}`, {
+        method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ [key]: parsed }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      mod[key] = parsed;
+      renderModules();
+      updateSubSummary();
+      toast('Cost updated');
+    } catch(e) { toast('Error: ' + e.message, true); }
   }
 
   // ── Modal plumbing + utils ───────────────────────────────────────
