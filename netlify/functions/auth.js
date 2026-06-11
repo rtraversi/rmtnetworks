@@ -24,5 +24,10 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: process.env.KATY_SESSION_SECRET, user: 'Katy' }) };
   }
 
+  // Max Lugo — Clients portal only
+  if (password === process.env.MAX_PASSWORD) {
+    return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: process.env.MAX_SESSION_SECRET, user: 'Max' }) };
+  }
+
   return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid password' }) };
 };

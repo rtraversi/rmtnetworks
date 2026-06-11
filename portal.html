@@ -270,6 +270,11 @@
   .app-tile.rob-only { display: none; }
   body[data-user="Rob"] .app-tile.rob-only { display: flex; }
 
+  /* Max — Clients tile only */
+  body[data-user="Max"] .app-tile { display: none; }
+  body[data-user="Max"] .app-tile.clients-tile { display: flex; }
+  body[data-user="Max"] .sub-header { display: none; }
+
   /* Stripe tile — inline live metrics rather than navigation copy */
   .app-tile.stripe-tile .tile-metrics {
     font-family: 'DM Mono', monospace;
@@ -404,7 +409,7 @@
       </div>
     </a>
 
-    <a class="app-tile" href="/clients.html">
+    <a class="app-tile clients-tile" href="/clients.html">
       <div class="tile-icon">👥</div>
       <div class="tile-body">
         <div class="tile-name">Clients</div>

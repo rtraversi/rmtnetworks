@@ -272,6 +272,104 @@
   .usage-warn  { color: var(--warn); }
   .usage-ok    { color: var(--accent); }
 
+  /* ── Twilio integration panel ── */
+  .integration-panel {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 18px 20px; margin-bottom: 20px;
+    background: var(--card-bg);
+  }
+  .integration-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .integration-title {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 0.95rem;
+  }
+  .integration-badge {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
+  }
+  .integration-badge.connected { background: rgba(79,255,176,0.15); color: var(--accent); }
+  .integration-badge.not-connected { background: rgba(90,96,112,0.2); color: var(--muted); }
+  .integration-connect-form { display: none; margin-top: 14px; }
+  .integration-connect-form.open { display: block; }
+  .int-field { margin-bottom: 10px; }
+  .int-field label {
+    display: block; font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .int-field input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+  }
+  .int-field input:focus { outline: none; border-color: var(--accent); }
+  .int-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .twilio-period-bar {
+    display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .period-btn {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .period-btn.active { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Billing ledger ── */
+  .ledger-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  @media (max-width: 700px) { .ledger-grid { grid-template-columns: 1fr; } }
+  .ledger-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 20px;
+  }
+  .ledger-card-title {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ledger-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+  }
+  .ledger-line:last-child { border-bottom: none; }
+  .ledger-line-label { color: var(--muted); flex: 1; }
+  .ledger-line-sub { font-size: 0.65rem; color: var(--muted); opacity: 0.7; display: block; margin-top: 1px; }
+  .ledger-line-amount { font-weight: 500; text-align: right; white-space: nowrap; margin-left: 12px; }
+  .ledger-line-actions { display: flex; gap: 4px; margin-left: 8px; }
+  .ledger-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace; font-size: 0.85rem; font-weight: 700;
+  }
+  .ledger-summary {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 20px; margin-top: 20px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  .ledger-kpi { text-align: center; }
+  .ledger-kpi-label {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;
+  }
+  .ledger-kpi-value { font-size: 1.4rem; font-weight: 700; }
+  .billing-status-bar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 16px;
+  }
+  .status-pill {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem; padding: 4px 12px;
+    border-radius: 20px; border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
+  }
+  .status-pill.pending  { border-color: var(--border);  color: var(--muted); }
+  .status-pill.reviewed { border-color: #e8c840; color: #e8c840; }
+  .status-pill.invoiced { border-color: var(--accent2); color: var(--accent2); }
+  .status-pill.paid     { border-color: var(--accent);  color: var(--accent); }
+  .status-pill.active   { background: rgba(79,255,176,0.1); }
+
   /* ── Login groups ── */
   .login-group { margin-bottom: 18px; }
   .login-group:last-child { margin-bottom: 0; }
@@ -484,6 +582,7 @@
       <button class="tab-btn" data-tab="logins" onclick="switchTab('logins')">Logins &amp; Subscriptions</button>
       <button class="tab-btn" data-tab="usage" onclick="switchTab('usage')">Usage</button>
       <button class="tab-btn" data-tab="apps" onclick="switchTab('apps')">Apps</button>
+      <button class="tab-btn" data-tab="billing" onclick="switchTab('billing')">Billing</button>
       <button class="tab-btn" data-tab="portal" onclick="switchTab('portal')">Portal</button>
     </div>
 
@@ -557,6 +656,18 @@
 
     <!-- USAGE TAB -->
     <div id="tab-usage" class="tab-panel">
+
+      <!-- Twilio integration -->
+      <div class="section">
+        <div class="section-head">
+          <h2>Twilio</h2>
+        </div>
+        <div id="d-twilio-panel">
+          <!-- rendered by renderTwilioPanel() -->
+        </div>
+      </div>
+
+      <!-- Infrastructure usage (cron-sourced metrics) -->
       <div class="section">
         <div class="section-head"><h2>Infrastructure Usage</h2></div>
         <div id="d-usage-content">
@@ -572,6 +683,24 @@
         <div id="d-apps-content"><div class="empty-row">Loading...</div></div>
       </div>
     </div><!-- /tab-apps -->
+
+    <!-- BILLING TAB -->
+    <div id="tab-billing" class="tab-panel">
+      <div class="section">
+        <div class="section-head" style="align-items:flex-start;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+            <h2>Monthly Billing Ledger</h2>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="month" id="billing-month-picker" style="background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.78rem" onchange="loadBillingLedger()">
+              <button class="btn btn-ghost btn-tiny" onclick="loadBillingLedger()">↻ Refresh</button>
+            </div>
+          </div>
+        </div>
+        <div id="d-billing-content">
+          <div class="empty-row">Select the Billing tab to load ledger.</div>
+        </div>
+      </div>
+    </div><!-- /tab-billing -->
 
     <!-- PORTAL TAB -->
     <div id="tab-portal" class="tab-panel">
@@ -1758,7 +1887,179 @@
   function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
-    if (tab === 'usage') loadUsageMetrics();
+    if (tab === 'usage')   { loadUsageMetrics(); loadTwilioPanel(); }
+    if (tab === 'billing') { initBillingTab(); }
+  }
+
+  // ── Twilio integration ───────────────────────────────────────────────────────
+
+  let twilioConfigured = false;
+  let twilioConnectOpen = false;
+  let twilioPeriod = 'this_month';
+
+  async function loadTwilioPanel() {
+    if (!currentClient) return;
+    const panel = document.getElementById('d-twilio-panel');
+    panel.innerHTML = '<div class="empty-row">Loading Twilio...</div>';
+    try {
+      const res = await fetch(
+        `/.netlify/functions/twilio-client?client_id=${encodeURIComponent(currentClient.id)}&period=${twilioPeriod}`,
+        { headers: { Authorization: `Bearer ${SESSION}` } }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      twilioConfigured = data.configured;
+      renderTwilioPanel(data);
+    } catch (e) {
+      panel.innerHTML = `<div class="empty-row" style="color:var(--warn)">Twilio error: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  function renderTwilioPanel(data) {
+    const panel = document.getElementById('d-twilio-panel');
+    const PERIODS = [
+      { key: 'this_month', label: 'This Month' },
+      { key: 'yesterday',  label: 'Yesterday'  },
+      { key: 'today',      label: 'Today'       },
+      { key: 'monthly',    label: 'Monthly'     },
+    ];
+
+    if (!data.configured) {
+      panel.innerHTML = `
+        <div class="integration-panel">
+          <div class="integration-header">
+            <div class="integration-title">
+              📞 Twilio
+              <span class="integration-badge not-connected">Not Connected</span>
+            </div>
+            <button class="btn btn-ghost btn-tiny" onclick="toggleTwilioForm()">+ Connect</button>
+          </div>
+          <div class="integration-connect-form${twilioConnectOpen ? ' open' : ''}" id="twilio-connect-form">
+            <div class="int-field">
+              <label>Account SID</label>
+              <input id="twilio-sid" type="text" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+            </div>
+            <div class="int-field">
+              <label>Auth Token</label>
+              <input id="twilio-token" type="password" placeholder="••••••••••••••••••••••••••••••••" autocomplete="new-password">
+            </div>
+            <div class="int-actions">
+              <button class="btn btn-primary btn-tiny" onclick="saveTwilioCreds()">Save & Connect</button>
+              <button class="btn btn-ghost btn-tiny" onclick="toggleTwilioForm()">Cancel</button>
+            </div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const totalRow  = data.usage.find(u => u.category === 'totalprice');
+    const callsRow  = data.usage.find(u => u.category === 'calls');
+    const smsRow    = data.usage.find(u => u.category === 'sms');
+    const numsRow   = data.usage.find(u => u.category === 'phonenumbers');
+
+    const fmt$ = v => `$${parseFloat(v || 0).toFixed(2)}`;
+    const rows  = data.usage.filter(u => u.category !== 'totalprice');
+
+    const periodBar = PERIODS.map(p =>
+      `<button class="period-btn${twilioPeriod === p.key ? ' active' : ''}" onclick="setTwilioPeriod('${p.key}')">${p.label}</button>`
+    ).join('');
+
+    panel.innerHTML = `
+      <div class="integration-panel">
+        <div class="integration-header">
+          <div class="integration-title">
+            📞 Twilio
+            <span class="integration-badge connected">Connected</span>
+            <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);font-weight:400">${escapeHtml(data.account_sid)}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-ghost btn-tiny" onclick="toggleTwilioForm()">✎ Edit Keys</button>
+            <button class="btn btn-ghost btn-tiny" onclick="loadTwilioPanel()">↻ Refresh</button>
+          </div>
+        </div>
+
+        <div class="twilio-period-bar">${periodBar}</div>
+
+        ${totalRow ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:var(--surface);border-radius:6px;padding:12px 14px">
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Total Spend</div>
+            <div style="font-size:1.2rem;font-weight:700;color:var(--accent)">${fmt$(totalRow.price)}</div>
+          </div>
+          ${callsRow ? `<div style="background:var(--surface);border-radius:6px;padding:12px 14px">
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Voice</div>
+            <div style="font-size:1rem;font-weight:700">${callsRow.count} calls · ${callsRow.usage} min</div>
+          </div>` : ''}
+          ${smsRow ? `<div style="background:var(--surface);border-radius:6px;padding:12px 14px">
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">SMS</div>
+            <div style="font-size:1rem;font-weight:700">${smsRow.count} messages</div>
+          </div>` : ''}
+          ${numsRow ? `<div style="background:var(--surface);border-radius:6px;padding:12px 14px">
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Numbers</div>
+            <div style="font-size:1rem;font-weight:700">${numsRow.count}</div>
+          </div>` : ''}
+        </div>` : ''}
+
+        <div class="usage-service-name">Breakdown</div>
+        ${rows.map(u => `
+          <div class="usage-row">
+            <span class="usage-label">${escapeHtml(u.label)}</span>
+            <span class="usage-val">${u.type === 'money' ? fmt$(u.price) : u.type === 'count+usage' ? `${u.count} ${u.count_unit} · ${u.usage} ${u.usage_unit}` : `${u.count} ${u.count_unit}`}</span>
+            <span class="usage-age">${fmt$(u.price)}</span>
+          </div>`).join('')}
+
+        <div class="integration-connect-form${twilioConnectOpen ? ' open' : ''}" id="twilio-connect-form" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);margin-bottom:10px">Update credentials</div>
+          <div class="int-field">
+            <label>Account SID</label>
+            <input id="twilio-sid" type="text" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+          </div>
+          <div class="int-field">
+            <label>Auth Token</label>
+            <input id="twilio-token" type="password" placeholder="leave blank to keep existing" autocomplete="new-password">
+          </div>
+          <div class="int-actions">
+            <button class="btn btn-primary btn-tiny" onclick="saveTwilioCreds()">Save</button>
+            <button class="btn btn-ghost btn-tiny" onclick="toggleTwilioForm()">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function toggleTwilioForm() {
+    twilioConnectOpen = !twilioConnectOpen;
+    const form = document.getElementById('twilio-connect-form');
+    if (form) form.classList.toggle('open', twilioConnectOpen);
+  }
+
+  function setTwilioPeriod(p) {
+    twilioPeriod = p;
+    loadTwilioPanel();
+  }
+
+  async function saveTwilioCreds() {
+    const sid   = (document.getElementById('twilio-sid')?.value || '').trim();
+    const token = (document.getElementById('twilio-token')?.value || '').trim();
+    if (!sid) { alert('Account SID is required'); return; }
+
+    const saves = [];
+    if (sid)   saves.push({ key_name: 'account_sid', value: sid });
+    if (token) saves.push({ key_name: 'auth_token',  value: token });
+
+    try {
+      for (const s of saves) {
+        const res = await fetch('/.netlify/functions/integrations', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SESSION}` },
+          body: JSON.stringify({ client_id: currentClient.id, service: 'twilio', key_name: s.key_name, value: s.value, enabled: true }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+      }
+      twilioConnectOpen = false;
+      loadTwilioPanel();
+    } catch (e) {
+      alert('Failed to save: ' + e.message);
+    }
   }
 
   async function loadUsageMetrics() {
@@ -1828,6 +2129,346 @@
   }
 
   loadClients();
-</script>
+
+  // ── Billing Ledger ────────────────────────────────────────────────────────
+
+  let billingMonthRecord   = null;
+  let billingAdjustments   = [];
+  let billingTwilioSpend   = 0;
+  let billingStripeReceived = 0;
+
+  function initBillingTab() {
+    const picker = document.getElementById('billing-month-picker');
+    if (!picker.value) {
+      const now = new Date();
+      picker.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    loadBillingLedger();
+  }
+
+  async function loadBillingLedger() {
+    if (!currentClient) return;
+    const el = document.getElementById('d-billing-content');
+    el.innerHTML = '<div class="empty-row">Loading...</div>';
+
+    const month = document.getElementById('billing-month-picker').value; // YYYY-MM
+
+    // Fire all three data sources in parallel
+    const [ledgerData, twilioData, stripeData] = await Promise.all([
+      fetch(`/.netlify/functions/billing?client_id=${encodeURIComponent(currentClient.id)}&month=${encodeURIComponent(month)}`,
+        { headers: { Authorization: `Bearer ${SESSION}` } })
+        .then(r => r.ok ? r.json() : { month_record: null, adjustments: [] }),
+
+      twilioConfigured
+        ? fetch(`/.netlify/functions/twilio-client?client_id=${encodeURIComponent(currentClient.id)}&period=monthly`,
+            { headers: { Authorization: `Bearer ${SESSION}` } })
+            .then(r => r.ok ? r.json() : null).catch(() => null)
+        : Promise.resolve(null),
+
+      currentClient.stripe_customer_email
+        ? fetch(`/.netlify/functions/stripe-client?email=${encodeURIComponent(currentClient.stripe_customer_email)}`,
+            { headers: { Authorization: `Bearer ${SESSION}` } })
+            .then(r => r.ok ? r.json() : null).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    billingMonthRecord  = ledgerData.month_record;
+    billingAdjustments  = ledgerData.adjustments || [];
+
+    // Sum Twilio spend for the selected month from monthly records
+    billingTwilioSpend = 0;
+    if (twilioData?.configured && twilioData.usage) {
+      const totalRow = twilioData.usage.find(u => u.category === 'totalprice');
+      if (totalRow) {
+        // Filter to the selected month if possible; monthly endpoint returns multiple months
+        billingTwilioSpend = parseFloat(totalRow.price) || 0;
+      }
+    }
+
+    // Sum Stripe payments received in the selected month
+    billingStripeReceived = 0;
+    if (stripeData?.found && stripeData.payments) {
+      const [yr, mo] = month.split('-').map(Number);
+      billingStripeReceived = stripeData.payments
+        .filter(p => {
+          const d = new Date(p.date);
+          return d.getFullYear() === yr && (d.getMonth() + 1) === mo;
+        })
+        .reduce((s, p) => s + p.amount_cents / 100, 0);
+    }
+
+    renderBillingLedger(month);
+  }
+
+  function renderBillingLedger(month) {
+    const el = document.getElementById('d-billing-content');
+
+    // ── COST SIDE: compute from existing loaded data ──────────────────────────
+    const subLines = currentSubscriptions.map(s => {
+      const monthly = s.price != null
+        ? (s.billing_cycle === 'annually' ? parseFloat(s.price) / 12 : parseFloat(s.price))
+        : 0;
+      return { label: s.service, sub: s.billing_cycle === 'annually' ? 'annual ÷12' : null, amount: monthly };
+    }).filter(l => l.amount > 0);
+
+    const appLines = appsCatalog
+      .map(app => {
+        const ca = currentClientApps.find(a => a.app_id === app.id);
+        if (!ca?.enabled) return null;
+        const cost = parseFloat(ca.cost_override ?? app.monthly_cost ?? 0);
+        return { label: app.name, sub: null, amount: cost };
+      })
+      .filter(Boolean)
+      .filter(l => l.amount > 0);
+
+    const modLines = modulesCatalog
+      .filter(m => m.category !== 'core')
+      .map(mod => {
+        const cm = currentClientModules.find(m => m.module_id === mod.id);
+        if (!cm?.enabled) return null;
+        const cost = parseFloat(cm.monthly_cost_override ?? mod.monthly_cost ?? 0);
+        return { label: mod.name, sub: 'module', amount: cost };
+      })
+      .filter(Boolean)
+      .filter(l => l.amount > 0);
+
+    const appsRawTotal = appLines.reduce((s, l) => s + l.amount, 0);
+    const mgmtFee      = appsRawTotal > 0 ? appsRawTotal * 0.25 : 0;
+
+    const twilioLine = billingTwilioSpend > 0
+      ? [{ label: 'Twilio', sub: 'usage this month', amount: billingTwilioSpend }]
+      : [];
+
+    const adjCostLines = billingAdjustments.filter(a => a.amount > 0);
+    const adjCreditLines = billingAdjustments.filter(a => a.amount < 0);
+
+    const totalCosts = subLines.reduce((s, l) => s + l.amount, 0)
+      + appLines.reduce((s, l) => s + l.amount, 0)
+      + modLines.reduce((s, l) => s + l.amount, 0)
+      + mgmtFee
+      + billingTwilioSpend
+      + adjCostLines.reduce((s, a) => s + a.amount, 0)
+      + adjCreditLines.reduce((s, a) => s + a.amount, 0);
+
+    // ── BILLING SIDE ──────────────────────────────────────────────────────────
+    const contractedRate = currentClient.contracted_monthly_rate
+      ? (currentClient.contract_billing_cycle === 'annually'
+          ? parseFloat(currentClient.contracted_monthly_rate) / 12
+          : parseFloat(currentClient.contracted_monthly_rate))
+      : null;
+
+    const totalBilled = contractedRate ?? 0;
+    const margin      = totalBilled - totalCosts;
+    const pct         = totalBilled > 0 ? (margin / totalBilled * 100) : 0;
+
+    const status = billingMonthRecord?.status || 'pending';
+    const fmt$   = v => `$${Math.abs(v).toFixed(2)}`;
+    const fmtLine = (l, deletable = false, adjId = null) => `
+      <div class="ledger-line">
+        <div class="ledger-line-label">
+          ${escapeHtml(l.label)}
+          ${l.sub ? `<span class="ledger-line-sub">${escapeHtml(l.sub)}</span>` : ''}
+        </div>
+        <span class="ledger-line-amount" style="${l.amount < 0 ? 'color:var(--warn)' : ''}">${l.amount < 0 ? '-' : ''}${fmt$(l.amount)}</span>
+        ${deletable ? `<div class="ledger-line-actions"><button class="icon-btn" style="font-size:0.6rem;padding:2px 6px;color:var(--warn);border-color:var(--warn)" onclick="deleteAdj('${adjId}')">✕</button></div>` : ''}
+      </div>`;
+
+    const statusPills = ['pending','reviewed','invoiced','paid'].map(s =>
+      `<button class="status-pill ${s}${status === s ? ' active' : ''}" onclick="setBillingStatus('${s}')">${s}</button>`
+    ).join('');
+
+    el.innerHTML = `
+      <div class="ledger-grid">
+
+        <!-- COSTS COLUMN -->
+        <div class="ledger-card">
+          <div class="ledger-card-title">
+            <span>What You Pay</span>
+          </div>
+
+          ${subLines.length ? `
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Subscriptions</div>
+            ${subLines.map(l => fmtLine(l)).join('')}
+          ` : ''}
+
+          ${appLines.length ? `
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:10px 0 6px">Apps</div>
+            ${appLines.map(l => fmtLine(l)).join('')}
+            ${mgmtFee > 0 ? fmtLine({ label: 'Management fee', sub: '25% of apps', amount: mgmtFee }) : ''}
+          ` : ''}
+
+          ${modLines.length ? `
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:10px 0 6px">Modules</div>
+            ${modLines.map(l => fmtLine(l)).join('')}
+          ` : ''}
+
+          ${twilioLine.length ? `
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:10px 0 6px">Usage</div>
+            ${twilioLine.map(l => fmtLine(l)).join('')}
+          ` : ''}
+
+          ${adjCostLines.length || adjCreditLines.length ? `
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:10px 0 6px">Adjustments</div>
+            ${[...adjCostLines, ...adjCreditLines].map(a => fmtLine({ label: a.description, sub: a.category || null, amount: a.amount }, true, a.id)).join('')}
+          ` : ''}
+
+          <div class="ledger-total">
+            <span>Total Costs</span>
+            <span style="color:var(--warn)">$${totalCosts.toFixed(2)}</span>
+          </div>
+
+          <!-- Add adjustment -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Add Adjustment</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input id="adj-desc" type="text" placeholder="Description" style="flex:2;min-width:100px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem">
+              <input id="adj-amount" type="number" placeholder="Amount" step="0.01" style="flex:1;min-width:70px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem">
+              <select id="adj-cat" style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem">
+                <option value="addon">Add-on</option>
+                <option value="overage">Overage</option>
+                <option value="one-time">One-time</option>
+                <option value="credit">Credit (negative)</option>
+              </select>
+              <button class="btn btn-primary btn-tiny" onclick="addAdj('${month}')">+ Add</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BILLING COLUMN -->
+        <div class="ledger-card">
+          <div class="ledger-card-title">
+            <span>What You Bill</span>
+          </div>
+
+          ${contractedRate != null ? fmtLine({ label: 'Contracted rate', sub: currentClient.contract_billing_cycle === 'annually' ? 'annual ÷12' : 'monthly', amount: contractedRate }) : `
+            <div class="empty-row" style="font-size:0.75rem">No contracted rate set — edit client to add one.</div>
+          `}
+
+          ${billingStripeReceived > 0 ? `
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:10px 0 6px">Stripe Received This Month</div>
+            ${fmtLine({ label: 'Payments received', sub: 'from Stripe', amount: billingStripeReceived })}
+          ` : currentClient.stripe_customer_email ? `
+            <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:10px">No Stripe payments found for ${escapeHtml(currentClient.stripe_customer_email)} this month.</div>
+          ` : ''}
+
+          <div class="ledger-total">
+            <span>Total Billed</span>
+            <span style="color:var(--accent)">$${totalBilled.toFixed(2)}</span>
+          </div>
+
+          <!-- Notes -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Notes</div>
+            <textarea id="billing-notes" rows="3" placeholder="Notes for this billing period..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem;resize:vertical">${escapeHtml(billingMonthRecord?.notes || '')}</textarea>
+            <button class="btn btn-ghost btn-tiny" style="margin-top:6px" onclick="saveBillingNotes('${month}')">Save Notes</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUMMARY BAR -->
+      <div class="ledger-summary">
+        <div class="ledger-kpi">
+          <div class="ledger-kpi-label">Total Costs</div>
+          <div class="ledger-kpi-value" style="color:var(--warn)">$${totalCosts.toFixed(2)}</div>
+        </div>
+        <div style="font-size:1.5rem;color:var(--border)">→</div>
+        <div class="ledger-kpi">
+          <div class="ledger-kpi-label">Billed</div>
+          <div class="ledger-kpi-value" style="color:var(--accent)">$${totalBilled.toFixed(2)}</div>
+        </div>
+        <div style="font-size:1.5rem;color:var(--border)">=</div>
+        <div class="ledger-kpi">
+          <div class="ledger-kpi-label">Margin</div>
+          <div class="ledger-kpi-value" style="color:${margin >= 0 ? 'var(--accent)' : 'var(--warn)'}">
+            ${margin >= 0 ? '+' : '-'}$${Math.abs(margin).toFixed(2)}
+            <span style="font-size:0.75rem;opacity:0.7">(${pct.toFixed(0)}%)</span>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Status</div>
+          <div class="billing-status-bar">${statusPills}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function setBillingStatus(status) {
+    if (!currentClient) return;
+    const month = document.getElementById('billing-month-picker').value;
+    const notes = billingMonthRecord?.notes || null;
+    try {
+      const res = await fetch('/.netlify/functions/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SESSION}` },
+        body: JSON.stringify({ client_id: currentClient.id, month, status, notes }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      billingMonthRecord = await res.json();
+      // Re-render just the status pills without a full reload
+      const month2 = document.getElementById('billing-month-picker').value;
+      renderBillingLedger(month2);
+    } catch (e) { toast('Failed to update status: ' + e.message, true); }
+  }
+
+  async function saveBillingNotes(month) {
+    if (!currentClient) return;
+    const notes = document.getElementById('billing-notes').value.trim();
+    try {
+      const res = await fetch('/.netlify/functions/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SESSION}` },
+        body: JSON.stringify({ client_id: currentClient.id, month, status: billingMonthRecord?.status || 'pending', notes }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      billingMonthRecord = await res.json();
+      toast('Notes saved');
+    } catch (e) { toast('Failed to save notes: ' + e.message, true); }
+  }
+
+  async function addAdj(month) {
+    if (!currentClient) return;
+    const desc   = document.getElementById('adj-desc').value.trim();
+    const amount = parseFloat(document.getElementById('adj-amount').value);
+    const cat    = document.getElementById('adj-cat').value;
+    if (!desc)         { toast('Description required', true); return; }
+    if (isNaN(amount)) { toast('Amount required', true); return; }
+    const finalAmount = cat === 'credit' ? -Math.abs(amount) : Math.abs(amount);
+    try {
+      // Ensure we have a month record first
+      if (!billingMonthRecord) {
+        const mr = await fetch('/.netlify/functions/billing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SESSION}` },
+          body: JSON.stringify({ client_id: currentClient.id, month, status: 'pending' }),
+        });
+        if (!mr.ok) throw new Error(await mr.text());
+        billingMonthRecord = await mr.json();
+      }
+      const res = await fetch('/.netlify/functions/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SESSION}` },
+        body: JSON.stringify({ adj: true, billing_month_id: billingMonthRecord.id, description: desc, amount: finalAmount, category: cat }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      billingAdjustments.push(await res.json());
+      document.getElementById('adj-desc').value   = '';
+      document.getElementById('adj-amount').value = '';
+      renderBillingLedger(month);
+    } catch (e) { toast('Failed to add: ' + e.message, true); }
+  }
+
+  async function deleteAdj(adjId) {
+    if (!confirm('Remove this adjustment?')) return;
+    try {
+      const res = await fetch(`/.netlify/functions/billing?adj_id=${encodeURIComponent(adjId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      billingAdjustments = billingAdjustments.filter(a => a.id !== adjId);
+      renderBillingLedger(document.getElementById('billing-month-picker').value);
+    } catch (e) { toast('Failed to remove: ' + e.message, true); }
+  }
 </body>
 </html>
