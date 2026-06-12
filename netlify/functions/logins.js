@@ -1,7 +1,7 @@
 // Encrypted CRUD for client_logins.
 // - Stores passwords as AES-256-GCM ciphertext using SECRETS_KEY (64 hex chars).
 // - List endpoints never return plaintext; reveal endpoint returns one password at a time.
-// - Auth gate matches verify.js (Bearer token === SESSION_SECRET or KATY_SESSION_SECRET).
+// - Auth gate matches verify.js (Bearer token === SESSION_SECRET, KATY_SESSION_SECRET, or MAX_SESSION_SECRET).
 
 const crypto = require('crypto');
 
@@ -16,7 +16,8 @@ function authOk(event) {
   const token = raw.replace(/^Bearer\s+/i, '').trim();
   if (!token) return false;
   return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET);
+         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
+         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
 }
 
 function getKey() {
