@@ -303,6 +303,17 @@
   .app-tile.stripe-tile .tile-mode.live { color: var(--accent); border-color: rgba(79,255,176,0.4); }
   .app-tile.stripe-tile .tile-mode.test { color: var(--warn);   border-color: rgba(255,107,74,0.4); }
 
+  /* IurisIQ Demo Portal tile */
+  .app-tile.iurisiq-tile {
+    background: linear-gradient(135deg, rgba(139,92,246,0.07) 0%, rgba(79,255,176,0.03) 100%);
+    border-color: rgba(139,92,246,0.3);
+  }
+  .app-tile.iurisiq-tile:hover { border-color: rgba(139,92,246,0.6); }
+  .app-tile.iurisiq-tile .tile-icon {
+    background: rgba(139,92,246,0.12);
+    border-color: rgba(139,92,246,0.3);
+  }
+
   @media (max-width: 640px) {
     main { padding: 36px 20px 60px; }
     header { padding: 20px; }
@@ -370,6 +381,29 @@
       <div class="tile-footer">
         <span class="tile-mode" id="stripeMode">—</span>
         <span class="tile-cta">Open in Stripe →</span>
+      </div>
+    </a>
+
+    <a class="app-tile stripe-tile iurisiq-tile rob-only" href="#" target="_blank" rel="noopener" id="iurisiqTile">
+      <div class="tile-icon">⚖️</div>
+      <div class="tile-body">
+        <div class="tile-name">IurisIQ Portal Demo</div>
+        <div class="tile-metrics" id="iurisiqMetrics">
+          <span class="tile-metric-label">Visitors today</span>
+          <span class="tile-metric-val accent" id="iurisiqVisitorsToday">—</span>
+          <span class="tile-metric-label">Logins (7 days)</span>
+          <span class="tile-metric-val" id="iurisiqLogins7d">—</span>
+          <span class="tile-metric-label">Sessions (7 days)</span>
+          <span class="tile-metric-val" id="iurisiqSessions7d">—</span>
+          <span class="tile-metric-label">Top module</span>
+          <span class="tile-metric-val" id="iurisiqTopModule">—</span>
+          <span class="tile-metric-label">Avg session</span>
+          <span class="tile-metric-val" id="iurisiqAvgSession">—</span>
+        </div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">IurisIQ</span>
+        <span class="tile-cta">Open demo →</span>
       </div>
     </a>
 
@@ -506,6 +540,47 @@
         if (m.livemode === true)       { mode.textContent = 'Live mode'; mode.classList.add('live'); }
         else if (m.livemode === false) { mode.textContent = 'Test mode'; mode.classList.add('test'); }
         else                           { mode.textContent = 'No invoices yet'; }
+      }
+    } catch (e) {
+      showError('Network error: ' + (e && e.message ? e.message : 'unknown'));
+    }
+  })();
+
+  // IurisIQ demo portal stats — Rob-only
+  (async () => {
+    const token = sessionStorage.getItem('rmt_session');
+    if (!token) return;
+
+    const elMetrics = document.getElementById('iurisiqMetrics');
+    const showError = (msg) => {
+      if (!elMetrics) return;
+      elMetrics.innerHTML =
+        '<span class="tile-metric-label" style="grid-column:1/-1;color:var(--warn);font-size:0.7rem">'
+        + (msg || 'Unable to load IurisIQ stats') + '</span>';
+    };
+
+    try {
+      const r = await fetch('/.netlify/functions/iurisiq-stats', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        if (r.status === 503) showError(err.hint || err.error || 'Demo portal not configured');
+        else                  showError(err.error || ('HTTP ' + r.status));
+        return;
+      }
+      const m = await r.json();
+
+      document.getElementById('iurisiqVisitorsToday').textContent = (m.visitors_today  || 0).toLocaleString();
+      document.getElementById('iurisiqLogins7d').textContent      = (m.logins_7d       || 0).toLocaleString();
+      document.getElementById('iurisiqSessions7d').textContent    = (m.sessions_7d     || 0).toLocaleString();
+      document.getElementById('iurisiqTopModule').textContent     = m.top_module || '—';
+      document.getElementById('iurisiqAvgSession').textContent    = m.avg_session_minutes
+        ? m.avg_session_minutes.toFixed(1) + ' min' : '—';
+
+      if (m.demo_url) {
+        const tile = document.getElementById('iurisiqTile');
+        if (tile) tile.href = m.demo_url;
       }
     } catch (e) {
       showError('Network error: ' + (e && e.message ? e.message : 'unknown'));
