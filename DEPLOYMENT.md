@@ -45,6 +45,7 @@ Set these in **Netlify → Site settings → Environment variables**.
 |---|---|
 | `ANTHROPIC_DEED_API` | Claude API key — needed by `extract-deed` |
 | `ANTHROPIC_MODEL` | Optional. Defaults to `claude-sonnet-4-5` |
+| `ANTHROPIC_TAX_API` | Claude API key for the `tax-proxy` edge function (`/tax.html`). Falls back to `ANTHROPIC_DEED_API` if unset — use a separate key so tax spend is billed and rate-limited on its own. |
 
 ### Email (Zoho SMTP)
 | Var | Purpose |

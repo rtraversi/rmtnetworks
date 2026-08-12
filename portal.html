@@ -303,6 +303,12 @@
   .app-tile.stripe-tile .tile-mode.live { color: var(--accent); border-color: rgba(79,255,176,0.4); }
   .app-tile.stripe-tile .tile-mode.test { color: var(--warn);   border-color: rgba(255,107,74,0.4); }
 
+  /* Tax review tile */
+  .app-tile.tax-tile .tile-icon {
+    background: rgba(79,255,176,0.1);
+    border-color: rgba(79,255,176,0.28);
+  }
+
   /* IurisIQ Demo Portal tile */
   .app-tile.iurisiq-tile {
     background: linear-gradient(135deg, rgba(139,92,246,0.07) 0%, rgba(79,255,176,0.03) 100%);
@@ -336,8 +342,6 @@
   <span class="stat"><span class="name">Proof Scan</span> <span class="val" id="proof-hits">—</span></span>
   <span class="divider">·</span>
   <span class="stat"><span class="name">USCIS Intake</span> <span class="val" id="uscis-hits">—</span></span>
-  <span class="divider">·</span>
-  <span class="stat"><span class="name">Portal Demo</span> <span class="val" id="portal-demo-hits">—</span></span>
 </div>
 
 <main>
@@ -404,6 +408,18 @@
       <div class="tile-footer">
         <span class="tile-tag">IurisIQ</span>
         <span class="tile-cta">Open demo →</span>
+      </div>
+    </a>
+
+    <a class="app-tile tax-tile" href="/tax.html">
+      <div class="tile-icon">🧾</div>
+      <div class="tile-body">
+        <div class="tile-name">Analyze Tax Return</div>
+        <div class="tile-desc">Upload a draft return and have Claude review it for errors, omissions, and ways to lower the bill &mdash; federal and NC.</div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">Finance</span>
+        <span class="tile-cta">Open →</span>
       </div>
     </a>
 
@@ -478,7 +494,6 @@
       const demoHits       = byMetric['page_hits']          ?? 0;
       const proofHits      = byMetric['proof_scan_hits']    ?? 0;
       const uscisHits      = byMetric['uscis_hits']         ?? 0;
-      const portalDemoHits = byMetric['portal_demo_hits']   ?? 0;
 
       const set = (id, n) => {
         const el = document.getElementById(id);
@@ -488,7 +503,6 @@
       set('demo-hits',        demoHits);
       set('proof-hits',       proofHits);
       set('uscis-hits',       uscisHits);
-      set('portal-demo-hits', portalDemoHits);
     } catch {}
   })();
 

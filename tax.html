@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>RMT Networks — Tax Return Review</title>
+<script>
+  (function() {
+    var token = sessionStorage.getItem('rmt_session');
+    if (!token) { window.location.replace('/'); return; }
+    fetch('/.netlify/functions/verify', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function(r) {
+      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
+      return r.json().then(function(d) {
+        // Rob and Katy only. The edge proxy enforces this server-side too.
+        if (!d || (d.user !== 'Rob' && d.user !== 'Katy')) { window.location.replace('/portal.html'); return; }
+        document.body.dataset.user = d.user;
+        document.body.style.visibility = 'visible';
+      });
+    }).catch(function() {
+      document.body.style.visibility = 'visible';
+    });
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0d0f14;
+    --surface: #13161e;
+    --border:  #1e2230;
+    --accent:  #4fffb0;
+    --accent2: #4b8fff;
+    --warn:    #ff6b4a;
+    --text:    #e8eaf0;
+    --muted:   #5a6070;
+    --card-bg: #181b24;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    visibility: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .logo { font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); text-decoration: none; }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.primary { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 500; }
+  .btn.primary:hover:not(:disabled) { background: #6effc0; color: var(--bg); }
+  .btn.danger:hover:not(:disabled) { color: var(--warn); border-color: var(--warn); }
+
+  main { max-width: 1500px; margin: 0 auto; padding: 28px 32px 60px; }
+
+  .page-header { margin-bottom: 26px; }
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.66rem;
+    color: var(--accent);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .eyebrow::before { content: ''; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
+  .page-header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+  .page-header p { font-family: 'DM Mono', monospace; font-size: 0.74rem; color: var(--muted); line-height: 1.7; }
+
+  /* ---------- Upload ---------- */
+  .upload-wrap { max-width: 720px; margin: 0 auto; }
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: 16px;
+    background: var(--card-bg);
+    padding: 52px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(79,255,176,0.04); }
+  .dropzone .icon { font-size: 2.4rem; margin-bottom: 14px; }
+  .dropzone .title { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+  .dropzone .hint { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); line-height: 1.7; }
+
+  .filelist { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .fileitem {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.74rem;
+  }
+  .fileitem .name { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fileitem .size { color: var(--muted); }
+  .fileitem .x { color: var(--muted); cursor: pointer; padding: 0 4px; background: none; border: none; font-size: 0.9rem; }
+  .fileitem .x:hover { color: var(--warn); }
+
+  .privacy {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent2);
+    border-radius: 8px;
+    background: rgba(75,143,255,0.04);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .actionbar { margin-top: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* ---------- Workspace ---------- */
+  .workspace { display: none; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  body.has-analysis .workspace { display: grid; }
+  body.has-analysis .upload-wrap { display: none; }
+
+  .panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .panel-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .panel-actions { display: flex; gap: 6px; }
+  .panel-actions .btn { padding: 5px 10px; font-size: 0.65rem; }
+
+  .analysis-body { padding: 22px 24px; overflow-y: auto; max-height: calc(100vh - 220px); }
+  .chat-body { padding: 18px; overflow-y: auto; max-height: calc(100vh - 320px); min-height: 260px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- Streaming status ---------- */
+  .status {
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(75,143,255,0.05);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .status.on { display: flex; }
+  .spinner {
+    width: 11px; height: 11px; flex-shrink: 0; margin-top: 3px;
+    border: 2px solid rgba(75,143,255,0.25);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status .txt { flex: 1; min-width: 0; }
+
+  .error-box {
+    display: none;
+    margin: 16px 0;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,107,74,0.4);
+    border-radius: 8px;
+    background: rgba(255,107,74,0.06);
+    color: var(--warn);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .error-box.on { display: block; }
+
+  /* ---------- Markdown ---------- */
+  .md { font-size: 0.9rem; line-height: 1.75; color: #d4d8e2; }
+  .md h1, .md h2, .md h3, .md h4 { font-family: 'Syne', sans-serif; color: var(--text); line-height: 1.3; }
+  .md h1 { font-size: 1.4rem; font-weight: 800; margin: 26px 0 12px; }
+  .md h2 {
+    font-size: 1.08rem; font-weight: 700; margin: 30px 0 12px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .md h2:first-child, .md h1:first-child { margin-top: 0; }
+  .md h3 { font-size: 0.95rem; font-weight: 700; margin: 20px 0 8px; color: var(--accent); }
+  .md h4 { font-size: 0.88rem; font-weight: 600; margin: 16px 0 6px; }
+  .md p { margin: 10px 0; }
+  .md ul, .md ol { margin: 10px 0 10px 20px; }
+  .md li { margin: 5px 0; }
+  .md strong { color: var(--text); font-weight: 700; }
+  .md em { color: #b8becd; }
+  .md code {
+    font-family: 'DM Mono', monospace; font-size: 0.84em;
+    background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; color: var(--accent);
+  }
+  .md hr { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+  .md blockquote {
+    border-left: 2px solid var(--accent2); padding: 4px 0 4px 14px; margin: 12px 0; color: var(--muted);
+  }
+  .md .tbl { overflow-x: auto; margin: 14px 0; border: 1px solid var(--border); border-radius: 8px; }
+  .md table { border-collapse: collapse; width: 100%; font-family: 'DM Mono', monospace; font-size: 0.75rem; }
+  .md th, .md td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .md th { background: var(--surface); color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.66rem; white-space: nowrap; }
+  .md tbody tr:last-child td { border-bottom: none; }
+  .md td:not(:first-child) { color: var(--text); }
+  .cursor::after {
+    content: '▋'; color: var(--accent); animation: blink 1s steps(2) infinite; margin-left: 2px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- Chat ---------- */
+  .msg { display: flex; flex-direction: column; gap: 5px; }
+  .msg .who {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+  }
+  .msg.user .bubble {
+    background: rgba(75,143,255,0.09);
+    border: 1px solid rgba(75,143,255,0.22);
+    border-radius: 10px; padding: 11px 14px;
+    font-size: 0.86rem; line-height: 1.65; white-space: pre-wrap;
+  }
+  .msg.user .who { color: var(--accent2); }
+  .msg.assistant .bubble { padding: 2px 0; }
+  .msg .attach {
+    font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 6px;
+  }
+
+  .chat-empty {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted);
+    line-height: 1.8; padding: 8px 2px;
+  }
+  .chat-empty b { color: var(--text); font-weight: 500; }
+
+  .composer { border-top: 1px solid var(--border); padding: 12px 14px; background: var(--surface); }
+  .composer textarea {
+    width: 100%; min-height: 62px; max-height: 200px; resize: vertical;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; font-family: 'Syne', sans-serif; font-size: 0.86rem; line-height: 1.6;
+  }
+  .composer textarea:focus { outline: none; border-color: var(--accent2); }
+  .composer-row { display: flex; gap: 8px; align-items: center; margin-top: 9px; flex-wrap: wrap; }
+  .composer-row .spacer { flex: 1; }
+  .composer-hint { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted); }
+
+  .suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    font-family: 'DM Mono', monospace; font-size: 0.64rem;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .chip:hover { color: var(--accent); border-color: rgba(79,255,176,0.4); }
+
+  /* ---------- Meter ---------- */
+  .meter {
+    font-family: 'DM Mono', monospace; font-size: 0.63rem; color: var(--muted);
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  .meter b { color: var(--text); font-weight: 500; }
+
+  .disclaimer {
+    margin-top: 22px; font-family: 'DM Mono', monospace; font-size: 0.64rem;
+    color: var(--muted); line-height: 1.8; text-align: center;
+  }
+
+  @media (max-width: 1100px) {
+    .workspace { grid-template-columns: 1fr; }
+    .analysis-body { max-height: none; }
+    .chat-body { max-height: 460px; }
+  }
+  @media (max-width: 640px) {
+    header { padding: 16px 18px; }
+    main { padding: 22px 18px 48px; }
+    .page-header h1 { font-size: 1.6rem; }
+    .dropzone { padding: 36px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/portal.html">RMT<span>/</span>Networks</a>
+  <div class="head-right">
+    <span class="meter" id="meter"></span>
+    <a class="btn" href="/portal.html">← Portal</a>
+    <button class="btn danger" onclick="logout()">Sign out</button>
+  </div>
+</header>
+
+<main>
+  <div class="page-header">
+    <div class="eyebrow">Private · Tax Review</div>
+    <h1>Analyze Tax Return</h1>
+    <p>Upload a draft return and have Claude review it for errors, omissions, and ways to lower the bill &mdash; federal (1040) and North Carolina (D-400).</p>
+  </div>
+
+  <div class="error-box" id="topError"></div>
+
+  <!-- ================= Upload ================= -->
+  <div class="upload-wrap" id="uploadWrap">
+    <div class="dropzone" id="dropzone">
+      <div class="icon">📄</div>
+      <div class="title">Drop your draft return here</div>
+      <div class="hint">
+        PDF only &middot; up to ~4&nbsp;MB &middot; click to browse<br>
+        Include every page &mdash; 1040, all schedules, D-400, and W-2/1099s if you have them.
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept="application/pdf" multiple hidden>
+
+    <div class="filelist" id="fileList"></div>
+
+    <div class="actionbar">
+      <button class="btn primary" id="analyzeBtn" disabled>Analyze return</button>
+      <span class="composer-hint" id="uploadHint">No file selected</span>
+    </div>
+
+    <div class="privacy">
+      <b style="color:var(--text)">Where this data goes.</b><br>
+      The PDF is held in this browser tab's memory only &mdash; nothing is written to disk, to
+      Supabase, or to any log on this site. It's sent over HTTPS to the Anthropic API through an
+      authenticated edge proxy that adds the API key and passes the bytes straight through.
+      Closing or reloading this tab wipes everything.
+    </div>
+  </div>
+
+  <!-- ================= Workspace ================= -->
+  <div class="workspace" id="workspace">
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Analysis</span>
+        <div class="panel-actions">
+          <button class="btn" id="reviseBtn" title="Ask for a fresh full analysis incorporating everything discussed in the chat">↻ Revise</button>
+          <button class="btn" id="copyBtn">Copy</button>
+          <button class="btn" id="downloadBtn">Download</button>
+          <button class="btn danger" id="resetBtn">Start over</button>
+        </div>
+      </div>
+      <div class="status" id="analysisStatus">
+        <div class="spinner"></div>
+        <div class="txt" id="analysisStatusText">Reading the return…</div>
+      </div>
+      <div class="analysis-body">
+        <div class="md" id="analysisOut"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Ask about the analysis</span>
+        <span class="composer-hint" id="docsLabel"></span>
+      </div>
+      <div class="status" id="chatStatus">
+        <div class="spinner"></div>
+        <div class="txt" id="chatStatusText">Thinking…</div>
+      </div>
+      <div class="chat-body" id="chatBody">
+        <div class="chat-empty" id="chatEmpty">
+          Push back on anything above, or add facts the return doesn't show &mdash;
+          <b>"we also paid $4,200 in daycare"</b>, <b>"Katy started a side business in June"</b>,
+          <b>"why do you think line 12 is wrong?"</b>
+          <br><br>
+          New information is carried into the conversation, and <b>↻ Revise</b> regenerates the
+          full analysis with everything you've added.
+        </div>
+      </div>
+      <div class="composer">
+        <textarea id="chatInput" placeholder="Ask a question, or tell Claude something the return doesn't show…"></textarea>
+        <div class="composer-row">
+          <button class="btn" id="attachBtn" title="Attach another PDF to the conversation">+ PDF</button>
+          <span class="composer-hint" id="pendingAttach"></span>
+          <span class="spacer"></span>
+          <span class="composer-hint">⌘/Ctrl + Enter</span>
+          <button class="btn primary" id="sendBtn">Send</button>
+        </div>
+        <div class="suggestions" id="suggestions">
+          <button class="chip" data-q="What are the three highest-dollar items I should fix before filing?">Top 3 fixes</button>
+          <button class="chip" data-q="Walk me through exactly how you arrived at the NC tax figure, line by line.">Check the NC math</button>
+          <button class="chip" data-q="What documents or numbers do you still need from me to finish this review?">What's missing?</button>
+          <button class="chip" data-q="What can I still do before the filing deadline to lower the 2025 tax owed?">Still actionable</button>
+          <button class="chip" data-q="What should we change for 2026 to pay less tax next year? Be specific with dollar estimates.">2026 planning</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="disclaimer">
+    AI-generated review &mdash; not tax advice. Verify every figure against the return and confirm with your preparer before filing.
+  </div>
+</main>
+
+<script>
+/* ============================================================
+   Config
+   ============================================================ */
+const MODEL       = 'claude-opus-5';
+const ENDPOINT    = '/api/tax-proxy';
+const MAX_B64     = 4.4 * 1024 * 1024;   // ~4.4MB of base64 across all attached PDFs
+const TAX_YEAR    = '2025';
+
+// Opus 5 pricing, $ per million tokens. Cache reads bill at 0.1x input; cache
+// writes at 2x because the document blocks use the 1-hour TTL.
+const PRICE = { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 10 };
+
+const SYSTEM_PROMPT =
+`You are a meticulous CPA and tax preparer reviewing a client's DRAFT individual income tax return before it is filed. The client is a North Carolina resident, so your review always covers BOTH the federal return (Form 1040 and its schedules) and the North Carolina return (Form D-400 and its schedules).
+
+How you work:
+- You read every page of the document before concluding anything.
+- You quote actual figures from the return with their form and line number. You never invent, round away, or assume a number. If a value is missing, illegible, or not in the document, you say so explicitly and treat it as an open question rather than guessing.
+- When you claim something doesn't add up, you show the arithmetic.
+- You separate "this is an error" from "this is worth checking" and never blur the two.
+- You quantify. Every finding and every recommendation carries an estimated dollar impact, or an explicit "can't estimate without X".
+- You use ${TAX_YEAR} tax-year rules, brackets, phase-outs, and contribution limits. Where you are not certain a limit or NC rule is current, you flag that specific figure as needing confirmation instead of stating it flatly.
+- You are direct. If the return looks clean in an area, you say so briefly and move on rather than padding.
+
+Pattern analysis — do this continuously, not just when asked:
+You are looking for statistical and structural anomalies, not only arithmetic errors. A return can be perfectly correct and still be shaped in a way that invites scrutiny, and the client needs to know that before filing. As you read, hold every figure against three yardsticks: what is normal for this taxpayer's income level, occupation, and filing profile; what the rest of this return implies about them; and what the attached source documents actually support. Call out anything that stands apart, with the specific number, what you are comparing it against, and how far outside the ordinary range it sits.
+
+The patterns worth surfacing include: deductions that are large as a percentage of AGI, especially charitable contributions, unreimbursed business expenses, and casualty or theft losses; round or repeating numbers where real records would produce precise ones; a Schedule C with recurring losses, an expense ratio out of line with its revenue, or heavy vehicle, travel, meals, or home-office claims relative to gross receipts; a business coded to an activity that looks more like a hobby than a trade; rental properties showing losses while claiming active participation; income reported that doesn't reconcile to the W-2s and 1099s in the file, or source documents that appear to be missing entirely; large or unusual one-off items — early retirement distributions, debt cancellation, crypto or other digital-asset activity, foreign accounts, gambling, alimony under an older decree; credits claimed near a phase-out edge or where eligibility looks thin; dependents, filing status, or head-of-household claims that don't square with the rest of the return; an income mix that doesn't fit the deductions taken; and figures that jump sharply from what the return itself implies about the prior year. Because North Carolina starts from federal AGI and receives federal return data, treat any inconsistency between the 1040 and the D-400 as its own flag.
+
+For each anomaly, say plainly whether it looks like an actual problem or is simply a legitimate item that happens to sit outside the norm — those are very different situations, and a defensible deduction should be claimed. Where the item is legitimate, say what documentation should be on hand to support it if it is ever questioned.
+
+You are reviewing, not preparing. Your output is a findings memo the client can act on and take to their preparer.`;
+
+const ANALYSIS_PROMPT =
+`Review the attached draft ${TAX_YEAR} tax return in full — federal and North Carolina.
+
+Produce your findings in exactly these sections:
+
+## 1. Return snapshot
+A table with columns: Item | Federal | North Carolina. Cover filing status, dependents claimed, wages, other income by type, total income, adjustments, AGI, standard vs. itemized deduction (and which was taken), taxable income, tax before credits, credits, total tax, withholding and payments, refund or balance due, effective rate, and marginal bracket. Mark anything you could not locate as "not found".
+
+## 2. Math and consistency check
+Recompute every subtotal you can from the underlying lines and confirm it ties. Verify the NC return flows correctly from federal AGI — additions, deductions, and the NC taxable income calculation. Verify withholding totals against the W-2s/1099s if they're attached. List every line that does NOT tie, with your arithmetic.
+
+## 3. Errors and things that look wrong
+Ordered by dollar impact, largest first. For each: what is wrong, the form and line, why it's wrong, estimated dollar impact, and the specific fix.
+
+## 4. Omissions
+Deductions, credits, forms, elections, or schedules that appear to be missing or unclaimed given what this return shows. Cover federal and NC-specific items alike. Also flag anything that implies a missing document — a 1099 that should exist given an account shown elsewhere, a K-1, Form 8889 for an HSA, 8606 for basis, 8962 for marketplace coverage, foreign account reporting, and so on.
+
+## 5. Audit risk and unusual patterns
+Run the pattern analysis described in your instructions across the whole return. Lead with a table: Item | This return | Typical for this income/profile | How far off | Read. Then, for each flagged item, explain what makes it stand out, whether it is an actual problem or a legitimate item that simply sits outside the norm, and the documentation that should be on hand to support it. Include any inconsistency between the federal return and the D-400, and anything the attached source documents do not appear to support. If nothing is out of the ordinary, say so directly rather than manufacturing concerns.
+
+## 6. Still actionable for ${TAX_YEAR}
+Only things that can still change this return before it's filed: retirement and HSA contributions still open for the tax year, filing status choice, itemize vs. standard, elections, QBI, safe-harbor and underpayment-penalty avoidance, and anything worth amending a prior year for. Estimate the savings for each.
+
+## 7. Planning for ${Number(TAX_YEAR) + 1}
+Concrete, specific to what this return reveals: withholding and estimated payments, retirement and HSA capacity, Roth conversion room inside the current bracket, bunching or donor-advised fund timing, tax-loss harvesting, entity and QBI structure, education and 529 (including the NC treatment), and any NC-specific opportunities. Dollar estimates for each.
+
+## 8. Questions I need answered
+The specific facts or documents you'd need to finish the review and firm up anything you flagged as uncertain.
+
+Close with one line noting this is a review, not filed advice.`;
+
+/* ============================================================
+   State
+   ============================================================ */
+const state = {
+  docs: [],          // { name, size, b64 }
+  messages: [],      // Anthropic messages array
+  analysisText: '',
+  busy: false,
+  pendingAttach: null,
+  usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+};
+
+const $ = (id) => document.getElementById(id);
+
+function logout() {
+  sessionStorage.removeItem('rmt_session');
+  window.location.replace('/');
+}
+
+/* ============================================================
+   Minimal markdown renderer (no external dependency)
+   ============================================================ */
+function mdToHtml(md) {
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const inline = (s) => esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/(^|[\s(])_([^_\n]+)_(?=[\s).,;:!?]|$)/g, '$1<em>$2</em>');
+
+  const cells = (row) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+
+  const lines = md.split('\n');
+  let out = '';
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Table
+    if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+      const head = cells(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(cells(lines[i])); i++; }
+      out += '<div class="tbl"><table><thead><tr>' +
+        head.map((c) => '<th>' + inline(c) + '</th>').join('') +
+        '</tr></thead><tbody>' +
+        rows.map((r) => '<tr>' + r.map((c) => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') +
+        '</tbody></table></div>';
+      continue;
+    }
+
+    // Heading
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    if (h) { const n = h[1].length; out += `<h${n}>` + inline(h[2]) + `</h${n}>`; i++; continue; }
+
+    // Horizontal rule
+    if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) { out += '<hr>'; i++; continue; }
+
+    // Blockquote
+    if (/^\s*>\s?/.test(line)) {
+      const buf = [];
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) { buf.push(lines[i].replace(/^\s*>\s?/, '')); i++; }
+      out += '<blockquote>' + buf.map((t) => '<p>' + inline(t) + '</p>').join('') + '</blockquote>';
+      continue;
+    }
+
+    // Unordered list
+    if (/^\s*[-*+]\s+/.test(line)) {
+      const buf = [];
+      while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) { buf.push(lines[i].replace(/^\s*[-*+]\s+/, '')); i++; }
+      out += '<ul>' + buf.map((t) => '<li>' + inline(t) + '</li>').join('') + '</ul>';
+      continue;
+    }
+
+    // Ordered list
+    if (/^\s*\d+[.)]\s+/.test(line)) {
+      const buf = [];
+      while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) { buf.push(lines[i].replace(/^\s*\d+[.)]\s+/, '')); i++; }
+      out += '<ol>' + buf.map((t) => '<li>' + inline(t) + '</li>').join('') + '</ol>';
+      continue;
+    }
+
+    // Blank
+    if (!line.trim()) { i++; continue; }
+
+    // Paragraph
+    const buf = [];
+    while (i < lines.length && lines[i].trim() &&
+           !/^\s*([-*+]\s|\d+[.)]\s|#{1,4}\s|>|\|)/.test(lines[i]) &&
+           !/^\s*(---|\*\*\*|___)\s*$/.test(lines[i])) {
+      buf.push(lines[i]); i++;
+    }
+    if (buf.length) out += '<p>' + inline(buf.join(' ')) + '</p>';
+    else i++;
+  }
+  return out;
+}
+
+/* ============================================================
+   File handling
+   ============================================================ */
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function readAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('Could not read ' + file.name));
+    fr.onload = () => {
+      const s = String(fr.result);
+      resolve(s.slice(s.indexOf(',') + 1)); // strip the data: URI prefix
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+function totalB64() {
+  return state.docs.reduce((n, d) => n + d.b64.length, 0) +
+         (state.pendingAttach ? state.pendingAttach.b64.length : 0);
+}
+
+async function addFiles(fileList) {
+  showError('');
+  for (const f of Array.from(fileList)) {
+    if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
+      showError(`"${f.name}" isn't a PDF. Only PDFs can be analyzed.`);
+      continue;
+    }
+    const b64 = await readAsBase64(f);
+    if (totalB64() + b64.length > MAX_B64) {
+      showError(
+        `"${f.name}" would push the upload past the ~4.4MB limit for a single request.\n` +
+        `Split the return into smaller PDFs, or re-export it at a lower resolution.`
+      );
+      continue;
+    }
+    state.docs.push({ name: f.name, size: f.size, b64 });
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = $('fileList');
+  el.innerHTML = state.docs.map((d, idx) => `
+    <div class="fileitem">
+      <span>📄</span>
+      <span class="name">${d.name.replace(/</g, '&lt;')}</span>
+      <span class="size">${fmtSize(d.size)}</span>
+      <button class="x" data-idx="${idx}" title="Remove">✕</button>
+    </div>`).join('');
+
+  el.querySelectorAll('.x').forEach((b) => {
+    b.onclick = () => { state.docs.splice(Number(b.dataset.idx), 1); renderFileList(); };
+  });
+
+  const n = state.docs.length;
+  $('analyzeBtn').disabled = n === 0 || state.busy;
+  $('uploadHint').textContent = n === 0
+    ? 'No file selected'
+    : `${n} file${n > 1 ? 's' : ''} · ${fmtSize(state.docs.reduce((a, d) => a + d.size, 0))}`;
+  $('docsLabel').textContent = n ? `${n} PDF${n > 1 ? 's' : ''} attached` : '';
+}
+
+/* ============================================================
+   Anthropic request / SSE streaming
+   ============================================================ */
+function docBlock(d, cache) {
+  const block = {
+    type: 'document',
+    source: { type: 'base64', media_type: 'application/pdf', data: d.b64 },
+    title: d.name,
+  };
+  if (cache) block.cache_control = { type: 'ephemeral', ttl: '1h' };
+  return block;
+}
+
+function showError(msg) {
+  const el = $('topError');
+  el.textContent = msg || '';
+  el.classList.toggle('on', !!msg);
+  if (msg) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setBusy(on) {
+  state.busy = on;
+  $('analyzeBtn').disabled = on || state.docs.length === 0;
+  $('sendBtn').disabled = on;
+  $('reviseBtn').disabled = on;
+  $('attachBtn').disabled = on;
+}
+
+function addUsage(u) {
+  if (!u) return;
+  state.usage.input      += u.input_tokens || 0;
+  state.usage.output     += u.output_tokens || 0;
+  state.usage.cacheRead  += u.cache_read_input_tokens || 0;
+  state.usage.cacheWrite += u.cache_creation_input_tokens || 0;
+  renderMeter();
+}
+
+function renderMeter() {
+  const u = state.usage;
+  const cost = (u.input * PRICE.input + u.output * PRICE.output +
+                u.cacheRead * PRICE.cacheRead + u.cacheWrite * PRICE.cacheWrite) / 1e6;
+  if (!u.input && !u.output && !u.cacheRead && !u.cacheWrite) { $('meter').innerHTML = ''; return; }
+  $('meter').innerHTML =
+    `<span>in <b>${(u.input + u.cacheRead + u.cacheWrite).toLocaleString()}</b></span>` +
+    `<span>out <b>${u.output.toLocaleString()}</b></span>` +
+    `<span>cached <b>${u.cacheRead.toLocaleString()}</b></span>` +
+    `<span>≈ <b>$${cost.toFixed(2)}</b></span>`;
+}
+
+/**
+ * Streams one assistant turn.
+ * onText(fullText)      — called as text accumulates
+ * onThinking(text)      — called as the thinking summary accumulates
+ * Returns the final assistant text.
+ */
+async function streamTurn({ onText, onThinking }) {
+  const token = sessionStorage.getItem('rmt_session');
+  if (!token) { window.location.replace('/'); return ''; }
+
+  const res = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 32000,
+      stream: true,
+      system: SYSTEM_PROMPT,
+      thinking: { type: 'adaptive', display: 'summarized' },
+      output_config: { effort: 'high' },
+      messages: state.messages,
+    }),
+  });
+
+  if (!res.ok || !res.body) {
+    let detail = 'HTTP ' + res.status;
+    try {
+      const j = await res.json();
+      detail = (j.error && (j.error.message || j.error)) || j.hint || detail;
+      if (typeof detail === 'object') detail = JSON.stringify(detail);
+    } catch (_) { /* keep the status */ }
+    if (res.status === 401) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
+    throw new Error(detail);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  let thinking = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let idx;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const chunk = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+
+      for (const raw of chunk.split('\n')) {
+        if (!raw.startsWith('data:')) continue;
+        const payload = raw.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+
+        let ev;
+        try { ev = JSON.parse(payload); } catch (_) { continue; }
+
+        if (ev.type === 'message_start') {
+          addUsage(ev.message && ev.message.usage);
+        } else if (ev.type === 'content_block_delta') {
+          const d = ev.delta || {};
+          if (d.type === 'text_delta') { text += d.text; onText && onText(text); }
+          else if (d.type === 'thinking_delta') { thinking += d.thinking; onThinking && onThinking(thinking); }
+        } else if (ev.type === 'message_delta') {
+          addUsage(ev.usage);
+          const stop = ev.delta && ev.delta.stop_reason;
+          if (stop === 'max_tokens') {
+            text += '\n\n_[Response hit the output limit and was cut off. Ask a follow-up to continue.]_';
+            onText && onText(text);
+          } else if (stop === 'refusal') {
+            throw new Error('The model declined to answer this request.');
+          }
+        } else if (ev.type === 'error') {
+          throw new Error((ev.error && ev.error.message) || 'Stream error');
+        }
+      }
+    }
+  }
+
+  return text;
+}
+
+/* ============================================================
+   Analysis
+   ============================================================ */
+async function runAnalysis() {
+  if (state.busy || !state.docs.length) return;
+  showError('');
+  setBusy(true);
+  document.body.classList.add('has-analysis');
+
+  // cache_control sits on the last document block so the PDFs (the expensive
+  // part of the prompt) are cached for an hour and follow-ups read from cache.
+  const content = state.docs.map((d, i) => docBlock(d, i === state.docs.length - 1));
+  content.push({ type: 'text', text: ANALYSIS_PROMPT });
+  state.messages = [{ role: 'user', content }];
+
+  const out = $('analysisOut');
+  out.innerHTML = '';
+  $('analysisStatus').classList.add('on');
+  $('analysisStatusText').textContent = 'Reading the return…';
+
+  try {
+    const text = await streamTurn({
+      onText: (t) => {
+        state.analysisText = t;
+        out.innerHTML = mdToHtml(t);
+        out.classList.add('cursor');
+      },
+      onThinking: (t) => {
+        const tail = t.slice(-400).trim();
+        $('analysisStatusText').textContent = tail || 'Thinking…';
+      },
+    });
+    state.analysisText = text;
+    state.messages.push({ role: 'assistant', content: text });
+    out.innerHTML = mdToHtml(text);
+  } catch (e) {
+    showError('Analysis failed: ' + (e && e.message ? e.message : 'unknown error'));
+  } finally {
+    out.classList.remove('cursor');
+    $('analysisStatus').classList.remove('on');
+    setBusy(false);
+  }
+}
+
+/* ============================================================
+   Chat
+   ============================================================ */
+function appendMsg(role, text, attachName) {
+  $('chatEmpty').style.display = 'none';
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  wrap.innerHTML =
+    `<div class="who">${role === 'user' ? (document.body.dataset.user || 'You') : 'Claude'}</div>` +
+    `<div class="bubble ${role === 'assistant' ? 'md' : ''}"></div>` +
+    (attachName ? `<div class="attach">📎 ${attachName.replace(/</g, '&lt;')}</div>` : '');
+  const bubble = wrap.querySelector('.bubble');
+  if (role === 'assistant') bubble.innerHTML = mdToHtml(text);
+  else bubble.textContent = text;
+  $('chatBody').appendChild(wrap);
+  $('chatBody').scrollTop = $('chatBody').scrollHeight;
+  return bubble;
+}
+
+async function sendChat(overrideText) {
+  if (state.busy) return;
+  const input = $('chatInput');
+  const text = (overrideText !== undefined ? overrideText : input.value).trim();
+  if (!text && !state.pendingAttach) return;
+
+  showError('');
+  if (overrideText === undefined) input.value = '';
+
+  const attach = state.pendingAttach;
+  state.pendingAttach = null;
+  $('pendingAttach').textContent = '';
+
+  const content = [];
+  if (attach) {
+    state.docs.push(attach);          // keep it attached for later turns
+    renderFileList();
+    content.push(docBlock(attach, false));
+  }
+  content.push({ type: 'text', text: text || 'I attached another document — factor it into the review.' });
+
+  state.messages.push({ role: 'user', content });
+  appendMsg('user', text || '(attached a document)', attach ? attach.name : null);
+
+  const bubble = appendMsg('assistant', '');
+  bubble.classList.add('cursor');
+  $('chatStatus').classList.add('on');
+  $('chatStatusText').textContent = 'Thinking…';
+  setBusy(true);
+
+  try {
+    const reply = await streamTurn({
+      onText: (t) => {
+        bubble.innerHTML = mdToHtml(t);
+        $('chatBody').scrollTop = $('chatBody').scrollHeight;
+      },
+      onThinking: (t) => { $('chatStatusText').textContent = t.slice(-300).trim() || 'Thinking…'; },
+    });
+    state.messages.push({ role: 'assistant', content: reply });
+    bubble.innerHTML = mdToHtml(reply);
+  } catch (e) {
+    bubble.innerHTML = '';
+    showError('Request failed: ' + (e && e.message ? e.message : 'unknown error'));
+    state.messages.pop();             // drop the unanswered user turn
+  } finally {
+    bubble.classList.remove('cursor');
+    $('chatStatus').classList.remove('on');
+    setBusy(false);
+  }
+}
+
+/* Regenerate the whole analysis, folding in everything from the chat. */
+async function reviseAnalysis() {
+  if (state.busy || !state.messages.length) return;
+  showError('');
+
+  const prompt =
+    'Now reissue the complete analysis from scratch, using the same eight sections as before, ' +
+    'incorporating everything we have discussed since — corrections, new facts, and anything you ' +
+    'revised your view on. Note explicitly at the top what changed versus your first pass and why. ' +
+    'Output the full memo, not a diff.';
+
+  state.messages.push({ role: 'user', content: [{ type: 'text', text: prompt }] });
+  appendMsg('user', '↻ Revise the full analysis with everything discussed.');
+
+  const out = $('analysisOut');
+  out.innerHTML = '';
+  out.classList.add('cursor');
+  $('analysisStatus').classList.add('on');
+  $('analysisStatusText').textContent = 'Rebuilding the analysis…';
+  setBusy(true);
+
+  try {
+    const text = await streamTurn({
+      onText: (t) => { state.analysisText = t; out.innerHTML = mdToHtml(t); },
+      onThinking: (t) => { $('analysisStatusText').textContent = t.slice(-400).trim() || 'Thinking…'; },
+    });
+    state.analysisText = text;
+    state.messages.push({ role: 'assistant', content: text });
+    out.innerHTML = mdToHtml(text);
+    appendMsg('assistant', '_Analysis panel updated._');
+  } catch (e) {
+    showError('Revision failed: ' + (e && e.message ? e.message : 'unknown error'));
+    state.messages.pop();
+  } finally {
+    out.classList.remove('cursor');
+    $('analysisStatus').classList.remove('on');
+    setBusy(false);
+  }
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+const dz = $('dropzone');
+dz.onclick = () => $('fileInput').click();
+dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag'); };
+dz.ondragleave = () => dz.classList.remove('drag');
+dz.ondrop = (e) => {
+  e.preventDefault();
+  dz.classList.remove('drag');
+  addFiles(e.dataTransfer.files);
+};
+$('fileInput').onchange = (e) => { addFiles(e.target.files); e.target.value = ''; };
+
+$('analyzeBtn').onclick = runAnalysis;
+$('reviseBtn').onclick = reviseAnalysis;
+$('sendBtn').onclick = () => sendChat();
+
+$('chatInput').onkeydown = (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendChat(); }
+};
+
+$('suggestions').onclick = (e) => {
+  const chip = e.target.closest('.chip');
+  if (chip) sendChat(chip.dataset.q);
+};
+
+// Attach an extra PDF to the conversation
+const attachInput = document.createElement('input');
+attachInput.type = 'file';
+attachInput.accept = 'application/pdf';
+attachInput.hidden = true;
+document.body.appendChild(attachInput);
+
+$('attachBtn').onclick = () => attachInput.click();
+attachInput.onchange = async (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  showError('');
+  const b64 = await readAsBase64(f);
+  if (totalB64() + b64.length > MAX_B64) {
+    showError(`"${f.name}" would push this conversation past the ~4.4MB per-request limit.`);
+    return;
+  }
+  state.pendingAttach = { name: f.name, size: f.size, b64 };
+  $('pendingAttach').textContent = '📎 ' + f.name;
+};
+
+$('copyBtn').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(state.analysisText);
+    $('copyBtn').textContent = 'Copied';
+    setTimeout(() => ($('copyBtn').textContent = 'Copy'), 1500);
+  } catch (_) { showError('Clipboard blocked by the browser.'); }
+};
+
+$('downloadBtn').onclick = () => {
+  const blob = new Blob([state.analysisText], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `tax-review-${TAX_YEAR}.md`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+$('resetBtn').onclick = () => {
+  if (!confirm('Clear the return, the analysis, and the conversation from this tab?')) return;
+  state.docs = [];
+  state.messages = [];
+  state.analysisText = '';
+  state.pendingAttach = null;
+  state.usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  document.body.classList.remove('has-analysis');
+  $('analysisOut').innerHTML = '';
+  $('chatBody').querySelectorAll('.msg').forEach((n) => n.remove());
+  $('chatEmpty').style.display = '';
+  $('pendingAttach').textContent = '';
+  showError('');
+  renderFileList();
+  renderMeter();
+};
+
+// Guard against losing an in-flight analysis to a stray reload.
+window.addEventListener('beforeunload', (e) => {
+  if (state.busy || state.analysisText) { e.preventDefault(); e.returnValue = ''; }
+});
+
+renderFileList();
+</script>
+
+</body>
+</html>

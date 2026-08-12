@@ -323,10 +323,6 @@
       <div class="stat-label">Renewing Soon</div>
       <div class="stat-value warn" id="stat-soon">—</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Portal Demo Views</div>
-      <div class="stat-value" id="stat-demo-hits">—</div>
-    </div>
   </div>
 
   <!-- Toolbar -->
@@ -578,11 +574,6 @@
       updateStats();
       renderTable();
 
-      // Portal demo hit counter
-      const demoMetrics = usageData.get('Demo');
-      const demoHits    = demoMetrics?.find(r => r.metric_name === 'portal_demo_hits');
-      document.getElementById('stat-demo-hits').textContent =
-        demoHits != null ? Number(demoHits.used_value).toLocaleString() : '0';
       document.getElementById('conn-status').textContent = '● connected';
       document.getElementById('conn-status').style.color = 'var(--accent)';
     } catch (e) {
