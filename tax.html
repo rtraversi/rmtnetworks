@@ -829,9 +829,21 @@ async function streamOnce({ onText, onThinking }) {
   let text = '';
   let thinking = '';
 
+  // Stream telemetry. Firefox aborts an SSE response after roughly 7.5s of
+  // silence, so when a stream dies the two facts that matter are how long the
+  // wire had been quiet and whether the proxy's keepalive comments were
+  // arriving at all. Both ride along on the error message.
+  let lastByteAt = Date.now();
+  let keepalives = 0;
+  let bytes = 0;
+
   // Attaches the text streamed so far, so a failed run isn't thrown away.
   const streamErr = (msg, type) => {
-    const err = new Error(msg);
+    const idle = ((Date.now() - lastByteAt) / 1000).toFixed(1);
+    const err = new Error(
+      msg + ' [quiet ' + idle + 's, ' + keepalives + ' keepalives, ' +
+      Math.round(bytes / 1024) + 'KB received]'
+    );
     err.kind = 'stream';
     err.errorType = type || '';
     err.partial = text;
@@ -847,6 +859,8 @@ async function streamOnce({ onText, onThinking }) {
       throw streamErr('The connection dropped mid-response' + ((e && e.message) ? ' (' + e.message + ')' : '') + '.');
     }
     if (step.done) break;
+    lastByteAt = Date.now();
+    bytes += step.value ? step.value.length : 0;
     buffer += decoder.decode(step.value, { stream: true });
 
     let idx;
@@ -855,6 +869,9 @@ async function streamOnce({ onText, onThinking }) {
       buffer = buffer.slice(idx + 2);
 
       for (const raw of chunk.split('\n')) {
+        // SSE comment — the proxy's keepalive. Counted so a failure can report
+        // whether they were getting through.
+        if (raw.startsWith(':')) { keepalives++; continue; }
         if (!raw.startsWith('data:')) continue;
         const payload = raw.slice(5).trim();
         if (!payload || payload === '[DONE]') continue;

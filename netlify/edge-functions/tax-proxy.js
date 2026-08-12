@@ -30,7 +30,7 @@ const MAX_BODY_BYTES = 12 * 1024 * 1024; // ~8MB of PDF once base64-encoded
 // inject our own comment lines. 5s is the interval reported to hold the
 // connection open reliably.
 //   https://github.com/enisdenjo/graphql-sse/issues/99
-const KEEPALIVE_MS = 5000;
+const KEEPALIVE_MS = 4000;
 const KEEPALIVE = new TextEncoder().encode(': keepalive\n\n');
 const LF = 10;
 
@@ -148,7 +148,10 @@ export default async (request) => {
 
   const headers = {
     'content-type': contentType,
-    'cache-control': 'no-store',
+    // no-transform tells intermediaries not to re-encode the body. Without it a
+    // compressing CDN hop can hold a 13-byte keepalive comment in its buffer,
+    // which defeats the point of sending one.
+    'cache-control': 'no-store, no-transform',
     'x-accel-buffering': 'no',
   };
   if (requestId) headers['x-anthropic-request-id'] = requestId;
