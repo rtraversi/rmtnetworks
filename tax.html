@@ -721,28 +721,92 @@ function renderMeter() {
 }
 
 /**
- * Streams one assistant turn.
+ * Human-readable text for a failure, including the upstream request id so a
+ * recurring problem can be reported to Anthropic support by id.
+ */
+function errText(e) {
+  if (!e) return 'unknown error';
+  let s = e.message || 'unknown error';
+  if (e.requestId) s += ' [request ' + e.requestId + ']';
+  return s;
+}
+
+/**
+ * Which failures are worth retrying transparently.
+ *
+ * The PDFs carry a 1-hour cache_control breakpoint, so a retry re-reads them
+ * from cache at 0.1x input price — retrying a dropped run is cheap, and far
+ * better than making someone re-upload and re-run a multi-minute analysis.
+ * Anything caused by the request itself (bad auth, malformed body, a refusal)
+ * would fail identically on a retry, so those are not retried.
+ */
+function isTransient(e) {
+  if (!e || e.noRetry) return false;
+  if (e.kind === 'network') return true;
+  if (e.kind === 'stream') {
+    return !/invalid_request|authentication|permission|not_found/i.test(e.errorType || '');
+  }
+  if (e.kind === 'http') return e.status === 429 || e.status >= 500;
+  return false;
+}
+
+/**
+ * Streams one assistant turn, retrying transient mid-stream failures.
  * onText(fullText)      — called as text accumulates
  * onThinking(text)      — called as the thinking summary accumulates
+ * onRetry(attempt, err) — called before each retry, for status display
  * Returns the final assistant text.
+ *
+ * Retrying lives here rather than in the callers because a turn is fully
+ * determined by state.messages, which this never mutates — so re-running it is
+ * safe and needs no unwinding of conversation state.
  */
-async function streamTurn({ onText, onThinking }) {
+async function streamTurn({ onText, onThinking, onRetry }) {
+  const MAX_ATTEMPTS = 3;
+  let lastErr = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await streamOnce({ onText, onThinking });
+    } catch (e) {
+      lastErr = e;
+      if (attempt === MAX_ATTEMPTS || !isTransient(e)) break;
+      const wait = attempt * 3000;
+      console.warn('[tax] attempt ' + attempt + ' failed: ' + errText(e) + ' — retrying in ' + wait + 'ms', e);
+      onRetry && onRetry(attempt, e);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
+async function streamOnce({ onText, onThinking }) {
   const token = sessionStorage.getItem('rmt_session');
   if (!token) { window.location.replace('/'); return ''; }
 
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 32000,
-      stream: true,
-      system: SYSTEM_PROMPT,
-      thinking: { type: 'adaptive', display: 'summarized' },
-      output_config: { effort: 'high' },
-      messages: state.messages,
-    }),
-  });
+  let res;
+  try {
+    res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 32000,
+        stream: true,
+        system: SYSTEM_PROMPT,
+        thinking: { type: 'adaptive', display: 'summarized' },
+        output_config: { effort: 'high' },
+        messages: state.messages,
+      }),
+    });
+  } catch (e) {
+    const err = new Error('Could not reach the server: ' + ((e && e.message) || 'network error'));
+    err.kind = 'network';
+    throw err;
+  }
+
+  // Set by the proxy from Anthropic's response; identifies the request upstream.
+  const requestId = res.headers.get('x-anthropic-request-id') || '';
 
   if (!res.ok || !res.body) {
     let detail = 'HTTP ' + res.status;
@@ -752,7 +816,11 @@ async function streamTurn({ onText, onThinking }) {
       if (typeof detail === 'object') detail = JSON.stringify(detail);
     } catch (_) { /* keep the status */ }
     if (res.status === 401) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
-    throw new Error(detail);
+    const err = new Error(detail);
+    err.kind = 'http';
+    err.status = res.status;
+    err.requestId = requestId;
+    throw err;
   }
 
   const reader = res.body.getReader();
@@ -761,10 +829,25 @@ async function streamTurn({ onText, onThinking }) {
   let text = '';
   let thinking = '';
 
+  // Attaches the text streamed so far, so a failed run isn't thrown away.
+  const streamErr = (msg, type) => {
+    const err = new Error(msg);
+    err.kind = 'stream';
+    err.errorType = type || '';
+    err.partial = text;
+    err.requestId = requestId;
+    return err;
+  };
+
   while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    let step;
+    try {
+      step = await reader.read();
+    } catch (e) {
+      throw streamErr('The connection dropped mid-response' + ((e && e.message) ? ' (' + e.message + ')' : '') + '.');
+    }
+    if (step.done) break;
+    buffer += decoder.decode(step.value, { stream: true });
 
     let idx;
     while ((idx = buffer.indexOf('\n\n')) !== -1) {
@@ -777,7 +860,14 @@ async function streamTurn({ onText, onThinking }) {
         if (!payload || payload === '[DONE]') continue;
 
         let ev;
-        try { ev = JSON.parse(payload); } catch (_) { continue; }
+        try {
+          ev = JSON.parse(payload);
+        } catch (_) {
+          // Don't swallow this: anything non-JSON on the data channel means
+          // something between us and the API injected into the stream.
+          console.warn('[tax] unparseable SSE payload:', payload.slice(0, 500));
+          continue;
+        }
 
         if (ev.type === 'message_start') {
           addUsage(ev.message && ev.message.usage);
@@ -792,10 +882,22 @@ async function streamTurn({ onText, onThinking }) {
             text += '\n\n_[Response hit the output limit and was cut off. Ask a follow-up to continue.]_';
             onText && onText(text);
           } else if (stop === 'refusal') {
-            throw new Error('The model declined to answer this request.');
+            const err = new Error('The model declined to answer this request.');
+            err.kind = 'stream';
+            err.noRetry = true;
+            err.requestId = requestId;
+            throw err;
           }
         } else if (ev.type === 'error') {
-          throw new Error((ev.error && ev.error.message) || 'Stream error');
+          const info = ev.error || {};
+          // Log the raw event: the message alone has proven not to be enough to
+          // identify what actually went wrong upstream.
+          console.error('[tax] stream error event', { requestId: requestId, raw: payload });
+          throw streamErr(
+            (info.message || 'The response stream ended unexpectedly.') +
+              (info.type ? ' (' + info.type + ')' : ''),
+            info.type
+          );
         }
       }
     }
@@ -835,12 +937,24 @@ async function runAnalysis() {
         const tail = t.slice(-400).trim();
         $('analysisStatusText').textContent = tail || 'Thinking…';
       },
+      onRetry: (attempt) => {
+        $('analysisStatusText').textContent =
+          'Connection dropped — retrying (attempt ' + (attempt + 1) + ' of 3)…';
+      },
     });
     state.analysisText = text;
     state.messages.push({ role: 'assistant', content: text });
     out.innerHTML = mdToHtml(text);
   } catch (e) {
-    showError('Analysis failed: ' + (e && e.message ? e.message : 'unknown error'));
+    // Keep whatever streamed before the failure — it's often most of the memo,
+    // and it was paid for. Analyze again resumes from a cached prompt.
+    if (e && e.partial) {
+      state.analysisText = e.partial;
+      out.innerHTML = mdToHtml(e.partial +
+        '\n\n---\n\n_[The response was cut off here. Press **Analyze** to run it again — ' +
+        'the uploaded documents are cached for an hour, so a rerun is inexpensive.]_');
+    }
+    showError('Analysis failed: ' + errText(e));
   } finally {
     out.classList.remove('cursor');
     $('analysisStatus').classList.remove('on');
@@ -904,12 +1018,19 @@ async function sendChat(overrideText) {
         $('chatBody').scrollTop = $('chatBody').scrollHeight;
       },
       onThinking: (t) => { $('chatStatusText').textContent = t.slice(-300).trim() || 'Thinking…'; },
+      onRetry: (attempt) => {
+        $('chatStatusText').textContent = 'Connection dropped — retrying (' + (attempt + 1) + '/3)…';
+      },
     });
     state.messages.push({ role: 'assistant', content: reply });
     bubble.innerHTML = mdToHtml(reply);
   } catch (e) {
-    bubble.innerHTML = '';
-    showError('Request failed: ' + (e && e.message ? e.message : 'unknown error'));
+    // Show the truncated reply rather than a blank bubble, but still drop the
+    // turn from state.messages so the next question re-asks cleanly.
+    bubble.innerHTML = e && e.partial
+      ? mdToHtml(e.partial + '\n\n_[cut off]_')
+      : '';
+    showError('Request failed: ' + errText(e));
     state.messages.pop();             // drop the unanswered user turn
   } finally {
     bubble.classList.remove('cursor');
@@ -943,13 +1064,21 @@ async function reviseAnalysis() {
     const text = await streamTurn({
       onText: (t) => { state.analysisText = t; out.innerHTML = mdToHtml(t); },
       onThinking: (t) => { $('analysisStatusText').textContent = t.slice(-400).trim() || 'Thinking…'; },
+      onRetry: (attempt) => {
+        $('analysisStatusText').textContent =
+          'Connection dropped — retrying (attempt ' + (attempt + 1) + ' of 3)…';
+      },
     });
     state.analysisText = text;
     state.messages.push({ role: 'assistant', content: text });
     out.innerHTML = mdToHtml(text);
     appendMsg('assistant', '_Analysis panel updated._');
   } catch (e) {
-    showError('Revision failed: ' + (e && e.message ? e.message : 'unknown error'));
+    if (e && e.partial) {
+      state.analysisText = e.partial;
+      out.innerHTML = mdToHtml(e.partial + '\n\n---\n\n_[Cut off. Press ↻ to try again.]_');
+    }
+    showError('Revision failed: ' + errText(e));
     state.messages.pop();
   } finally {
     out.classList.remove('cursor');

@@ -74,16 +74,25 @@ export default async (request) => {
     return json(502, { error: 'Could not reach the Anthropic API: ' + (e && e.message) });
   }
 
+  // Anthropic's per-request identifier. Forwarded so the browser can show it
+  // on failure — a stream that dies mid-response is only diagnosable upstream
+  // by this id, and it's gone once the response is piped through.
+  const requestId = upstream.headers.get('request-id') || '';
+
+  if (!upstream.ok) {
+    console.error(`tax-proxy: upstream ${upstream.status}, request-id ${requestId || '(none)'}`);
+  }
+
+  const headers = {
+    'content-type': upstream.headers.get('content-type') || 'application/json',
+    'cache-control': 'no-store',
+    'x-accel-buffering': 'no',
+  };
+  if (requestId) headers['x-anthropic-request-id'] = requestId;
+
   // Pipe the response through untouched. For a streaming request this is an
   // SSE stream that stays open until the model finishes.
-  return new Response(upstream.body, {
-    status: upstream.status,
-    headers: {
-      'content-type': upstream.headers.get('content-type') || 'application/json',
-      'cache-control': 'no-store',
-      'x-accel-buffering': 'no',
-    },
-  });
+  return new Response(upstream.body, { status: upstream.status, headers });
 };
 
 export const config = { path: '/api/tax-proxy' };
