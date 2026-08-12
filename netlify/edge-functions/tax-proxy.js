@@ -22,6 +22,67 @@
 
 const MAX_BODY_BYTES = 12 * 1024 * 1024; // ~8MB of PDF once base64-encoded
 
+// Firefox aborts a text/event-stream response with "Error in input stream" when
+// roughly 7.5s pass with no bytes on the wire. Adaptive thinking at high effort
+// goes quiet for far longer than that while it reads the return, so long
+// analyses died mid-stream in Firefox but not Chrome or Safari. Anthropic's own
+// `ping` events don't come often enough to stay under the threshold, so we
+// inject our own comment lines. 5s is the interval reported to hold the
+// connection open reliably.
+//   https://github.com/enisdenjo/graphql-sse/issues/99
+const KEEPALIVE_MS = 5000;
+const KEEPALIVE = new TextEncoder().encode(': keepalive\n\n');
+const LF = 10;
+
+/**
+ * Forwards an SSE stream unchanged, adding comment lines during quiet periods.
+ *
+ * Comments are only emitted when the bytes sent so far end on an event
+ * boundary ("\n\n"). A read can land mid-event, and splicing a comment into a
+ * half-delivered event would corrupt the client's parse of it. If the stream is
+ * mid-event, bytes are flowing anyway, so skipping that tick costs nothing.
+ */
+function withKeepalive(body) {
+  const reader = body.getReader();
+  let timer = null;
+  let done = false;
+  let prev = LF, last = LF; // trailing two bytes; a fresh stream counts as a boundary
+
+  const stopTimer = () => { if (timer !== null) { clearInterval(timer); timer = null; } };
+
+  return new ReadableStream({
+    start(controller) {
+      timer = setInterval(() => {
+        if (done || prev !== LF || last !== LF) return;
+        try { controller.enqueue(KEEPALIVE); } catch (_) { done = true; stopTimer(); }
+      }, KEEPALIVE_MS);
+
+      (async () => {
+        try {
+          for (;;) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            const v = chunk.value;
+            if (!v || !v.length) continue;
+            if (v.length === 1) { prev = last; last = v[0]; }
+            else { prev = v[v.length - 2]; last = v[v.length - 1]; }
+            controller.enqueue(v);
+          }
+          done = true; stopTimer();
+          controller.close();
+        } catch (e) {
+          done = true; stopTimer();
+          try { controller.error(e); } catch (_) { /* already errored */ }
+        }
+      })();
+    },
+    cancel(reason) {
+      done = true; stopTimer();
+      return reader.cancel(reason);
+    },
+  });
+}
+
 const json = (status, body) => new Response(JSON.stringify(body), {
   status,
   headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -83,16 +144,22 @@ export default async (request) => {
     console.error(`tax-proxy: upstream ${upstream.status}, request-id ${requestId || '(none)'}`);
   }
 
+  const contentType = upstream.headers.get('content-type') || 'application/json';
+
   const headers = {
-    'content-type': upstream.headers.get('content-type') || 'application/json',
+    'content-type': contentType,
     'cache-control': 'no-store',
     'x-accel-buffering': 'no',
   };
   if (requestId) headers['x-anthropic-request-id'] = requestId;
 
-  // Pipe the response through untouched. For a streaming request this is an
-  // SSE stream that stays open until the model finishes.
-  return new Response(upstream.body, { status: upstream.status, headers });
+  // Pipe the response through. An SSE stream gets keepalive comments during
+  // quiet periods; anything else (an error payload) is forwarded untouched.
+  const responseBody = upstream.body && contentType.includes('text/event-stream')
+    ? withKeepalive(upstream.body)
+    : upstream.body;
+
+  return new Response(responseBody, { status: upstream.status, headers });
 };
 
 export const config = { path: '/api/tax-proxy' };
