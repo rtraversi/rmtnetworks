@@ -176,9 +176,20 @@ exports.handler = async (event) => {
   const token     = process.env.CF_API_TOKEN;
 
   if (!accountId || !token) {
+    // Report WHICH one is missing, never the values. "Set both" sends you to
+    // re-check two things when only one is wrong, and the usual cause — a
+    // Netlify env var whose scope excludes Functions — looks correct in the UI.
+    const missing = [
+      !accountId && 'CF_ACCOUNT_ID',
+      !token     && 'CF_API_TOKEN',
+    ].filter(Boolean);
+
     return json(503, {
       error: 'Cloudflare Web Analytics not configured',
-      hint:  'Set CF_ACCOUNT_ID and CF_API_TOKEN in Netlify env vars',
+      hint:  `Function cannot read: ${missing.join(' + ')}. ` +
+             `(CF_ACCOUNT_ID ${accountId ? 'visible' : 'MISSING'}, ` +
+             `CF_API_TOKEN ${token ? 'visible' : 'MISSING'}) — ` +
+             `check the variable's Scopes include Functions, then redeploy.`,
     });
   }
 
