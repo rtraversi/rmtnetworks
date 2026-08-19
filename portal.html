@@ -411,6 +411,29 @@
       </div>
     </a>
 
+    <a class="app-tile stripe-tile cfa-tile rob-only" href="https://dash.cloudflare.com/4b2a402334decc9259d7317aaf9782f0/web-analytics" target="_blank" rel="noopener" id="cfaTile">
+      <div class="tile-icon">📈</div>
+      <div class="tile-body">
+        <div class="tile-name">Site Traffic</div>
+        <div class="tile-metrics" id="cfaMetrics">
+          <span class="tile-metric-label">Visits (24h)</span>
+          <span class="tile-metric-val accent" id="cfaVisits24h">—</span>
+          <span class="tile-metric-label">Page views (24h)</span>
+          <span class="tile-metric-val" id="cfaViews24h">—</span>
+          <span class="tile-metric-label">Visits (7 days)</span>
+          <span class="tile-metric-val" id="cfaVisits7d">—</span>
+          <span class="tile-metric-label">Page views (7 days)</span>
+          <span class="tile-metric-val" id="cfaViews7d">—</span>
+          <span class="tile-metric-label">Top page</span>
+          <span class="tile-metric-val" id="cfaTopPage">—</span>
+        </div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">Cloudflare</span>
+        <span class="tile-cta">Open dashboard →</span>
+      </div>
+    </a>
+
     <a class="app-tile tax-tile" href="/tax.html">
       <div class="tile-icon">🧾</div>
       <div class="tile-body">
@@ -595,6 +618,55 @@
       if (m.demo_url) {
         const tile = document.getElementById('iurisiqTile');
         if (tile) tile.href = m.demo_url;
+      }
+    } catch (e) {
+      showError('Network error: ' + (e && e.message ? e.message : 'unknown'));
+    }
+  })();
+
+  // Cloudflare Web Analytics — Rob-only. Beacon lives on the public pages;
+  // portal.html and tracker.html are deliberately NOT tracked.
+  (async () => {
+    const token = sessionStorage.getItem('rmt_session');
+    if (!token) return;
+
+    const elMetrics = document.getElementById('cfaMetrics');
+    const showError = (msg) => {
+      if (!elMetrics) return;
+      elMetrics.innerHTML =
+        '<span class="tile-metric-label" style="grid-column:1/-1;color:var(--warn);font-size:0.7rem">'
+        + (msg || 'Unable to load site traffic') + '</span>';
+    };
+
+    try {
+      const r = await fetch('/.netlify/functions/cf-analytics', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        showError(err.hint || err.error || ('HTTP ' + r.status));
+        return;
+      }
+      const m = await r.json();
+
+      const n = (v) => (v || 0).toLocaleString();
+      document.getElementById('cfaVisits24h').textContent = n(m.visits_24h);
+      document.getElementById('cfaViews24h').textContent  = n(m.pageviews_24h);
+      document.getElementById('cfaVisits7d').textContent  = n(m.visits_7d);
+      document.getElementById('cfaViews7d').textContent   = n(m.pageviews_7d);
+
+      const top = (m.top_pages && m.top_pages[0]) ? m.top_pages[0] : null;
+      document.getElementById('cfaTopPage').textContent =
+        top ? (top.path + ' (' + n(top.pageviews) + ')') : '—';
+
+      // Zero is a real answer for a beacon installed today — say so rather than
+      // letting it read as a broken tile.
+      if (m.note && elMetrics) {
+        const hint = document.createElement('span');
+        hint.className = 'tile-metric-label';
+        hint.style.cssText = 'grid-column:1/-1;font-size:0.65rem;opacity:0.75;margin-top:0.25rem';
+        hint.textContent = m.note;
+        elMetrics.appendChild(hint);
       }
     } catch (e) {
       showError('Network error: ' + (e && e.message ? e.message : 'unknown'));
