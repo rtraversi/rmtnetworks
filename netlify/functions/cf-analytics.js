@@ -202,9 +202,13 @@ exports.handler = async (event) => {
   try {
     siteTag = await resolveSiteTag(accountId, token);
   } catch (e) {
+    // Stage-prefixed: this call and the GraphQL one below fail with the same
+    // Cloudflare wording ("Authentication error") for different reasons, and
+    // they need different fixes — this one can be skipped entirely with
+    // CF_SITE_TAG, the other cannot.
     return json(503, {
       error: 'Could not resolve the Web Analytics site',
-      hint:  e.message,
+      hint:  `[site lookup] ${e.message}`,
     });
   }
 
@@ -224,7 +228,7 @@ exports.handler = async (event) => {
     // A token missing "Account Analytics: Read" lands here, and the message
     // Cloudflare returns says so — worth passing through rather than flattening
     // into a generic failure.
-    return json(502, { error: 'Cloudflare analytics query failed', hint: e.message });
+    return json(502, { error: "Cloudflare analytics query failed", hint: `[graphql] ${e.message}` });
   }
 
   let topPages = null;
