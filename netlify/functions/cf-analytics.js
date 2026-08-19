@@ -86,11 +86,42 @@ async function cfFetch(url, token, init = {}) {
  * identifiers, which is an easy hour to lose. CF_SITE_TAG can pin it; otherwise
  * we list the account's sites and match on host.
  */
-async function resolveSiteTag(accountId, token) {
+async function resolveSiteTag(accountId, token, since, until) {
   if (process.env.CF_SITE_TAG) return process.env.CF_SITE_TAG;
   if (cachedSiteTag) return cachedSiteTag;
 
-  const body = await cfFetch(`${REST_BASE}/accounts/${accountId}/rum/site_info/list`, token);
+  let body;
+  try {
+    body = await cfFetch(`${REST_BASE}/accounts/${accountId}/rum/site_info/list`, token);
+  } catch (restErr) {
+    // VERIFIED 2026-08-19: a token with "Account Analytics: Read" — which is
+    // sufficient for the RUM GraphQL datasets — gets "Authentication error"
+    // from this REST endpoint. Cloudflare does not scope the two together.
+    //
+    // So fall back to asking the analytics dataset itself which site tags it
+    // holds. It answers under the permission we already have. The catch: it can
+    // only see tags that have DATA, so a site with no pageviews yet is
+    // invisible here. That is why CF_SITE_TAG remains the reliable override.
+    const tags = await discoverSiteTagsViaGraphql(accountId, token, since, until);
+
+    if (tags.length === 1) {
+      cachedSiteTag = tags[0];
+      return cachedSiteTag;
+    }
+    if (tags.length === 0) {
+      throw new Error(
+        `${restErr.message} (site list unavailable to this token), and the analytics ` +
+        `dataset holds no pageviews yet, so the site tag cannot be discovered. ` +
+        `Set CF_SITE_TAG in Netlify — find it in the Web Analytics dashboard URL.`
+      );
+    }
+    throw new Error(
+      `${restErr.message} (site list unavailable to this token). The dataset holds ` +
+      `${tags.length} sites with data (${tags.join(', ')}) and cannot tell which is ` +
+      `rmtnetworks. Set CF_SITE_TAG in Netlify to the right one.`
+    );
+  }
+
   const sites = body?.result || [];
   if (!sites.length) {
     throw new Error('No Web Analytics sites exist on this Cloudflare account');
@@ -111,6 +142,29 @@ async function resolveSiteTag(accountId, token) {
 
   cachedSiteTag = match.site_tag;
   return cachedSiteTag;
+}
+
+const DISCOVER_QUERY = `
+  query RmtDiscoverSites($accountTag: string!, $since: Time!, $until: Time!) {
+    viewer {
+      accounts(filter: { accountTag: $accountTag }) {
+        rumPageloadEventsAdaptiveGroups(
+          limit: 20
+          filter: { datetime_geq: $since, datetime_lt: $until }
+        ) {
+          count
+          dimensions { siteTag }
+        }
+      }
+    }
+  }
+`;
+
+/** Site tags that have recorded pageviews in the window — the only ones this permission can see. */
+async function discoverSiteTagsViaGraphql(accountId, token, since, until) {
+  const data = await graphql(token, DISCOVER_QUERY, { accountTag: accountId, since, until });
+  const rows = data?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups || [];
+  return [...new Set(rows.map((r) => r.dimensions?.siteTag).filter(Boolean))];
 }
 
 const TOTALS_QUERY = `
@@ -200,7 +254,7 @@ exports.handler = async (event) => {
 
   let siteTag;
   try {
-    siteTag = await resolveSiteTag(accountId, token);
+    siteTag = await resolveSiteTag(accountId, token, since7d, until);
   } catch (e) {
     // Stage-prefixed: this call and the GraphQL one below fail with the same
     // Cloudflare wording ("Authentication error") for different reasons, and
