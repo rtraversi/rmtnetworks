@@ -320,6 +320,59 @@
     border-color: rgba(139,92,246,0.3);
   }
 
+  /* IURIX Accreditation tile — side-by-side A/B counters for the two landing
+     variants Katy is circulating (?v=1 vs ?v=2). Two columns rather than the
+     label/value grid the other metric tiles use: the whole point is comparing
+     one number against the other, and stacked rows make that a subtraction. */
+  .app-tile.iurix-tile {
+    background: linear-gradient(135deg, rgba(255,107,74,0.07) 0%, rgba(75,143,255,0.03) 100%);
+    border-color: rgba(255,107,74,0.28);
+  }
+  .app-tile.iurix-tile:hover { border-color: rgba(255,107,74,0.55); }
+  .app-tile.iurix-tile .tile-icon {
+    background: rgba(255,107,74,0.12);
+    border-color: rgba(255,107,74,0.3);
+  }
+  .app-tile.iurix-tile .ab-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .app-tile.iurix-tile .ab-col {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.18);
+  }
+  .app-tile.iurix-tile .ab-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .app-tile.iurix-tile .ab-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--text);
+  }
+  .app-tile.iurix-tile .ab-val.has-hits { color: var(--accent); }
+  .app-tile.iurix-tile .ab-url {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    word-break: break-all;
+  }
+  /* The leader gets the outline, so which variant is winning reads at a glance
+     without comparing two numbers. Neither is marked while both sit at zero. */
+  .app-tile.iurix-tile .ab-col.leading {
+    border-color: rgba(79,255,176,0.45);
+    background: rgba(79,255,176,0.06);
+  }
+
   @media (max-width: 640px) {
     main { padding: 36px 20px 60px; }
     header { padding: 20px; }
@@ -434,6 +487,32 @@
       </div>
     </a>
 
+    <!-- Opens the BARE url on purpose: the beacon only counts ?v=1 and ?v=2, so
+         checking the site from here can't inflate either variant's number. -->
+    <a class="app-tile iurix-tile" href="https://iurixaccreditation.com" target="_blank" rel="noopener" id="iurixTile">
+      <div class="tile-icon">⚖️</div>
+      <div class="tile-body">
+        <div class="tile-name">IURIX Accreditation</div>
+        <div class="tile-desc">Landing page hits by link variant &mdash; which version people are actually opening.</div>
+        <div class="ab-metrics" id="iurixMetrics">
+          <div class="ab-col" id="iurixV1Col">
+            <div class="ab-label">Version 1</div>
+            <div class="ab-val" id="iurixV1Hits">&mdash;</div>
+            <div class="ab-url">/?v=1</div>
+          </div>
+          <div class="ab-col" id="iurixV2Col">
+            <div class="ab-label">Version 2</div>
+            <div class="ab-val" id="iurixV2Hits">&mdash;</div>
+            <div class="ab-url">/?v=2</div>
+          </div>
+        </div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">IURIX</span>
+        <span class="tile-cta">Open site →</span>
+      </div>
+    </a>
+
     <a class="app-tile tax-tile" href="/tax.html">
       <div class="tile-icon">🧾</div>
       <div class="tile-body">
@@ -517,6 +596,8 @@
       const demoHits       = byMetric['page_hits']          ?? 0;
       const proofHits      = byMetric['proof_scan_hits']    ?? 0;
       const uscisHits      = byMetric['uscis_hits']         ?? 0;
+      const iurixV1Hits    = byMetric['iurix_v1_hits']      ?? 0;
+      const iurixV2Hits    = byMetric['iurix_v2_hits']      ?? 0;
 
       const set = (id, n) => {
         const el = document.getElementById(id);
@@ -526,6 +607,23 @@
       set('demo-hits',        demoHits);
       set('proof-hits',       proofHits);
       set('uscis-hits',       uscisHits);
+
+      // IURIX A/B tile. Plain numbers, no eye glyph — these two get read against
+      // each other, and the column label already says what they are.
+      const setAb = (id, n) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = n.toLocaleString();
+        if (n > 0) el.classList.add('has-hits');
+      };
+      setAb('iurixV1Hits', iurixV1Hits);
+      setAb('iurixV2Hits', iurixV2Hits);
+
+      // A tie leaves both plain — outlining both would say nothing.
+      if (iurixV1Hits !== iurixV2Hits) {
+        const winner = iurixV1Hits > iurixV2Hits ? 'iurixV1Col' : 'iurixV2Col';
+        document.getElementById(winner)?.classList.add('leading');
+      }
     } catch {}
   })();
 
