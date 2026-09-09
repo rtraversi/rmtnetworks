@@ -11,8 +11,11 @@
     fetch('/.netlify/functions/verify', {
       headers: { 'Authorization': 'Bearer ' + token }
     }).then(function(r) {
-      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
-      else { document.body.style.visibility = 'visible'; }
+      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
+      r.json().then(function(d) {
+        if (d && d.user) sessionStorage.setItem('rmt_user', d.user);
+        document.body.style.visibility = 'visible';
+      }).catch(function() { document.body.style.visibility = 'visible'; });
     }).catch(function() { document.body.style.visibility = 'visible'; });
   })();
 </script>
@@ -97,6 +100,91 @@
   }
   select:focus { outline: none; border-color: var(--accent); }
 
+  /* ── View toggle (List / Pipeline) ── */
+  .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .view-toggle-btn {
+    background: var(--card-bg); border: none; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 0.76rem;
+    padding: 8px 14px; cursor: pointer; transition: all 0.15s;
+  }
+  .view-toggle-btn + .view-toggle-btn { border-left: 1px solid var(--border); }
+  .view-toggle-btn.active { background: var(--accent); color: #000; }
+
+  /* ── Pipeline (Kanban) board ── */
+  .pipeline-board {
+    display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap: 14px; overflow-x: auto; padding-bottom: 8px;
+  }
+  .pipeline-col {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px; min-height: 120px;
+  }
+  .pipeline-col.drag-over { border-color: var(--accent); }
+  .pipeline-col-head {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+    display: flex; justify-content: space-between;
+  }
+  .pipeline-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+    cursor: grab;
+  }
+  .pipeline-card:active { cursor: grabbing; }
+  .pipeline-card-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
+  .pipeline-card-value {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--accent); margin-bottom: 8px;
+  }
+  .pipeline-card select {
+    width: 100%; background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 5px 6px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+  }
+
+  /* ── Tasks & Milestones ── */
+  .task-row {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
+    margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .task-row.milestone { border-color: rgba(75,143,255,0.4); background: rgba(75,143,255,0.05); }
+  .task-row input[type="checkbox"] { width: auto; margin-top: 3px; flex-shrink: 0; cursor: pointer; }
+  .task-body { flex: 1; min-width: 0; }
+  .task-title { font-weight: 600; font-size: 0.88rem; }
+  .task-title.milestone-title { color: var(--accent2); }
+  .task-meta {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted);
+    margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .task-meta.overdue { color: var(--warn); }
+  .task-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .checklist-wrap { margin-top: 10px; padding-left: 4px; }
+  .checklist-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.8rem; }
+  .checklist-item input[type="checkbox"] { width: auto; cursor: pointer; }
+  .checklist-item.done .checklist-item-title { color: var(--muted); text-decoration: line-through; }
+  .checklist-add { display: flex; gap: 6px; margin-top: 6px; }
+  .checklist-add input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 5px; padding: 5px 8px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.74rem;
+  }
+
+  /* ── Timeline ── */
+  .timeline-log-box {
+    display: flex; gap: 8px; align-items: flex-start;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px;
+  }
+  .timeline-log-box select { width: 110px; flex-shrink: 0; }
+  .timeline-log-box textarea { flex: 1; }
+  .timeline-entry { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .timeline-entry:last-child { border-bottom: none; }
+  .timeline-entry-icon { font-size: 1rem; flex-shrink: 0; width: 22px; text-align: center; }
+  .timeline-entry-body { flex: 1; min-width: 0; font-size: 0.84rem; }
+  .timeline-entry.system .timeline-entry-body { color: var(--muted); font-style: italic; }
+  .timeline-entry-meta {
+    font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--muted); margin-top: 3px;
+  }
+
   /* ── Detail tabs ── */
   .detail-tabs {
     display: flex; gap: 0; margin-bottom: 24px;
@@ -165,6 +253,7 @@
   .detail-view { display: none; }
   .detail-view.active { display: block; }
   .list-view.hidden { display: none; }
+  .hidden { display: none !important; }
 
   .detail-head {
     display: flex; justify-content: space-between; align-items: center;
@@ -558,10 +647,15 @@
         <option value="former">Former</option>
       </select>
       <button class="btn btn-ghost" onclick="openIntakeModal()">+ Secure Intake Link</button>
+      <div class="view-toggle">
+        <button class="view-toggle-btn active" id="view-btn-list" onclick="setListMode('list')">List</button>
+        <button class="view-toggle-btn" id="view-btn-pipeline" onclick="setListMode('pipeline')">Pipeline</button>
+      </div>
     </div>
     <div id="clients-grid">
       <div class="state-msg"><div class="big">⟳</div>Loading...</div>
     </div>
+    <div id="pipeline-board" class="pipeline-board hidden"></div>
   </div>
 
   <!-- DETAIL VIEW -->
@@ -582,6 +676,7 @@
     <!-- Tabs -->
     <div class="detail-tabs">
       <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')">Activity</button>
       <button class="tab-btn" data-tab="logins" onclick="switchTab('logins')">Logins &amp; Subscriptions</button>
       <button class="tab-btn" data-tab="usage" onclick="switchTab('usage')">Usage</button>
       <button class="tab-btn" data-tab="apps" onclick="switchTab('apps')">Apps</button>
@@ -604,6 +699,12 @@
           <h2>Income <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— via Stripe</span></h2>
         </div>
         <div id="d-stripe-income"></div>
+      </div>
+
+      <!-- Pipeline (prospects only) -->
+      <div class="section" id="d-pipeline-section" style="display:none">
+        <div class="section-head"><h2>Pipeline</h2></div>
+        <div class="contract-grid" id="d-pipeline-grid"></div>
       </div>
 
       <!-- 2. Contact -->
@@ -633,6 +734,43 @@
       </div>
 
     </div><!-- /tab-overview -->
+
+    <!-- ACTIVITY TAB -->
+    <div id="tab-activity" class="tab-panel">
+
+      <!-- Tasks & Milestones -->
+      <div class="section">
+        <div class="section-head">
+          <h2>Tasks &amp; Milestones <span class="count" id="d-task-count"></span></h2>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-tiny" onclick="openTaskModal(true)">+ Add Milestone</button>
+            <button class="btn btn-primary btn-tiny" onclick="openTaskModal(false)">+ Add Task</button>
+          </div>
+        </div>
+        <div id="d-tasks-open"></div>
+        <div id="d-tasks-done-wrap" style="display:none;margin-top:14px">
+          <button class="btn btn-ghost btn-tiny" onclick="toggleDoneTasks()" id="d-tasks-done-toggle">Show completed</button>
+          <div id="d-tasks-done" class="hidden" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="section">
+        <div class="section-head"><h2>Timeline</h2></div>
+        <div class="timeline-log-box">
+          <select id="act-type">
+            <option value="note">Note</option>
+            <option value="call">Call</option>
+            <option value="email">Email</option>
+            <option value="meeting">Meeting</option>
+          </select>
+          <textarea id="act-body" placeholder="What happened?" style="min-height:60px"></textarea>
+          <button class="btn btn-primary btn-tiny" onclick="logActivity()">Log</button>
+        </div>
+        <div id="d-timeline" style="margin-top:16px"></div>
+      </div>
+
+    </div><!-- /tab-activity -->
 
     <!-- LOGINS & SUBSCRIPTIONS TAB -->
     <div id="tab-logins" class="tab-panel">
@@ -756,6 +894,21 @@
         </select>
       </div>
     </div>
+
+    <div class="modal-section-label">Pipeline <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(prospects)</span></div>
+    <div class="form-row">
+      <div class="form-group"><label>Stage</label>
+        <select id="cf-pipeline-stage">
+          <option value="new_lead">New Lead</option>
+          <option value="contacted">Contacted</option>
+          <option value="proposal_sent">Proposal Sent</option>
+          <option value="won">Won</option>
+          <option value="lost">Lost</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Deal Value (USD)</label><input type="number" id="cf-deal-value" placeholder="0.00" step="0.01" min="0"></div>
+    </div>
+    <div class="form-group"><label>Lost Reason <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(if applicable)</span></label><input type="text" id="cf-lost-reason" placeholder="e.g. Went with another vendor"></div>
 
     <div class="modal-section-label">Engagement</div>
     <div class="form-row">
@@ -950,6 +1103,30 @@
   </div>
 </div>
 
+<!-- ── Task / Milestone modal ── -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <h2 id="task-modal-title">Add <span>Task</span></h2>
+    <div class="form-group"><label>Title *</label><input type="text" id="tf-title" placeholder="e.g. Send onboarding docs"></div>
+    <div class="form-group"><label>Description</label><textarea id="tf-description" placeholder="Optional detail"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Due Date</label><input type="date" id="tf-due-date"></div>
+      <div class="form-group"><label>Assignee</label>
+        <select id="tf-assignee">
+          <option value="">Unassigned</option>
+          <option value="Rob">Rob</option>
+          <option value="Katy">Katy</option>
+          <option value="Max">Max</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('task-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -969,8 +1146,22 @@
   let intakeModalClientId = null;
   let lastIntakeResultUrl = '';
   let currentReviewSubmission = null;
+  let currentTasks = [], currentActivities = [];
+  let editingTaskId = null;
+  let taskModalIsMilestone = false;
+  let doneTasksShown = false;
+  let listMode = 'list';
+
+  const PIPELINE_STAGES = [
+    { key: 'new_lead',      label: 'New Lead' },
+    { key: 'contacted',     label: 'Contacted' },
+    { key: 'proposal_sent', label: 'Proposal Sent' },
+    { key: 'won',           label: 'Won' },
+    { key: 'lost',          label: 'Lost' },
+  ];
 
   const SESSION = sessionStorage.getItem('rmt_session') || '';
+  const CURRENT_USER = sessionStorage.getItem('rmt_user') || '';
 
   async function initConfig() {
     const res = await fetch('/.netlify/functions/config');
@@ -1003,6 +1194,83 @@
       document.getElementById('clients-grid').innerHTML =
         `<div class="state-msg"><div class="big">⚠</div>Could not load clients.<br>${escapeHtml(e.message)}</div>`;
     }
+  }
+
+  // ── List / Pipeline toggle ──────────────────────────────────────
+  function setListMode(mode) {
+    listMode = mode;
+    document.getElementById('view-btn-list').classList.toggle('active', mode === 'list');
+    document.getElementById('view-btn-pipeline').classList.toggle('active', mode === 'pipeline');
+    document.getElementById('clients-grid').classList.toggle('hidden', mode !== 'list');
+    document.getElementById('pipeline-board').classList.toggle('hidden', mode !== 'pipeline');
+    if (mode === 'pipeline') renderPipeline();
+  }
+
+  function renderPipeline() {
+    const board = document.getElementById('pipeline-board');
+    const prospects = allClients.filter(c => c.status === 'prospect');
+    board.innerHTML = PIPELINE_STAGES.map(stage => {
+      const cards = prospects.filter(c => (c.pipeline_stage || 'new_lead') === stage.key);
+      return `
+        <div class="pipeline-col" data-stage="${stage.key}" ondragover="pipelineDragOver(event)" ondragleave="pipelineDragLeave(event)" ondrop="pipelineDrop(event,'${stage.key}')">
+          <div class="pipeline-col-head"><span>${stage.label}</span><span>${cards.length}</span></div>
+          ${cards.map(c => `
+            <div class="pipeline-card" draggable="true" ondragstart="pipelineDragStart(event,'${c.id}')" onclick="openDetail('${c.id}')">
+              <div class="pipeline-card-name">${escapeHtml(c.name || '—')}</div>
+              ${c.deal_value ? `<div class="pipeline-card-value">$${parseFloat(c.deal_value).toFixed(2)}</div>` : ''}
+              <select onclick="event.stopPropagation()" onchange="updateProspectStage('${c.id}', this.value)">
+                ${PIPELINE_STAGES.map(s => `<option value="${s.key}" ${s.key === stage.key ? 'selected' : ''}>${s.label}</option>`).join('')}
+              </select>
+            </div>`).join('')}
+        </div>`;
+    }).join('');
+  }
+
+  function pipelineDragStart(e, clientId) {
+    e.dataTransfer.setData('text/plain', clientId);
+  }
+  function pipelineDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  }
+  function pipelineDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+  function pipelineDrop(e, stage) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const clientId = e.dataTransfer.getData('text/plain');
+    if (clientId) updateProspectStage(clientId, stage);
+  }
+
+  async function updateProspectStage(clientId, newStage) {
+    const client = allClients.find(c => c.id === clientId);
+    if (!client) return;
+    const oldStage = client.pipeline_stage || 'new_lead';
+    if (oldStage === newStage) return;
+
+    const patch = { pipeline_stage: newStage };
+    if (newStage === 'won' && client.status === 'prospect') {
+      if (confirm(`Mark ${client.name} as Won? This will also set their status to Active.`)) {
+        patch.status = 'active';
+      }
+    }
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${clientId}`, { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(patch) });
+      if (!res.ok) throw new Error(await res.text());
+      const stageLabel = PIPELINE_STAGES.find(s => s.key === newStage)?.label || newStage;
+      const oldLabel   = PIPELINE_STAGES.find(s => s.key === oldStage)?.label || oldStage;
+      await logSystemActivity(clientId, `Stage changed: ${oldLabel} → ${stageLabel}${patch.status ? ' · Status set to Active' : ''}`);
+      await loadClients();
+      if (listMode === 'pipeline') renderPipeline();
+      if (currentClient && currentClient.id === clientId) {
+        currentClient = allClients.find(c => c.id === clientId);
+        renderPipelineFields();
+        renderDetailHead();
+      }
+      toast('Stage updated');
+    } catch (e) { toast('Error: ' + e.message, true); }
   }
 
   function renderList() {
@@ -1079,6 +1347,7 @@
     renderDetailHead();
     renderContract();
     renderContact();
+    renderPipelineFields();
     await loadChildren();
     loadStripeIncome();
   }
@@ -1128,6 +1397,24 @@
     } else {
       scopeWrap.style.display = 'none';
     }
+  }
+
+  function renderPipelineFields() {
+    const c = currentClient;
+    const section = document.getElementById('d-pipeline-section');
+    if (c.status !== 'prospect') { section.style.display = 'none'; return; }
+    section.style.display = '';
+    const stageLabel = PIPELINE_STAGES.find(s => s.key === (c.pipeline_stage || 'new_lead'))?.label || c.pipeline_stage;
+    const fields = [
+      { lbl: 'Stage',       val: stageLabel },
+      { lbl: 'Deal Value',  val: c.deal_value ? `$${parseFloat(c.deal_value).toFixed(2)}` : null },
+      { lbl: 'Lost Reason', val: c.lost_reason || null },
+    ];
+    document.getElementById('d-pipeline-grid').innerHTML = fields.map(f => `
+      <div class="contract-field">
+        <span class="lbl">${f.lbl}</span>
+        <span class="val ${f.val ? '' : 'empty'}">${f.val ? escapeHtml(f.val) : '—'}</span>
+      </div>`).join('');
   }
 
   function renderContact() {
@@ -1225,6 +1512,229 @@
     renderApps();
     renderModules();
     loadIntakeData();
+    loadActivityAndTasks();
+  }
+
+  // ── Activity & Tasks ────────────────────────────────────────────
+  async function loadActivityAndTasks() {
+    if (!currentClient) return;
+    const cid = currentClient.id;
+    try {
+      const [taskRes, actRes] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/client_tasks?client_id=eq.${cid}&select=*,client_milestone_items(*)&order=status.asc,due_date.asc.nullslast,created_at.asc&client_milestone_items.order=sort_order.asc,created_at.asc`, { headers: sbHeaders() }),
+        fetch(`${SUPABASE_URL}/rest/v1/client_activities?client_id=eq.${cid}&order=created_at.desc&limit=100`, { headers: sbHeaders() }),
+      ]);
+      currentTasks      = taskRes.ok ? await taskRes.json() : [];
+      currentActivities = actRes.ok  ? await actRes.json()  : [];
+    } catch {
+      currentTasks = []; currentActivities = [];
+    }
+    doneTasksShown = false;
+    renderTasks();
+    renderTimeline();
+  }
+
+  async function logSystemActivity(clientId, body) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/client_activities`, {
+        method: 'POST', headers: sbHeaders(),
+        body: JSON.stringify({ client_id: clientId, type: 'system', body, created_by: CURRENT_USER || null }),
+      });
+    } catch { /* non-critical */ }
+  }
+
+  async function logActivity() {
+    if (!currentClient) return;
+    const type = document.getElementById('act-type').value;
+    const body = document.getElementById('act-body').value.trim();
+    if (!body) { toast('Enter something to log', true); return; }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_activities`, {
+        method: 'POST', headers: sbHeaders(),
+        body: JSON.stringify({ client_id: currentClient.id, type, body, created_by: CURRENT_USER || null }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      document.getElementById('act-body').value = '';
+      await loadActivityAndTasks();
+      toast('Logged');
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  const ACTIVITY_ICON = { call: '📞', email: '✉', meeting: '🗓', note: '📝', system: '⚙' };
+
+  function renderTimeline() {
+    const box = document.getElementById('d-timeline');
+    if (!currentActivities.length) { box.innerHTML = `<div class="empty-row">Nothing logged yet</div>`; return; }
+    box.innerHTML = currentActivities.map(a => `
+      <div class="timeline-entry ${a.type === 'system' ? 'system' : ''}">
+        <div class="timeline-entry-icon">${ACTIVITY_ICON[a.type] || '•'}</div>
+        <div>
+          <div class="timeline-entry-body">${escapeHtml(a.body)}</div>
+          <div class="timeline-entry-meta">${escapeHtml(a.created_by || '—')} · ${escapeHtml(formatDateTimeShort(a.created_at))}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  function formatDateTimeShort(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function renderTasks() {
+    const open = currentTasks.filter(t => t.status === 'open');
+    const done = currentTasks.filter(t => t.status === 'done');
+    document.getElementById('d-task-count').textContent = open.length ? `(${open.length} open)` : '';
+
+    document.getElementById('d-tasks-open').innerHTML = open.length
+      ? open.map(taskRowHtml).join('')
+      : `<div class="empty-row">No open tasks or milestones</div>`;
+
+    const doneWrap = document.getElementById('d-tasks-done-wrap');
+    doneWrap.style.display = done.length ? '' : 'none';
+    document.getElementById('d-tasks-done-toggle').textContent = doneTasksShown ? 'Hide completed' : `Show completed (${done.length})`;
+    document.getElementById('d-tasks-done').classList.toggle('hidden', !doneTasksShown);
+    document.getElementById('d-tasks-done').innerHTML = done.map(taskRowHtml).join('');
+  }
+
+  function toggleDoneTasks() {
+    doneTasksShown = !doneTasksShown;
+    renderTasks();
+  }
+
+  function taskRowHtml(t) {
+    const today = new Date().toISOString().slice(0, 10);
+    const overdue = t.status === 'open' && t.due_date && t.due_date < today;
+    const items = (t.client_milestone_items || []).slice().sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at));
+    const metaBits = [];
+    if (t.due_date) metaBits.push(`Due ${escapeHtml(t.due_date)}`);
+    if (t.assignee) metaBits.push(escapeHtml(t.assignee));
+
+    return `
+      <div class="task-row ${t.is_milestone ? 'milestone' : ''}">
+        <input type="checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTaskDone('${t.id}')">
+        <div class="task-body">
+          <div class="task-title ${t.is_milestone ? 'milestone-title' : ''}">${t.is_milestone ? '◆ ' : ''}${escapeHtml(t.title)}</div>
+          ${t.description ? `<div style="font-size:0.8rem;color:var(--muted);margin-top:2px">${escapeHtml(t.description)}</div>` : ''}
+          ${metaBits.length ? `<div class="task-meta ${overdue ? 'overdue' : ''}">${metaBits.join(' · ')}${overdue ? ' · OVERDUE' : ''}</div>` : ''}
+          ${t.is_milestone ? `
+            <div class="checklist-wrap">
+              ${items.map(it => `
+                <div class="checklist-item ${it.done ? 'done' : ''}">
+                  <input type="checkbox" ${it.done ? 'checked' : ''} onchange="toggleChecklistItem('${it.id}','${t.id}')">
+                  <span class="checklist-item-title">${escapeHtml(it.title)}</span>
+                  <button class="icon-btn" style="margin-left:auto" onclick="deleteChecklistItem('${it.id}','${t.id}')">✕</button>
+                </div>`).join('')}
+              <div class="checklist-add">
+                <input type="text" placeholder="+ Add checklist item" onkeydown="if(event.key==='Enter'){addChecklistItem('${t.id}',this)}">
+                <button class="btn btn-ghost btn-tiny" onclick="addChecklistItem('${t.id}', this.previousElementSibling)">Add</button>
+              </div>
+            </div>` : ''}
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" onclick="openTaskModal(${!!t.is_milestone}, '${t.id}')">Edit</button>
+          <button class="icon-btn" onclick="deleteTask('${t.id}')" style="color:var(--warn);border-color:var(--warn)">Del</button>
+        </div>
+      </div>`;
+  }
+
+  async function toggleTaskDone(id) {
+    const t = currentTasks.find(x => x.id === id);
+    if (!t) return;
+    const newStatus = t.status === 'done' ? 'open' : 'done';
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_tasks?id=eq.${id}`, {
+        method: 'PATCH', headers: sbHeaders(),
+        body: JSON.stringify({ status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      if (newStatus === 'done') await logSystemActivity(currentClient.id, `Completed ${t.is_milestone ? 'milestone' : 'task'}: ${t.title}`);
+      await loadActivityAndTasks();
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  function openTaskModal(isMilestone, id = null) {
+    editingTaskId = id;
+    taskModalIsMilestone = isMilestone;
+    const t = id ? currentTasks.find(x => x.id === id) : null;
+    const kind = isMilestone ? 'Milestone' : 'Task';
+    document.getElementById('task-modal-title').innerHTML = `${id ? 'Edit' : 'Add'} <span>${kind}</span>`;
+    document.getElementById('tf-title').value       = t?.title       || '';
+    document.getElementById('tf-description').value = t?.description || '';
+    document.getElementById('tf-due-date').value     = t?.due_date    || '';
+    document.getElementById('tf-assignee').value     = t?.assignee    || '';
+    openModal('task-modal');
+  }
+
+  async function saveTask() {
+    const title = document.getElementById('tf-title').value.trim();
+    if (!title) { toast('Title is required', true); return; }
+    const payload = {
+      title,
+      description: document.getElementById('tf-description').value.trim() || null,
+      due_date:    document.getElementById('tf-due-date').value            || null,
+      assignee:    document.getElementById('tf-assignee').value            || null,
+    };
+    try {
+      let res;
+      if (editingTaskId) {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_tasks?id=eq.${editingTaskId}`, { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(payload) });
+      } else {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/client_tasks`, {
+          method: 'POST', headers: sbHeaders(),
+          body: JSON.stringify({ ...payload, client_id: currentClient.id, is_milestone: taskModalIsMilestone, created_by: CURRENT_USER || null }),
+        });
+      }
+      if (!res.ok) throw new Error(await res.text());
+      closeModal('task-modal');
+      await loadActivityAndTasks();
+      toast(editingTaskId ? 'Saved' : (taskModalIsMilestone ? 'Milestone added' : 'Task added'));
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function deleteTask(id) {
+    const t = currentTasks.find(x => x.id === id);
+    if (!confirm(`Delete "${t?.title}"?`)) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_tasks?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
+      if (!res.ok) throw new Error(await res.text());
+      await loadActivityAndTasks();
+      toast('Deleted');
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function addChecklistItem(taskId, inputEl) {
+    const title = inputEl.value.trim();
+    if (!title) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_milestone_items`, {
+        method: 'POST', headers: sbHeaders(),
+        body: JSON.stringify({ task_id: taskId, title }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await loadActivityAndTasks();
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function toggleChecklistItem(itemId, taskId) {
+    const t = currentTasks.find(x => x.id === taskId);
+    const item = t?.client_milestone_items?.find(i => i.id === itemId);
+    if (!item) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_milestone_items?id=eq.${itemId}`, {
+        method: 'PATCH', headers: sbHeaders(), body: JSON.stringify({ done: !item.done }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await loadActivityAndTasks();
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function deleteChecklistItem(itemId, taskId) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/client_milestone_items?id=eq.${itemId}`, { method: 'DELETE', headers: sbHeaders() });
+      if (!res.ok) throw new Error(await res.text());
+      await loadActivityAndTasks();
+    } catch (e) { toast('Error: ' + e.message, true); }
   }
 
   function renderLogins() {
@@ -1630,6 +2140,9 @@
     document.getElementById('cf-address').value       = c?.address                || '';
     document.getElementById('cf-website').value       = c?.website                || '';
     document.getElementById('cf-status').value        = c?.status                 || 'active';
+    document.getElementById('cf-pipeline-stage').value = c?.pipeline_stage        || 'new_lead';
+    document.getElementById('cf-deal-value').value    = c?.deal_value             ?? '';
+    document.getElementById('cf-lost-reason').value   = c?.lost_reason            || '';
     document.getElementById('cf-date-hired').value   = c?.date_hired             || '';
     document.getElementById('cf-rate').value          = c?.contracted_monthly_rate ?? '';
     document.getElementById('cf-billing').value       = c?.contract_billing_cycle || 'monthly';
@@ -1649,6 +2162,16 @@
     const name = document.getElementById('cf-name').value.trim();
     if (!name) { toast('Name is required', true); return; }
     const rateRaw = document.getElementById('cf-rate').value.trim();
+    const dealValueRaw = document.getElementById('cf-deal-value').value.trim();
+
+    const before = editingClientId ? allClients.find(c => c.id === editingClientId) : null;
+    let status = document.getElementById('cf-status').value;
+    const pipelineStage = document.getElementById('cf-pipeline-stage').value;
+
+    if (before && before.status === 'prospect' && status === 'prospect' && pipelineStage === 'won' && before.pipeline_stage !== 'won') {
+      if (confirm(`Mark ${name} as Won? This will also set their status to Active.`)) status = 'active';
+    }
+
     const payload = {
       name,
       company:                document.getElementById('cf-company').value.trim()       || null,
@@ -1656,7 +2179,10 @@
       phone:                  document.getElementById('cf-phone').value.trim()         || null,
       address:                document.getElementById('cf-address').value.trim()       || null,
       website:                document.getElementById('cf-website').value.trim()       || null,
-      status:                 document.getElementById('cf-status').value,
+      status,
+      pipeline_stage:          pipelineStage,
+      deal_value:              dealValueRaw ? parseFloat(dealValueRaw) : null,
+      lost_reason:             document.getElementById('cf-lost-reason').value.trim()   || null,
       date_hired:             document.getElementById('cf-date-hired').value           || null,
       contracted_monthly_rate: rateRaw ? parseFloat(rateRaw) : null,
       contract_billing_cycle: document.getElementById('cf-billing').value,
@@ -1677,12 +2203,25 @@
         res = await fetch(`${SUPABASE_URL}/rest/v1/clients`, { method: 'POST', headers: sbHeaders(), body: JSON.stringify(payload) });
       }
       if (!res.ok) throw new Error(await res.text());
+      const savedId = editingClientId || (await res.json())[0]?.id;
       closeModal('client-modal');
-      await loadClients();
-      if (currentClient && editingClientId === currentClient.id) {
-        currentClient = allClients.find(c => c.id === currentClient.id) || currentClient;
-        renderDetailHead(); renderContract(); renderContact();
+
+      if (before) {
+        if (before.status !== status) await logSystemActivity(savedId, `Status changed: ${capitalize(before.status)} → ${capitalize(status)}`);
+        if ((before.pipeline_stage || 'new_lead') !== pipelineStage) {
+          const fromLbl = PIPELINE_STAGES.find(s => s.key === (before.pipeline_stage || 'new_lead'))?.label;
+          const toLbl   = PIPELINE_STAGES.find(s => s.key === pipelineStage)?.label;
+          await logSystemActivity(savedId, `Stage changed: ${fromLbl} → ${toLbl}`);
+        }
       }
+
+      await loadClients();
+      if (currentClient && savedId === currentClient.id) {
+        currentClient = allClients.find(c => c.id === currentClient.id) || currentClient;
+        renderDetailHead(); renderContract(); renderContact(); renderPipelineFields();
+        loadActivityAndTasks();
+      }
+      if (listMode === 'pipeline') renderPipeline();
       toast(editingClientId ? 'Client updated' : 'Client saved');
     } catch (e) { toast('Error: ' + e.message, true); }
   }
