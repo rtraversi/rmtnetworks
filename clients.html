@@ -141,9 +141,10 @@
     padding: 3px 9px; border-radius: 20px;
     letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; flex-shrink: 0;
   }
-  .status-active  { background: rgba(79,255,176,0.15);  color: var(--accent); }
-  .status-paused  { background: rgba(232,200,64,0.15);  color: #e8c840; }
-  .status-former  { background: rgba(90,96,112,0.2);    color: var(--muted); }
+  .status-active   { background: rgba(79,255,176,0.15);  color: var(--accent); }
+  .status-prospect { background: rgba(75,143,255,0.15);  color: var(--accent2); }
+  .status-paused   { background: rgba(232,200,64,0.15);  color: #e8c840; }
+  .status-former   { background: rgba(90,96,112,0.2);    color: var(--muted); }
 
   .client-meta {
     font-family: 'DM Mono', monospace; font-size: 0.72rem;
@@ -551,10 +552,12 @@
       <input class="search-input" id="search" placeholder="Search by name, company, email..." oninput="renderList()">
       <select class="filter-select" id="filter-status" onchange="renderList()">
         <option value="">All Statuses</option>
+        <option value="prospect">Prospect</option>
         <option value="active">Active</option>
         <option value="paused">Paused</option>
         <option value="former">Former</option>
       </select>
+      <button class="btn btn-ghost" onclick="openIntakeModal()">+ Secure Intake Link</button>
     </div>
     <div id="clients-grid">
       <div class="state-msg"><div class="big">⟳</div>Loading...</div>
@@ -638,9 +641,24 @@
       <div class="section">
         <div class="section-head">
           <h2>Logins <span class="count" id="d-login-count"></span></h2>
-          <button class="btn btn-primary btn-tiny" onclick="openLoginModal()">+ Add Login</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-tiny" onclick="openIntakeModal(currentClient.id)">+ Secure Intake Link</button>
+            <button class="btn btn-primary btn-tiny" onclick="openLoginModal()">+ Add Login</button>
+          </div>
         </div>
         <div id="d-logins"></div>
+      </div>
+
+      <!-- Pending intake submissions -->
+      <div class="section" id="d-intake-pending-section" style="display:none">
+        <div class="section-head"><h2>Pending Intake Submissions <span class="count" id="d-intake-pending-count"></span></h2></div>
+        <div id="d-intake-pending"></div>
+      </div>
+
+      <!-- Intake links -->
+      <div class="section" id="d-intake-links-section" style="display:none">
+        <div class="section-head"><h2>Intake Links <span class="count" id="d-intake-link-count"></span></h2></div>
+        <div id="d-intake-links"></div>
       </div>
 
       <!-- Subscriptions -->
@@ -731,6 +749,7 @@
       <div class="form-group"><label>Website</label><input type="text" id="cf-website" placeholder="https://..."></div>
       <div class="form-group"><label>Status</label>
         <select id="cf-status">
+          <option value="prospect">Prospect</option>
           <option value="active">Active</option>
           <option value="paused">Paused</option>
           <option value="former">Former</option>
@@ -863,6 +882,70 @@
   </div>
 </div>
 
+<!-- ── Secure Intake Link modal ── -->
+<div class="modal-overlay" id="intake-modal">
+  <div class="modal">
+    <h2>Secure <span>Intake Link</span></h2>
+    <div id="intake-modal-body">
+      <div class="form-group" id="intake-prospect-wrap">
+        <label>Prospect Name *</label>
+        <input type="text" id="if-prospect-name" placeholder="Who is this for?">
+      </div>
+      <div class="form-group" id="intake-client-wrap" style="display:none">
+        <label>Client</label>
+        <input type="text" id="if-client-name" disabled>
+      </div>
+      <div class="form-group">
+        <label>What should they fill in?</label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0"><input type="checkbox" class="if-field" value="contact" checked style="width:auto"> Contact info</label>
+          <label style="display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0"><input type="checkbox" class="if-field" value="logins" checked style="width:auto"> Logins</label>
+          <label style="display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0"><input type="checkbox" class="if-field" value="subscriptions" style="width:auto"> Subscriptions</label>
+          <label style="display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0"><input type="checkbox" class="if-field" value="notes" style="width:auto"> Free-form notes</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Expires In</label>
+          <select id="if-expiry">
+            <option value="1">1 day</option>
+            <option value="3" selected>3 days</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Label (internal)</label><input type="text" id="if-label" placeholder="e.g. Onboarding"></div>
+      </div>
+    </div>
+    <div id="intake-result" class="hidden" style="margin-top:6px">
+      <div class="form-group">
+        <label>Link (copy this — it won't be shown again)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="intake-result-url" readonly style="font-size:0.74rem">
+          <button class="btn btn-primary btn-tiny" onclick="copyIntakeLink()">Copy</button>
+        </div>
+      </div>
+    </div>
+    <div id="intake-modal-error" class="form-error hidden"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('intake-modal')">Close</button>
+      <button class="btn btn-primary" id="intake-create-btn" onclick="createIntakeLink()">Generate Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Intake submission review modal ── -->
+<div class="modal-overlay" id="intake-review-modal">
+  <div class="modal">
+    <h2>Review <span>Submission</span></h2>
+    <div id="intake-review-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('intake-review-modal')">Close</button>
+      <button class="btn btn-danger" onclick="dismissSubmissionFromReview()">Dismiss</button>
+      <button class="btn btn-primary" onclick="applySubmissionFromReview()">Apply to Client</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -878,6 +961,10 @@
   let editingSupportId = null;
   let appsCatalog = [], modulesCatalog = [];
   let currentClientApps = [], currentClientModules = [];
+  let currentIntakeTokens = [], currentIntakePending = [];
+  let intakeModalClientId = null;
+  let lastIntakeResultUrl = '';
+  let currentReviewSubmission = null;
 
   const SESSION = sessionStorage.getItem('rmt_session') || '';
 
@@ -1133,6 +1220,7 @@
     renderSupportContracts();
     renderApps();
     renderModules();
+    loadIntakeData();
   }
 
   function renderLogins() {
@@ -1678,6 +1766,214 @@
       await loadChildren();
       await loadClients();
       toast('Deleted');
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  // ── Secure Intake Links ────────────────────────────────────────
+  function openIntakeModal(clientId = null) {
+    intakeModalClientId = clientId;
+    document.getElementById('intake-modal-error').classList.add('hidden');
+    document.getElementById('intake-result').classList.add('hidden');
+    document.getElementById('intake-modal-body').style.display = '';
+    document.getElementById('intake-create-btn').style.display = '';
+    document.getElementById('if-prospect-name').value = '';
+    document.getElementById('if-label').value = '';
+    document.getElementById('if-expiry').value = '3';
+    document.querySelectorAll('.if-field').forEach(cb => cb.checked = (cb.value === 'contact' || cb.value === 'logins'));
+
+    if (clientId) {
+      document.getElementById('intake-prospect-wrap').style.display = 'none';
+      document.getElementById('intake-client-wrap').style.display = '';
+      document.getElementById('if-client-name').value = currentClient?.name || '';
+    } else {
+      document.getElementById('intake-prospect-wrap').style.display = '';
+      document.getElementById('intake-client-wrap').style.display = 'none';
+    }
+    openModal('intake-modal');
+  }
+
+  async function createIntakeLink() {
+    const errEl = document.getElementById('intake-modal-error');
+    errEl.classList.add('hidden');
+    const fields = [...document.querySelectorAll('.if-field:checked')].map(cb => cb.value);
+    if (!fields.length) { errEl.textContent = 'Pick at least one section.'; errEl.classList.remove('hidden'); return; }
+
+    const payload = {
+      fields,
+      expires_in_days: Number(document.getElementById('if-expiry').value),
+      label: document.getElementById('if-label').value.trim() || null,
+    };
+    if (intakeModalClientId) {
+      payload.client_id = intakeModalClientId;
+    } else {
+      const name = document.getElementById('if-prospect-name').value.trim();
+      if (!name) { errEl.textContent = 'Prospect name is required.'; errEl.classList.remove('hidden'); return; }
+      payload.prospect_name = name;
+    }
+
+    const btn = document.getElementById('intake-create-btn');
+    btn.disabled = true;
+    try {
+      const res = await fetch('/.netlify/functions/intake-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SESSION}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create link');
+
+      lastIntakeResultUrl = `${window.location.origin}/intake.html?t=${data.token}`;
+      document.getElementById('intake-result-url').value = lastIntakeResultUrl;
+      document.getElementById('intake-result').classList.remove('hidden');
+      document.getElementById('intake-modal-body').style.display = 'none';
+      document.getElementById('intake-create-btn').style.display = 'none';
+
+      if (currentClient && currentClient.id === intakeModalClientId) loadIntakeData();
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.classList.remove('hidden');
+    }
+    btn.disabled = false;
+  }
+
+  function copyIntakeLink() {
+    navigator.clipboard.writeText(lastIntakeResultUrl).then(() => toast('Link copied')).catch(() => toast('Could not copy — select and copy manually', true));
+  }
+
+  async function loadIntakeData() {
+    if (!currentClient) return;
+    try {
+      const res = await fetch(`/.netlify/functions/intake-admin?client_id=${currentClient.id}`, {
+        headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      currentIntakeTokens  = data.tokens || [];
+      currentIntakePending = data.submissions || [];
+    } catch {
+      currentIntakeTokens = []; currentIntakePending = [];
+    }
+    renderIntakeLinks();
+    renderIntakePending();
+  }
+
+  const INTAKE_STATUS_LABEL = { active: 'Active', expired: 'Expired', used: 'Used', revoked: 'Revoked' };
+
+  function renderIntakeLinks() {
+    const section = document.getElementById('d-intake-links-section');
+    const box = document.getElementById('d-intake-links');
+    document.getElementById('d-intake-link-count').textContent = currentIntakeTokens.length ? `(${currentIntakeTokens.length})` : '';
+    if (!currentIntakeTokens.length) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    box.innerHTML = currentIntakeTokens.map(t => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600">${escapeHtml(t.label || (t.fields || []).join(', '))}</div>
+          <div style="color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;margin-top:2px">
+            ${INTAKE_STATUS_LABEL[t.status] || t.status} · expires ${escapeHtml((t.expires_at || '').slice(0,10))} · by ${escapeHtml(t.created_by || '—')}
+          </div>
+        </div>
+        ${t.status === 'active' ? `<button class="btn btn-danger btn-tiny" onclick="revokeIntakeToken('${t.id}')">Revoke</button>` : ''}
+      </div>`).join('');
+  }
+
+  function renderIntakePending() {
+    const section = document.getElementById('d-intake-pending-section');
+    const box = document.getElementById('d-intake-pending');
+    document.getElementById('d-intake-pending-count').textContent = currentIntakePending.length ? `(${currentIntakePending.length})` : '';
+    if (!currentIntakePending.length) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    box.innerHTML = currentIntakePending.map(s => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600">${escapeHtml(s.submitted_by_name || 'Unnamed submission')}</div>
+          <div style="color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;margin-top:2px">
+            ${escapeHtml(s.submitted_by_email || '')} · ${escapeHtml((s.created_at || '').slice(0,10))}
+          </div>
+        </div>
+        <button class="btn btn-primary btn-tiny" onclick="openReviewSubmission('${s.id}')">Review</button>
+      </div>`).join('');
+  }
+
+  async function revokeIntakeToken(id) {
+    if (!confirm('Revoke this link? It will stop working immediately.')) return;
+    try {
+      const res = await fetch(`/.netlify/functions/intake-admin?revoke_token=${id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast('Link revoked');
+      loadIntakeData();
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function openReviewSubmission(id) {
+    try {
+      const res = await fetch(`/.netlify/functions/intake-admin?submission_id=${id}`, {
+        headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      currentReviewSubmission = await res.json();
+      renderReviewBody();
+      openModal('intake-review-modal');
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  function renderReviewBody() {
+    const s = currentReviewSubmission;
+    const d = s.data || {};
+    let html = '';
+    if (d.contact) {
+      html += `<div class="modal-section-label">Contact</div>
+        <div style="font-size:0.82rem;margin-bottom:14px">
+          ${escapeHtml(d.contact.name || '—')}${d.contact.company ? ' · ' + escapeHtml(d.contact.company) : ''}<br>
+          ${escapeHtml(d.contact.email || '')} ${escapeHtml(d.contact.phone || '')}
+        </div>`;
+    }
+    if (d.logins && d.logins.length) {
+      html += `<div class="modal-section-label">Logins</div>` + d.logins.map(l => `
+        <div style="font-size:0.82rem;margin-bottom:8px;font-family:'DM Mono',monospace">
+          <strong>${escapeHtml(l.app)}</strong> — ${escapeHtml(l.username || '—')} / ${escapeHtml(l.password || '(no password)')} ${l.url ? `<br><span style="color:var(--muted)">${escapeHtml(l.url)}</span>` : ''}
+        </div>`).join('');
+    }
+    if (d.subscriptions && d.subscriptions.length) {
+      html += `<div class="modal-section-label">Subscriptions</div>` + d.subscriptions.map(sub => `
+        <div style="font-size:0.82rem;margin-bottom:8px;font-family:'DM Mono',monospace">
+          <strong>${escapeHtml(sub.service)}</strong> — ${sub.price ? '$' + sub.price : '—'}/${escapeHtml(sub.billing_cycle || 'monthly')}
+        </div>`).join('');
+    }
+    if (d.notes) {
+      html += `<div class="modal-section-label">Notes</div><div style="font-size:0.82rem;white-space:pre-wrap">${escapeHtml(d.notes)}</div>`;
+    }
+    document.getElementById('intake-review-body').innerHTML = html || '<div class="empty-row">Nothing submitted.</div>';
+  }
+
+  async function applySubmissionFromReview() {
+    if (!currentReviewSubmission) return;
+    try {
+      const res = await fetch(`/.netlify/functions/intake-admin?apply_submission=${currentReviewSubmission.id}`, {
+        method: 'PATCH', headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to apply');
+      closeModal('intake-review-modal');
+      toast('Applied to client record');
+      await loadClients();
+      if (currentClient) await loadChildren();
+    } catch (e) { toast('Error: ' + e.message, true); }
+  }
+
+  async function dismissSubmissionFromReview() {
+    if (!currentReviewSubmission) return;
+    if (!confirm('Dismiss this submission without applying it?')) return;
+    try {
+      const res = await fetch(`/.netlify/functions/intake-admin?dismiss_submission=${currentReviewSubmission.id}`, {
+        method: 'PATCH', headers: { Authorization: `Bearer ${SESSION}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      closeModal('intake-review-modal');
+      toast('Dismissed');
+      loadIntakeData();
     } catch (e) { toast('Error: ' + e.message, true); }
   }
 

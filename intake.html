@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Intake — RMT Networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0d0f14;
+    --surface: #13161e;
+    --border:  #1e2230;
+    --accent:  #4fffb0;
+    --accent2: #4b8fff;
+    --warn:    #ff6b4a;
+    --text:    #e8eaf0;
+    --muted:   #5a6070;
+    --card-bg: #181b24;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif;
+    min-height: 100vh; display: flex; justify-content: center;
+  }
+  main { width: 100%; max-width: 560px; padding: 48px 24px 80px; }
+  .logo { font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 6px; }
+  .logo span { color: var(--muted); font-weight: 400; }
+  h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+  .sub {
+    font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted);
+    margin-bottom: 32px; line-height: 1.6;
+  }
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 0.95rem; font-weight: 700; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  input, select, textarea {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.82rem;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { min-height: 80px; resize: vertical; }
+  .repeat-item {
+    border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+    margin-bottom: 12px; position: relative;
+  }
+  .repeat-remove {
+    position: absolute; top: 10px; right: 10px; background: none; border: none;
+    color: var(--muted); cursor: pointer; font-size: 0.9rem;
+  }
+  .repeat-remove:hover { color: var(--warn); }
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 40px; }
+  .pw-toggle {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; font-size: 0.9rem;
+  }
+  .btn {
+    font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    padding: 10px 20px; border-radius: 6px; border: none;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em;
+  }
+  .btn-primary { background: var(--accent); color: #000; font-weight: 500; width: 100%; padding: 13px; font-size: 0.85rem; }
+  .btn-primary:hover { background: #6fffbe; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px dashed var(--border); width: 100%; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .state-msg {
+    text-align: center; padding: 80px 20px; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 0.85rem; line-height: 1.7;
+  }
+  .state-msg .big { font-size: 2rem; margin-bottom: 12px; }
+  .lock-note {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted);
+    display: flex; align-items: center; gap: 6px; margin-top: 20px; justify-content: center;
+  }
+  .form-error {
+    background: rgba(255,107,74,0.1); border: 1px solid var(--warn); color: var(--warn);
+    border-radius: 6px; padding: 10px 14px; font-family: 'DM Mono', monospace;
+    font-size: 0.76rem; margin-top: 14px;
+  }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <div id="loading" class="state-msg"><div class="big">⟳</div>Loading…</div>
+
+  <div id="invalid" class="state-msg hidden">
+    <div class="big">🔒</div>
+    <div id="invalid-msg">This link is invalid.</div>
+  </div>
+
+  <div id="success" class="state-msg hidden">
+    <div class="big">✓</div>
+    Thanks — that's been sent securely.<br>We'll take it from here.
+  </div>
+
+  <div id="form-wrap" class="hidden">
+    <div class="logo">RMT<span> NETWORKS</span></div>
+    <h1>Secure Intake</h1>
+    <p class="sub" id="intro-text"></p>
+
+    <form id="intake-form">
+      <div class="card hidden" id="section-contact">
+        <h2>Your Info</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Name *</label><input type="text" id="f-name" required></div>
+          <div class="form-group"><label>Company</label><input type="text" id="f-company"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Email</label><input type="email" id="f-email"></div>
+          <div class="form-group"><label>Phone</label><input type="text" id="f-phone"></div>
+        </div>
+      </div>
+
+      <div class="card hidden" id="section-logins">
+        <h2>Logins</h2>
+        <div id="logins-list"></div>
+        <button type="button" class="btn btn-ghost" onclick="addLoginRow()">+ Add a login</button>
+      </div>
+
+      <div class="card hidden" id="section-subscriptions">
+        <h2>Subscriptions</h2>
+        <div id="subs-list"></div>
+        <button type="button" class="btn btn-ghost" onclick="addSubRow()">+ Add a subscription</button>
+      </div>
+
+      <div class="card hidden" id="section-notes">
+        <h2>Anything else?</h2>
+        <textarea id="f-notes" placeholder="Notes for us..."></textarea>
+      </div>
+
+      <div id="submit-error" class="form-error hidden"></div>
+      <button type="submit" class="btn btn-primary" id="submit-btn">Submit Securely</button>
+      <div class="lock-note">🔒 Encrypted in transit and at rest. This link works once.</div>
+    </form>
+  </div>
+</main>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const TOKEN = params.get('t') || '';
+  let fields = [];
+
+  function esc(s) {
+    const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML;
+  }
+
+  async function init() {
+    if (!TOKEN) return showInvalid('This link is missing its access code.');
+    try {
+      const res = await fetch(`/.netlify/functions/intake?t=${encodeURIComponent(TOKEN)}`);
+      const data = await res.json();
+      if (!res.ok) return showInvalid(data.error || 'This link is invalid.');
+      fields = data.fields || ['contact'];
+
+      document.getElementById('intro-text').textContent = data.client_name
+        ? `Hi${data.is_new_prospect ? '' : ' ' + data.client_name.split(' ')[0]}, please fill in what applies below — it goes straight to us, encrypted.`
+        : 'Please fill in what applies below — it goes straight to us, encrypted.';
+
+      fields.forEach(f => {
+        const el = document.getElementById(`section-${f}`);
+        if (el) el.classList.remove('hidden');
+      });
+      if (fields.includes('logins')) addLoginRow();
+      if (fields.includes('subscriptions')) addSubRow();
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('form-wrap').classList.remove('hidden');
+    } catch {
+      showInvalid('Something went wrong loading this link. Please try again in a moment.');
+    }
+  }
+
+  function showInvalid(msg) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('invalid-msg').textContent = msg;
+    document.getElementById('invalid').classList.remove('hidden');
+  }
+
+  function addLoginRow() {
+    const wrap = document.createElement('div');
+    wrap.className = 'repeat-item';
+    wrap.innerHTML = `
+      <button type="button" class="repeat-remove" onclick="this.closest('.repeat-item').remove()">✕</button>
+      <div class="form-row">
+        <div class="form-group"><label>App / Service</label><input type="text" class="l-app" placeholder="e.g. Shopify"></div>
+        <div class="form-group"><label>Username</label><input type="text" class="l-username"></div>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" class="l-password" autocomplete="new-password">
+          <button type="button" class="pw-toggle" onclick="togglePw(this)">👁</button>
+        </div>
+      </div>
+      <div class="form-group"><label>URL</label><input type="text" class="l-url" placeholder="https://..."></div>
+      <div class="form-group"><label>Notes</label><input type="text" class="l-notes"></div>
+    `;
+    document.getElementById('logins-list').appendChild(wrap);
+  }
+
+  function addSubRow() {
+    const wrap = document.createElement('div');
+    wrap.className = 'repeat-item';
+    wrap.innerHTML = `
+      <button type="button" class="repeat-remove" onclick="this.closest('.repeat-item').remove()">✕</button>
+      <div class="form-row">
+        <div class="form-group"><label>Service</label><input type="text" class="s-service" placeholder="e.g. Klaviyo"></div>
+        <div class="form-group"><label>Login / Email</label><input type="text" class="s-login"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Price</label><input type="number" class="s-price" step="0.01" min="0"></div>
+        <div class="form-group"><label>Billing Cycle</label>
+          <select class="s-cycle"><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="payg">PAYG</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Website URL</label><input type="text" class="s-url" placeholder="https://..."></div>
+      <div class="form-group"><label>Notes</label><input type="text" class="s-notes"></div>
+    `;
+    document.getElementById('subs-list').appendChild(wrap);
+  }
+
+  function togglePw(btn) {
+    const inp = btn.previousElementSibling;
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁'; }
+  }
+
+  document.getElementById('intake-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('submit-error');
+    const btn = document.getElementById('submit-btn');
+    errEl.classList.add('hidden');
+
+    if (fields.includes('contact') && !document.getElementById('f-name').value.trim()) {
+      errEl.textContent = 'Please enter your name.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const payload = { token: TOKEN };
+    if (fields.includes('contact')) {
+      payload.name = document.getElementById('f-name').value.trim();
+      payload.company = document.getElementById('f-company').value.trim();
+      payload.email = document.getElementById('f-email').value.trim();
+      payload.phone = document.getElementById('f-phone').value.trim();
+    }
+    if (fields.includes('logins')) {
+      payload.logins = [...document.querySelectorAll('#logins-list .repeat-item')].map(row => ({
+        app: row.querySelector('.l-app').value.trim(),
+        username: row.querySelector('.l-username').value.trim(),
+        password: row.querySelector('.l-password').value,
+        url: row.querySelector('.l-url').value.trim(),
+        notes: row.querySelector('.l-notes').value.trim(),
+      })).filter(l => l.app);
+    }
+    if (fields.includes('subscriptions')) {
+      payload.subscriptions = [...document.querySelectorAll('#subs-list .repeat-item')].map(row => ({
+        service: row.querySelector('.s-service').value.trim(),
+        login: row.querySelector('.s-login').value.trim(),
+        price: row.querySelector('.s-price').value || null,
+        billing_cycle: row.querySelector('.s-cycle').value,
+        website_url: row.querySelector('.s-url').value.trim(),
+        notes: row.querySelector('.s-notes').value.trim(),
+      })).filter(s => s.service);
+    }
+    if (fields.includes('notes')) {
+      payload.notes = document.getElementById('f-notes').value.trim();
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    try {
+      const res = await fetch('/.netlify/functions/intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Submission failed.');
+      document.getElementById('form-wrap').classList.add('hidden');
+      document.getElementById('success').classList.remove('hidden');
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Submit Securely';
+    }
+  });
+
+  init();
+</script>
+</body>
+</html>
