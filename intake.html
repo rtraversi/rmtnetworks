@@ -119,11 +119,11 @@
     <div id="personal-message" class="message-box hidden"></div>
     <p class="sub" id="intro-text"></p>
 
-    <form id="intake-form">
+    <form id="intake-form" novalidate>
       <div class="card hidden" id="section-contact">
         <h2>Your Info</h2>
         <div class="form-row">
-          <div class="form-group"><label>Name *</label><input type="text" id="f-name" required></div>
+          <div class="form-group"><label>Name *</label><input type="text" id="f-name"></div>
           <div class="form-group"><label>Company</label><input type="text" id="f-company"></div>
         </div>
         <div class="form-row">
@@ -261,6 +261,9 @@
     if (fields.includes('contact') && !document.getElementById('f-name').value.trim()) {
       errEl.textContent = 'Please enter your name.';
       errEl.classList.remove('hidden');
+      const nameInput = document.getElementById('f-name');
+      nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      nameInput.focus();
       return;
     }
 
