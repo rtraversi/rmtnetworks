@@ -915,6 +915,10 @@
         </div>
         <div class="form-group"><label>Label (internal)</label><input type="text" id="if-label" placeholder="e.g. Onboarding"></div>
       </div>
+      <div class="form-group">
+        <label>Note to Include <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(shown to them on the page)</span></label>
+        <textarea id="if-message" placeholder="e.g. Hey Tamara, just copy/paste this info into the boxes below and hit submit."></textarea>
+      </div>
     </div>
     <div id="intake-result" class="hidden" style="margin-top:6px">
       <div class="form-group">
@@ -1778,6 +1782,7 @@
     document.getElementById('intake-create-btn').style.display = '';
     document.getElementById('if-prospect-name').value = '';
     document.getElementById('if-label').value = '';
+    document.getElementById('if-message').value = '';
     document.getElementById('if-expiry').value = '3';
     document.querySelectorAll('.if-field').forEach(cb => cb.checked = (cb.value === 'contact' || cb.value === 'logins'));
 
@@ -1802,6 +1807,7 @@
       fields,
       expires_in_days: Number(document.getElementById('if-expiry').value),
       label: document.getElementById('if-label').value.trim() || null,
+      message: document.getElementById('if-message').value.trim() || null,
     };
     if (intakeModalClientId) {
       payload.client_id = intakeModalClientId;

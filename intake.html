@@ -31,6 +31,11 @@
     font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted);
     margin-bottom: 32px; line-height: 1.6;
   }
+  .message-box {
+    background: rgba(79,255,176,0.06); border: 1px solid rgba(79,255,176,0.3);
+    border-radius: 10px; padding: 16px 18px; margin-bottom: 20px;
+    font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;
+  }
   .card {
     background: var(--card-bg); border: 1px solid var(--border);
     border-radius: 12px; padding: 24px; margin-bottom: 20px;
@@ -111,6 +116,7 @@
   <div id="form-wrap" class="hidden">
     <div class="logo">RMT<span> NETWORKS</span></div>
     <h1>Secure Intake</h1>
+    <div id="personal-message" class="message-box hidden"></div>
     <p class="sub" id="intro-text"></p>
 
     <form id="intake-form">
@@ -170,6 +176,12 @@
       document.getElementById('intro-text').textContent = data.client_name
         ? `Hi${data.is_new_prospect ? '' : ' ' + data.client_name.split(' ')[0]}, please fill in what applies below — it goes straight to us, encrypted.`
         : 'Please fill in what applies below — it goes straight to us, encrypted.';
+
+      if (data.message) {
+        const box = document.getElementById('personal-message');
+        box.textContent = data.message;
+        box.classList.remove('hidden');
+      }
 
       fields.forEach(f => {
         const el = document.getElementById(`section-${f}`);

@@ -79,6 +79,7 @@ exports.handler = async (event) => {
           prospect_name: body.client_id ? null : String(body.prospect_name).trim().slice(0, 200),
           token,
           label: body.label ? String(body.label).trim().slice(0, 200) : null,
+          message: body.message ? String(body.message).trim().slice(0, 1000) : null,
           fields,
           expires_at: expiresAt,
           max_uses: Number(body.max_uses) > 0 ? Math.min(Number(body.max_uses), 50) : 1,

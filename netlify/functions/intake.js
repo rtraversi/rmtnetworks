@@ -59,6 +59,7 @@ exports.handler = async (event) => {
       }
       return json(200, {
         label: row.label || null,
+        message: row.message || null,
         fields: row.fields || ['contact'],
         client_name: row.clients?.name || row.prospect_name || null,
         company: row.clients?.company || null,
