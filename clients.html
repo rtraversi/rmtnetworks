@@ -82,6 +82,18 @@
   .page-title h1 { font-size: 1.8rem; font-weight: 800; }
   .page-title .icon { font-size: 1.8rem; }
 
+  .stats-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+  .stat-pill {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 18px;
+    display: flex; flex-direction: column; gap: 3px; min-width: 130px;
+  }
+  .stat-pill .stat-label {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .stat-pill .stat-value { font-size: 1.25rem; font-weight: 700; }
+
   .toolbar {
     display: flex; gap: 12px; align-items: center;
     margin-bottom: 22px; flex-wrap: wrap;
@@ -235,10 +247,11 @@
     padding: 3px 9px; border-radius: 20px;
     letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; flex-shrink: 0;
   }
-  .status-active   { background: rgba(79,255,176,0.15);  color: var(--accent); }
-  .status-prospect { background: rgba(75,143,255,0.15);  color: var(--accent2); }
-  .status-paused   { background: rgba(232,200,64,0.15);  color: #e8c840; }
-  .status-former   { background: rgba(90,96,112,0.2);    color: var(--muted); }
+  .status-active    { background: rgba(79,255,176,0.15);  color: var(--accent); }
+  .status-prospect  { background: rgba(75,143,255,0.15);  color: var(--accent2); }
+  .status-delivered { background: rgba(180,139,255,0.15); color: #b48bff; }
+  .status-paused    { background: rgba(232,200,64,0.15);  color: #e8c840; }
+  .status-former    { background: rgba(90,96,112,0.2);    color: var(--muted); }
   .status-select {
     flex: 0 0 130px; -webkit-appearance: none; appearance: none; text-align: center;
     border: 1px solid transparent; cursor: pointer;
@@ -558,12 +571,27 @@
       <span class="icon">👥</span>
       <h1>Clients</h1>
     </div>
+    <div class="stats-bar">
+      <div class="stat-pill">
+        <span class="stat-label">Total Payments</span>
+        <span class="stat-value" id="stat-payments" style="color:var(--accent)">$0.00</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-label">Owed</span>
+        <span class="stat-value" id="stat-owed" style="color:var(--warn)">$0.00</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-label">Active Clients</span>
+        <span class="stat-value" id="stat-active">0</span>
+      </div>
+    </div>
     <div class="toolbar">
       <input class="search-input" id="search" placeholder="Search by name, company, email..." oninput="renderList()">
       <select class="filter-select" id="filter-status" onchange="renderList()">
         <option value="">All Statuses</option>
         <option value="prospect">Prospect</option>
         <option value="active">Active</option>
+        <option value="delivered">Delivered</option>
         <option value="paused">Paused</option>
         <option value="former">Former</option>
       </select>
@@ -773,6 +801,7 @@
         <select id="cf-status">
           <option value="prospect">Prospect</option>
           <option value="active">Active</option>
+          <option value="delivered">Delivered</option>
           <option value="paused">Paused</option>
           <option value="former">Former</option>
         </select>
@@ -1063,6 +1092,7 @@
       if (!res.ok) throw new Error(await res.text());
       allClients = await res.json();
       renderList();
+      renderStats();
     } catch (e) {
       document.getElementById('clients-grid').innerHTML =
         `<div class="state-msg"><div class="big">⚠</div>Could not load clients.<br>${escapeHtml(e.message)}</div>`;
@@ -1147,10 +1177,11 @@
   }
 
   const CLIENT_STATUSES = [
-    { key: 'prospect', label: 'Prospect' },
-    { key: 'active',   label: 'Active'   },
-    { key: 'paused',   label: 'Paused'   },
-    { key: 'former',   label: 'Former'   },
+    { key: 'prospect',  label: 'Prospect'  },
+    { key: 'active',    label: 'Active'    },
+    { key: 'delivered', label: 'Delivered' },
+    { key: 'paused',    label: 'Paused'    },
+    { key: 'former',    label: 'Former'    },
   ];
 
   function renderList() {
@@ -1201,6 +1232,23 @@
     }).join('')}</div>`;
   }
 
+  function renderStats() {
+    const totalPayments = allClients.reduce((sum, c) =>
+      sum + (c.client_payments || []).reduce((s, p) => s + parseFloat(p.amount), 0), 0);
+
+    const totalOwed = allClients.reduce((sum, c) => {
+      const charged  = (c.client_charges  || []).reduce((s, x) => s + parseFloat(x.amount), 0);
+      const received = (c.client_payments || []).reduce((s, x) => s + parseFloat(x.amount), 0);
+      return sum + Math.max(0, charged - received);
+    }, 0);
+
+    const activeCount = allClients.filter(c => (c.status || 'active') === 'active').length;
+
+    document.getElementById('stat-payments').textContent = `$${totalPayments.toFixed(2)}`;
+    document.getElementById('stat-owed').textContent     = `$${totalOwed.toFixed(2)}`;
+    document.getElementById('stat-active').textContent   = String(activeCount);
+  }
+
   async function updateClientStatus(clientId, newStatus) {
     const client = allClients.find(c => c.id === clientId);
     if (!client) return;
@@ -1216,6 +1264,7 @@
       const newLabel = CLIENT_STATUSES.find(s => s.key === newStatus)?.label || newStatus;
       await logSystemActivity(clientId, `Status changed: ${oldLabel} → ${newLabel}`);
       renderList();
+      renderStats();
       if (currentClient && currentClient.id === clientId) {
         currentClient.status = newStatus;
         renderDetailHead();
@@ -2691,6 +2740,7 @@
       clientCharges.push(await res.json());
       clientCharges.sort((a, b) => b.charged_on.localeCompare(a.charged_on));
       renderPaymentLedger();
+      loadClients();
     } catch (e) { toast('Failed to add: ' + e.message, true); }
   }
 
@@ -2704,6 +2754,7 @@
       if (!res.ok) throw new Error(await res.text());
       clientCharges = clientCharges.filter(c => c.id !== id);
       renderPaymentLedger();
+      loadClients();
     } catch (e) { toast('Failed to remove: ' + e.message, true); }
   }
 
@@ -2725,6 +2776,7 @@
       clientPayments.push(await res.json());
       clientPayments.sort((a, b) => b.paid_on.localeCompare(a.paid_on));
       renderPaymentLedger();
+      loadClients();
     } catch (e) { toast('Failed to add: ' + e.message, true); }
   }
 
@@ -2738,6 +2790,7 @@
       if (!res.ok) throw new Error(await res.text());
       clientPayments = clientPayments.filter(p => p.id !== id);
       renderPaymentLedger();
+      loadClients();
     } catch (e) { toast('Failed to remove: ' + e.message, true); }
   }
 </script>
