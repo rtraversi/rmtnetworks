@@ -252,6 +252,7 @@
   .status-delivered { background: rgba(180,139,255,0.15); color: #b48bff; }
   .status-paused    { background: rgba(232,200,64,0.15);  color: #e8c840; }
   .status-former    { background: rgba(90,96,112,0.2);    color: var(--muted); }
+  .status-bsbr      { background: rgba(255,107,203,0.15); color: #ff6bcb; }
   .status-select {
     flex: 0 0 130px; -webkit-appearance: none; appearance: none; text-align: center;
     border: 1px solid transparent; cursor: pointer;
@@ -594,6 +595,7 @@
         <option value="delivered">Delivered</option>
         <option value="paused">Paused</option>
         <option value="former">Former</option>
+        <option value="bsbr">BSBR</option>
       </select>
       <button class="btn btn-ghost" onclick="openIntakeModal()">+ Secure Intake Link</button>
       <div class="view-toggle">
@@ -804,6 +806,7 @@
           <option value="delivered">Delivered</option>
           <option value="paused">Paused</option>
           <option value="former">Former</option>
+          <option value="bsbr">BSBR</option>
         </select>
       </div>
     </div>
@@ -1182,6 +1185,7 @@
     { key: 'delivered', label: 'Delivered' },
     { key: 'paused',    label: 'Paused'    },
     { key: 'former',    label: 'Former'    },
+    { key: 'bsbr',      label: 'BSBR'      },
   ];
 
   function renderList() {
