@@ -1,5 +1,7 @@
 -- clients-schema-v4.sql — Monthly billing ledger
--- Run in Supabase SQL Editor after v3.
+-- SUPERSEDED — never applied to the database, and the app no longer uses these
+-- tables (replaced by the simpler client_payments table in v8). Kept only for
+-- history; do not run this file.
 
 -- One record per client per calendar month. Tracks review status.
 CREATE TABLE IF NOT EXISTS client_billing_months (
