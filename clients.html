@@ -797,17 +797,6 @@
     <div class="modal-section-label">Engagement</div>
     <div class="form-row">
       <div class="form-group"><label>Date Hired</label><input type="date" id="cf-date-hired"></div>
-      <div class="form-group"><label>Contracted Rate (USD)</label><input type="number" id="cf-rate" placeholder="500.00" step="0.01" min="0"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Billing Cycle</label>
-        <select id="cf-billing">
-          <option value="monthly">Monthly</option>
-          <option value="annually">Annually</option>
-          <option value="project">Per Project</option>
-          <option value="hourly">Hourly</option>
-        </select>
-      </div>
       <div class="form-group"><label>Contract Renewal Date</label><input type="date" id="cf-renewal"></div>
     </div>
     <div class="form-row">
@@ -1068,7 +1057,7 @@
     await initConfig();
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle)&order=name.asc`,
+        `${SUPABASE_URL}/rest/v1/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle),client_charges(amount),client_payments(amount)&order=name.asc`,
         { headers: sbHeaders() }
       );
       if (!res.ok) throw new Error(await res.text());
@@ -1186,6 +1175,13 @@
       const loginCount = (c.client_logins || []).length;
       const subCount   = (c.client_subscriptions || []).length;
 
+      const totalCharged  = (c.client_charges  || []).reduce((s, x) => s + parseFloat(x.amount), 0);
+      const totalReceived = (c.client_payments || []).reduce((s, x) => s + parseFloat(x.amount), 0);
+      const balance = totalCharged - totalReceived;
+      const balanceStr = totalCharged <= 0 ? '' :
+        balance > 0 ? `<span style="color:var(--warn)">$${balance.toFixed(2)} due</span>` :
+        `<span style="color:var(--accent)">Paid</span>`;
+
       return `
         <div class="client-row" onclick="openDetail('${c.id}')">
           <div class="client-row-name">
@@ -1196,7 +1192,7 @@
             ${c.email ? `<span>✉ ${escapeHtml(c.email)}</span>` : ''}
             ${c.phone ? `<span>☎ ${escapeHtml(c.phone)}</span>` : ''}
           </div>
-          <div class="client-row-rate">${c.contracted_monthly_rate ? formatRate(c.contracted_monthly_rate, c.contract_billing_cycle) : ''}</div>
+          <div class="client-row-rate">${balanceStr}</div>
           <div class="client-row-counts">🔑 ${loginCount} &nbsp; 💳 ${subCount}</div>
           <select class="status-badge status-select status-${status}" onclick="event.stopPropagation()" onchange="updateClientStatus('${c.id}', this.value)">
             ${CLIENT_STATUSES.map(s => `<option value="${s.key}" ${s.key === status ? 'selected' : ''}>${s.label}</option>`).join('')}
@@ -1228,16 +1224,6 @@
     } catch (e) { toast('Error: ' + e.message, true); renderList(); }
   }
 
-  function formatRate(rate, cycle) {
-    const r = parseFloat(rate);
-    if (!r) return '—';
-    switch (cycle) {
-      case 'annually': return `$${r.toFixed(2)}/yr`;
-      case 'project':  return `$${r.toFixed(2)} project`;
-      case 'hourly':   return `$${r.toFixed(2)}/hr`;
-      default:         return `$${r.toFixed(2)}/mo`;
-    }
-  }
 
   // ── Detail view ──────────────────────────────────────────────────
   async function openDetail(id) {
@@ -1275,8 +1261,6 @@
     const c = currentClient;
     const fields = [
       { lbl: 'Date Hired',     val: c.date_hired              || null },
-      { lbl: 'Contracted Rate',val: c.contracted_monthly_rate  ? formatRate(c.contracted_monthly_rate, c.contract_billing_cycle) : null },
-      { lbl: 'Billing',        val: c.contract_billing_cycle   ? capitalize(c.contract_billing_cycle) : null },
       { lbl: 'Renewal Date',   val: c.contract_renewal_date   || null },
       { lbl: 'Payment Terms',  val: c.payment_terms           || null },
       { lbl: 'Next Follow-up', val: c.next_followup_date      || null },
@@ -2046,8 +2030,6 @@
     document.getElementById('cf-deal-value').value    = c?.deal_value             ?? '';
     document.getElementById('cf-lost-reason').value   = c?.lost_reason            || '';
     document.getElementById('cf-date-hired').value   = c?.date_hired             || '';
-    document.getElementById('cf-rate').value          = c?.contracted_monthly_rate ?? '';
-    document.getElementById('cf-billing').value       = c?.contract_billing_cycle || 'monthly';
     document.getElementById('cf-renewal').value       = c?.contract_renewal_date  || '';
     document.getElementById('cf-payment-terms').value = c?.payment_terms          || '';
     document.getElementById('cf-followup').value      = c?.next_followup_date     || '';
@@ -2063,7 +2045,6 @@
   async function saveClient() {
     const name = document.getElementById('cf-name').value.trim();
     if (!name) { toast('Name is required', true); return; }
-    const rateRaw = document.getElementById('cf-rate').value.trim();
     const dealValueRaw = document.getElementById('cf-deal-value').value.trim();
 
     const before = editingClientId ? allClients.find(c => c.id === editingClientId) : null;
@@ -2086,8 +2067,6 @@
       deal_value:              dealValueRaw ? parseFloat(dealValueRaw) : null,
       lost_reason:             document.getElementById('cf-lost-reason').value.trim()   || null,
       date_hired:             document.getElementById('cf-date-hired').value           || null,
-      contracted_monthly_rate: rateRaw ? parseFloat(rateRaw) : null,
-      contract_billing_cycle: document.getElementById('cf-billing').value,
       contract_renewal_date:  document.getElementById('cf-renewal').value             || null,
       payment_terms:          document.getElementById('cf-payment-terms').value.trim() || null,
       next_followup_date:     document.getElementById('cf-followup').value            || null,
