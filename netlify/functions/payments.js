@@ -18,7 +18,8 @@ function authOk(event) {
   const token = raw.replace(/^Bearer\s+/i, '').trim();
   if (!token) return false;
   return (process.env.SESSION_SECRET      && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET);
+         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
+         (process.env.MAX_SESSION_SECRET  && token === process.env.MAX_SESSION_SECRET);
 }
 
 function sbFetch(path, opts = {}) {
