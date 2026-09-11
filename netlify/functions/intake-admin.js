@@ -16,22 +16,13 @@
 
 const crypto = require('crypto');
 const { encrypt, decrypt } = require('../../lib/secrets.js');
+const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
 
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(body),
 });
-
-function whoAmI(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return null;
-  if (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) return 'Rob';
-  if (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) return 'Katy';
-  if (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET) return 'Max';
-  return null;
-}
 
 function sbFetch(path, opts = {}) {
   return fetch(process.env.SUPABASE_URL + '/rest/v1' + path, {
@@ -55,6 +46,20 @@ function tokenStatus(row) {
   return 'active';
 }
 
+async function tokenClientId(id) {
+  const res = await sbFetch(`/intake_tokens?id=eq.${encodeURIComponent(id)}&select=client_id`);
+  if (!res.ok) return null;
+  const [row] = await res.json();
+  return row ? row.client_id : null;
+}
+
+async function submissionClientId(id) {
+  const res = await sbFetch(`/intake_submissions?id=eq.${encodeURIComponent(id)}&select=client_id`);
+  if (!res.ok) return null;
+  const [row] = await res.json();
+  return row ? row.client_id : null;
+}
+
 exports.handler = async (event) => {
   const who = whoAmI(event);
   if (!who) return json(401, { error: 'Unauthorized' });
@@ -67,6 +72,8 @@ exports.handler = async (event) => {
       const fields = Array.isArray(body.fields) ? body.fields.filter(f => VALID_FIELDS.includes(f)) : ['contact'];
       if (!fields.length) return json(400, { error: 'At least one field section required' });
       if (!body.client_id && !body.prospect_name) return json(400, { error: 'client_id or prospect_name required' });
+      if (isMax(event) && !body.client_id) return json(403, { error: 'Forbidden' });
+      if (body.client_id && !clientAllowed(event, body.client_id)) return json(403, { error: 'Forbidden' });
 
       const days = Number(body.expires_in_days) > 0 ? Number(body.expires_in_days) : 7;
       const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
@@ -96,6 +103,7 @@ exports.handler = async (event) => {
       if (!res.ok) return json(500, { error: await res.text() });
       const [row] = await res.json();
       if (!row) return json(404, { error: 'Not found' });
+      if (!clientAllowed(event, row.client_id)) return json(403, { error: 'Forbidden' });
       const decrypted = { ...row, data: { ...row.data } };
       if (decrypted.data.logins) {
         decrypted.data.logins = decrypted.data.logins.map(l => ({
@@ -109,6 +117,7 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'GET') {
       if (!qp.client_id) return json(400, { error: 'client_id required' });
+      if (!clientAllowed(event, qp.client_id)) return json(403, { error: 'Forbidden' });
       const [tokRes, subRes] = await Promise.all([
         sbFetch(`/intake_tokens?client_id=eq.${encodeURIComponent(qp.client_id)}&order=created_at.desc`),
         sbFetch(`/intake_submissions?client_id=eq.${encodeURIComponent(qp.client_id)}&status=eq.pending&order=created_at.desc`),
@@ -121,6 +130,7 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'PATCH' && qp.dismiss_submission) {
+      if (isMax(event) && !clientAllowed(event, await submissionClientId(qp.dismiss_submission))) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/intake_submissions?id=eq.${encodeURIComponent(qp.dismiss_submission)}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'dismissed' }),
@@ -130,10 +140,11 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'PATCH' && qp.apply_submission) {
-      return await applySubmission(qp.apply_submission, who);
+      return await applySubmission(qp.apply_submission, who, event);
     }
 
     if (event.httpMethod === 'DELETE' && qp.revoke_token) {
+      if (isMax(event) && !clientAllowed(event, await tokenClientId(qp.revoke_token))) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/intake_tokens?id=eq.${encodeURIComponent(qp.revoke_token)}`, {
         method: 'PATCH',
         body: JSON.stringify({ revoked_at: new Date().toISOString() }),
@@ -149,12 +160,16 @@ exports.handler = async (event) => {
   }
 };
 
-async function applySubmission(submissionId, who) {
+async function applySubmission(submissionId, who, event) {
   const subRes = await sbFetch(`/intake_submissions?id=eq.${encodeURIComponent(submissionId)}&select=*`);
   if (!subRes.ok) return json(500, { error: await subRes.text() });
   const [sub] = await subRes.json();
   if (!sub) return json(404, { error: 'Not found' });
   if (sub.status !== 'pending') return json(409, { error: `Submission is already ${sub.status}` });
+  // A null client_id means this submission would create a brand-new client —
+  // always out of scope for Max, regardless of clientAllowed(null).
+  if (isMax(event) && !sub.client_id) return json(403, { error: 'Forbidden' });
+  if (!clientAllowed(event, sub.client_id)) return json(403, { error: 'Forbidden' });
 
   let clientId = sub.client_id;
 

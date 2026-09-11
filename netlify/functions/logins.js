@@ -4,6 +4,7 @@
 // - Auth gate matches verify.js (Bearer token === SESSION_SECRET, KATY_SESSION_SECRET, or MAX_SESSION_SECRET).
 
 const crypto = require('crypto');
+const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -12,12 +13,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
+  return !!whoAmI(event);
 }
 
 function getKey() {
@@ -63,6 +59,13 @@ function maskRow(r) {
   return { ...rest, has_password: !!password_encrypted };
 }
 
+async function rowClientId(id) {
+  const res = await sbFetch(`/client_logins?id=eq.${encodeURIComponent(id)}&select=client_id`);
+  if (!res.ok) return null;
+  const [row] = await res.json();
+  return row ? row.client_id : null;
+}
+
 exports.handler = async (event) => {
   if (!authOk(event)) return json(401, { error: 'Unauthorized' });
 
@@ -71,6 +74,7 @@ exports.handler = async (event) => {
 
   try {
     if (method === 'GET' && qp.reveal) {
+      if (isMax(event) && !clientAllowed(event, await rowClientId(qp.reveal))) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/client_logins?id=eq.${encodeURIComponent(qp.reveal)}&select=password_encrypted`);
       if (!res.ok) return json(500, { error: await res.text() });
       const rows = await res.json();
@@ -80,6 +84,7 @@ exports.handler = async (event) => {
 
     if (method === 'GET') {
       if (!qp.client_id) return json(400, { error: 'client_id required' });
+      if (!clientAllowed(event, qp.client_id)) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/client_logins?client_id=eq.${encodeURIComponent(qp.client_id)}&order=created_at.asc`);
       if (!res.ok) return json(500, { error: await res.text() });
       const rows = await res.json();
@@ -89,6 +94,7 @@ exports.handler = async (event) => {
     if (method === 'POST') {
       const body = JSON.parse(event.body || '{}');
       if (!body.client_id || !body.app) return json(400, { error: 'client_id and app required' });
+      if (!clientAllowed(event, body.client_id)) return json(403, { error: 'Forbidden' });
       const row = {
         client_id: body.client_id,
         app: body.app,
@@ -106,6 +112,7 @@ exports.handler = async (event) => {
 
     if (method === 'PATCH') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (isMax(event) && !clientAllowed(event, await rowClientId(qp.id))) return json(403, { error: 'Forbidden' });
       const body = JSON.parse(event.body || '{}');
       const patch = {};
       ['app', 'username', 'url', 'notes', 'category'].forEach(k => { if (k in body) patch[k] = body[k] || null; });
@@ -118,6 +125,7 @@ exports.handler = async (event) => {
 
     if (method === 'DELETE') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (isMax(event) && !clientAllowed(event, await rowClientId(qp.id))) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/client_logins?id=eq.${encodeURIComponent(qp.id)}`, { method: 'DELETE' });
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, { ok: true });

@@ -7,6 +7,8 @@
 
 'use strict';
 
+const { whoAmI, isMax, clientAllowed, MAX_ALLOWED_CLIENT_ID } = require('../../lib/max-scope.js');
+
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
@@ -14,12 +16,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
+  return !!whoAmI(event);
 }
 
 function sbFetch(path, opts = {}) {
@@ -56,14 +53,16 @@ exports.handler = async (event) => {
 
   try {
     if (method === 'GET') {
+      const filter = isMax(event) ? `&id=eq.${MAX_ALLOWED_CLIENT_ID}` : '';
       const res = await sbFetch(
-        '/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle),client_charges(amount),client_payments(amount)&order=name.asc'
+        `/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle),client_charges(amount),client_payments(amount)&order=name.asc${filter}`
       );
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, await res.json());
     }
 
     if (method === 'POST') {
+      if (isMax(event)) return json(403, { error: 'Forbidden' });
       const body = JSON.parse(event.body || '{}');
       if (!body.name || !String(body.name).trim()) return json(400, { error: 'name required' });
       const row = pickWritable(body);
@@ -75,6 +74,7 @@ exports.handler = async (event) => {
 
     if (method === 'PATCH') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (!clientAllowed(event, qp.id)) return json(403, { error: 'Forbidden' });
       const body = JSON.parse(event.body || '{}');
       const patch = pickWritable(body);
       patch.updated_at = new Date().toISOString();
@@ -85,6 +85,7 @@ exports.handler = async (event) => {
 
     if (method === 'DELETE') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (!clientAllowed(event, qp.id)) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/clients?id=eq.${encodeURIComponent(qp.id)}`, { method: 'DELETE' });
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, { ok: true });

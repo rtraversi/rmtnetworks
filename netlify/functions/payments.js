@@ -7,6 +7,8 @@
 
 'use strict';
 
+const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
+
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
@@ -14,12 +16,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw   = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET      && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET  && token === process.env.MAX_SESSION_SECRET);
+  return !!whoAmI(event);
 }
 
 function sbFetch(path, opts = {}) {
@@ -44,6 +41,7 @@ exports.handler = async (event) => {
   try {
     if (method === 'GET') {
       if (!qp.client_id) return json(400, { error: 'client_id required' });
+      if (!clientAllowed(event, qp.client_id)) return json(403, { error: 'Forbidden' });
       const [chargesRes, paymentsRes] = await Promise.all([
         sbFetch(`/client_charges?client_id=eq.${encodeURIComponent(qp.client_id)}&order=charged_on.desc,created_at.desc`),
         sbFetch(`/client_payments?client_id=eq.${encodeURIComponent(qp.client_id)}&order=paid_on.desc,created_at.desc`),
@@ -55,6 +53,7 @@ exports.handler = async (event) => {
 
     if (method === 'POST') {
       const body = JSON.parse(event.body || '{}');
+      if (body.client_id && !clientAllowed(event, body.client_id)) return json(403, { error: 'Forbidden' });
 
       if (body.kind === 'charge') {
         if (!body.client_id || !body.charged_on || !body.description || body.amount == null) {
@@ -94,6 +93,11 @@ exports.handler = async (event) => {
       if (!qp.id || !qp.kind) return json(400, { error: 'kind and id required' });
       const table = qp.kind === 'charge' ? 'client_charges' : qp.kind === 'payment' ? 'client_payments' : null;
       if (!table) return json(400, { error: "kind must be 'charge' or 'payment'" });
+      if (isMax(event)) {
+        const rowRes = await sbFetch(`/${table}?id=eq.${encodeURIComponent(qp.id)}&select=client_id`);
+        const [row] = rowRes.ok ? await rowRes.json() : [];
+        if (!clientAllowed(event, row ? row.client_id : null)) return json(403, { error: 'Forbidden' });
+      }
       const res = await sbFetch(`/${table}?id=eq.${encodeURIComponent(qp.id)}`, { method: 'DELETE' });
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, { ok: true });

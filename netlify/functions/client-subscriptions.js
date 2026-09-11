@@ -7,6 +7,8 @@
 
 'use strict';
 
+const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
+
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
@@ -14,12 +16,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
+  return !!whoAmI(event);
 }
 
 function sbFetch(path, opts = {}) {
@@ -33,6 +30,13 @@ function sbFetch(path, opts = {}) {
       ...(opts.headers || {}),
     },
   });
+}
+
+async function rowClientId(id) {
+  const res = await sbFetch(`/client_subscriptions?id=eq.${encodeURIComponent(id)}&select=client_id`);
+  if (!res.ok) return null;
+  const [row] = await res.json();
+  return row ? row.client_id : null;
 }
 
 const WRITABLE_FIELDS = ['service', 'signed_up_date', 'billing_cycle', 'price', 'expiration_date', 'login', 'website_url', 'notes'];
@@ -52,6 +56,7 @@ exports.handler = async (event) => {
   try {
     if (method === 'GET') {
       if (!qp.client_id) return json(400, { error: 'client_id required' });
+      if (!clientAllowed(event, qp.client_id)) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/client_subscriptions?client_id=eq.${encodeURIComponent(qp.client_id)}&order=service.asc`);
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, await res.json());
@@ -60,6 +65,7 @@ exports.handler = async (event) => {
     if (method === 'POST') {
       const body = JSON.parse(event.body || '{}');
       if (!body.client_id || !body.service) return json(400, { error: 'client_id and service required' });
+      if (!clientAllowed(event, body.client_id)) return json(403, { error: 'Forbidden' });
       const row = pickWritable(body);
       row.client_id = body.client_id;
       const res = await sbFetch('/client_subscriptions', { method: 'POST', body: JSON.stringify(row) });
@@ -69,6 +75,7 @@ exports.handler = async (event) => {
 
     if (method === 'PATCH') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (isMax(event) && !clientAllowed(event, await rowClientId(qp.id))) return json(403, { error: 'Forbidden' });
       const body = JSON.parse(event.body || '{}');
       const patch = pickWritable(body);
       const res = await sbFetch(`/client_subscriptions?id=eq.${encodeURIComponent(qp.id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
@@ -78,6 +85,7 @@ exports.handler = async (event) => {
 
     if (method === 'DELETE') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (isMax(event) && !clientAllowed(event, await rowClientId(qp.id))) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/client_subscriptions?id=eq.${encodeURIComponent(qp.id)}`, { method: 'DELETE' });
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, { ok: true });

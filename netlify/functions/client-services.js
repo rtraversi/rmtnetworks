@@ -7,6 +7,8 @@
 
 'use strict';
 
+const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
+
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
@@ -14,12 +16,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
+  return !!whoAmI(event);
 }
 
 function sbFetch(path, opts = {}) {
@@ -35,6 +32,13 @@ function sbFetch(path, opts = {}) {
   });
 }
 
+async function rowClientId(id) {
+  const res = await sbFetch(`/client_modules?id=eq.${encodeURIComponent(id)}&select=client_id`);
+  if (!res.ok) return null;
+  const [row] = await res.json();
+  return row ? row.client_id : null;
+}
+
 exports.handler = async (event) => {
   if (!authOk(event)) return json(401, { error: 'Unauthorized' });
 
@@ -44,6 +48,7 @@ exports.handler = async (event) => {
   try {
     if (method === 'GET') {
       if (!qp.client_id) return json(400, { error: 'client_id required' });
+      if (!clientAllowed(event, qp.client_id)) return json(403, { error: 'Forbidden' });
       const cid = encodeURIComponent(qp.client_id);
       const [appsRes, modsRes] = await Promise.all([
         sbFetch(`/client_apps?client_id=eq.${cid}`),
@@ -57,6 +62,7 @@ exports.handler = async (event) => {
     if (method === 'POST') {
       const body = JSON.parse(event.body || '{}');
       if (!body.client_id || !body.module_id) return json(400, { error: 'client_id and module_id required' });
+      if (!clientAllowed(event, body.client_id)) return json(403, { error: 'Forbidden' });
       const row = { client_id: body.client_id, module_id: body.module_id, enabled: !!body.enabled };
       const res = await sbFetch('/client_modules', { method: 'POST', body: JSON.stringify(row) });
       if (!res.ok) return json(500, { error: await res.text() });
@@ -65,6 +71,7 @@ exports.handler = async (event) => {
 
     if (method === 'PATCH') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (isMax(event) && !clientAllowed(event, await rowClientId(qp.id))) return json(403, { error: 'Forbidden' });
       const body = JSON.parse(event.body || '{}');
       const patch = {};
       if ('enabled' in body) patch.enabled = !!body.enabled;

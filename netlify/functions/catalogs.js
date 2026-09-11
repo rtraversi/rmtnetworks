@@ -5,6 +5,8 @@
 
 'use strict';
 
+const { whoAmI, isMax } = require('../../lib/max-scope.js');
+
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
@@ -12,12 +14,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
+  return !!whoAmI(event);
 }
 
 function sbFetch(path, opts = {}) {
@@ -53,6 +50,7 @@ exports.handler = async (event) => {
     }
 
     if (method === 'PATCH') {
+      if (isMax(event)) return json(403, { error: 'Forbidden' });
       if (!qp.id) return json(400, { error: 'id required' });
       const body = JSON.parse(event.body || '{}');
       const patch = {};

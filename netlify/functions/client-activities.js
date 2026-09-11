@@ -5,6 +5,8 @@
 
 'use strict';
 
+const { whoAmI, clientAllowed } = require('../../lib/max-scope.js');
+
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
@@ -12,21 +14,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
-}
-
-function whoAmI(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) return 'Rob';
-  if (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) return 'Katy';
-  if (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET) return 'Max';
-  return null;
+  return !!whoAmI(event);
 }
 
 function sbFetch(path, opts = {}) {
@@ -53,6 +41,7 @@ exports.handler = async (event) => {
   try {
     if (method === 'GET') {
       if (!qp.client_id) return json(400, { error: 'client_id required' });
+      if (!clientAllowed(event, qp.client_id)) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/client_activities?client_id=eq.${encodeURIComponent(qp.client_id)}&order=created_at.desc&limit=100`);
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, await res.json());
@@ -61,6 +50,7 @@ exports.handler = async (event) => {
     if (method === 'POST') {
       const body = JSON.parse(event.body || '{}');
       if (!body.client_id || !body.body) return json(400, { error: 'client_id and body required' });
+      if (!clientAllowed(event, body.client_id)) return json(403, { error: 'Forbidden' });
       const type = ALLOWED_TYPES.includes(body.type) ? body.type : 'note';
       const row = { client_id: body.client_id, type, body: body.body, created_by: whoAmI(event) };
       const res = await sbFetch('/client_activities', { method: 'POST', body: JSON.stringify(row) });

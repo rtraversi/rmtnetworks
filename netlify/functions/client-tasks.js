@@ -12,6 +12,8 @@
 
 'use strict';
 
+const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
+
 const json = (status, body) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json' },
@@ -19,21 +21,7 @@ const json = (status, body) => ({
 });
 
 function authOk(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) ||
-         (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET);
-}
-
-function whoAmI(event) {
-  const raw = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) return 'Rob';
-  if (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) return 'Katy';
-  if (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET) return 'Max';
-  return null;
+  return !!whoAmI(event);
 }
 
 function sbFetch(path, opts = {}) {
@@ -47,6 +35,20 @@ function sbFetch(path, opts = {}) {
       ...(opts.headers || {}),
     },
   });
+}
+
+async function taskClientId(taskId) {
+  const res = await sbFetch(`/client_tasks?id=eq.${encodeURIComponent(taskId)}&select=client_id`);
+  if (!res.ok) return null;
+  const [row] = await res.json();
+  return row ? row.client_id : null;
+}
+
+async function milestoneItemClientId(itemId) {
+  const res = await sbFetch(`/client_milestone_items?id=eq.${encodeURIComponent(itemId)}&select=task_id,client_tasks(client_id)`);
+  if (!res.ok) return null;
+  const [row] = await res.json();
+  return row?.client_tasks?.client_id ?? null;
 }
 
 const TASK_WRITABLE_FIELDS = ['title', 'description', 'due_date', 'assignee', 'status', 'completed_at'];
@@ -67,6 +69,7 @@ exports.handler = async (event) => {
   try {
     if (method === 'GET') {
       if (!qp.client_id) return json(400, { error: 'client_id required' });
+      if (!clientAllowed(event, qp.client_id)) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(
         `/client_tasks?client_id=eq.${encodeURIComponent(qp.client_id)}&select=*,client_milestone_items(*)` +
         `&order=status.asc,due_date.asc.nullslast,created_at.asc&client_milestone_items.order=sort_order.asc,created_at.asc`
@@ -79,6 +82,7 @@ exports.handler = async (event) => {
       if (method === 'POST') {
         const body = JSON.parse(event.body || '{}');
         if (!body.task_id || !body.title) return json(400, { error: 'task_id and title required' });
+        if (isMax(event) && !clientAllowed(event, await taskClientId(body.task_id))) return json(403, { error: 'Forbidden' });
         const res = await sbFetch('/client_milestone_items', {
           method: 'POST', body: JSON.stringify({ task_id: body.task_id, title: body.title }),
         });
@@ -87,6 +91,7 @@ exports.handler = async (event) => {
       }
       if (method === 'PATCH') {
         if (!qp.id) return json(400, { error: 'id required' });
+        if (isMax(event) && !clientAllowed(event, await milestoneItemClientId(qp.id))) return json(403, { error: 'Forbidden' });
         const body = JSON.parse(event.body || '{}');
         const patch = {};
         if ('done' in body) patch.done = !!body.done;
@@ -96,6 +101,7 @@ exports.handler = async (event) => {
       }
       if (method === 'DELETE') {
         if (!qp.id) return json(400, { error: 'id required' });
+        if (isMax(event) && !clientAllowed(event, await milestoneItemClientId(qp.id))) return json(403, { error: 'Forbidden' });
         const res = await sbFetch(`/client_milestone_items?id=eq.${encodeURIComponent(qp.id)}`, { method: 'DELETE' });
         if (!res.ok) return json(500, { error: await res.text() });
         return json(200, { ok: true });
@@ -106,6 +112,7 @@ exports.handler = async (event) => {
     if (method === 'POST') {
       const body = JSON.parse(event.body || '{}');
       if (!body.client_id || !body.title) return json(400, { error: 'client_id and title required' });
+      if (!clientAllowed(event, body.client_id)) return json(403, { error: 'Forbidden' });
       const row = pickWritable(body);
       row.client_id = body.client_id;
       row.is_milestone = !!body.is_milestone;
@@ -117,6 +124,7 @@ exports.handler = async (event) => {
 
     if (method === 'PATCH') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (isMax(event) && !clientAllowed(event, await taskClientId(qp.id))) return json(403, { error: 'Forbidden' });
       const body = JSON.parse(event.body || '{}');
       const patch = pickWritable(body);
       const res = await sbFetch(`/client_tasks?id=eq.${encodeURIComponent(qp.id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
@@ -126,6 +134,7 @@ exports.handler = async (event) => {
 
     if (method === 'DELETE') {
       if (!qp.id) return json(400, { error: 'id required' });
+      if (isMax(event) && !clientAllowed(event, await taskClientId(qp.id))) return json(403, { error: 'Forbidden' });
       const res = await sbFetch(`/client_tasks?id=eq.${encodeURIComponent(qp.id)}`, { method: 'DELETE' });
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, { ok: true });
