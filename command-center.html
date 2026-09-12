@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMT Networks — Command Center</title>
+<script>
+  (function() {
+    var token = sessionStorage.getItem('rmt_session');
+    if (!token) { window.location.replace('/'); return; }
+    fetch('/.netlify/functions/verify', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function(r) {
+      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
+      r.json().then(function(d) {
+        if (d && d.user) sessionStorage.setItem('rmt_user', d.user);
+        document.body.style.visibility = 'visible';
+      }).catch(function() { document.body.style.visibility = 'visible'; });
+    }).catch(function() { document.body.style.visibility = 'visible'; });
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0d0f14;
+    --surface: #13161e;
+    --border:  #1e2230;
+    --accent:  #4fffb0;
+    --accent2: #4b8fff;
+    --warn:    #ff6b4a;
+    --text:    #e8eaf0;
+    --muted:   #5a6070;
+    --card-bg: #181b24;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; visibility: hidden; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 28px 40px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .back-link {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted);
+    text-decoration: none; padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); border-color: var(--accent); }
+  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
+  .logo span { color: var(--muted); font-weight: 400; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 40px; }
+  .page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .page-title h1 { font-size: 1.8rem; font-weight: 800; }
+  .page-title .icon { font-size: 1.8rem; }
+
+  .stats-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+  .stat-pill {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 18px;
+    display: flex; flex-direction: column; gap: 3px; min-width: 130px;
+  }
+  .stat-pill .stat-label {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .stat-pill .stat-value { font-size: 1.25rem; font-weight: 700; }
+
+  .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
+  select.filter-select {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.76rem; cursor: pointer;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .board { display: flex; flex-direction: column; gap: 10px; }
+  .row {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; display: grid;
+    grid-template-columns: 1fr 2fr auto auto; gap: 16px; align-items: center;
+  }
+  .row.stale { border-color: var(--warn); }
+  .row-name { font-weight: 700; font-size: 1rem; }
+  .row-name .company { display: block; font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .row-status { font-size: 0.88rem; color: var(--text); }
+  .row-status.empty { color: var(--muted); font-style: italic; }
+  .row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-family: 'DM Mono', monospace; font-size: 0.68rem; }
+  .row-age { color: var(--muted); }
+  .row-age.stale { color: var(--warn); font-weight: 500; }
+  .row-tasks { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--accent2); white-space: nowrap; }
+  .row-tasks.none { color: var(--muted); }
+  .badge {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border);
+    color: var(--muted); white-space: nowrap;
+  }
+  .badge.active  { color: var(--accent); border-color: var(--accent); }
+  .badge.prospect { color: var(--accent2); border-color: var(--accent2); }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 0.85rem;
+  }
+
+  @media (max-width: 700px) {
+    main { padding: 20px; }
+    header { padding: 18px 20px; }
+    .row { grid-template-columns: 1fr; gap: 8px; }
+    .row-meta { align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a class="back-link" href="javascript:history.back()">← Back</a>
+    <div class="logo">RMT<span>/</span>Networks</div>
+  </div>
+  <div class="header-right">
+    <a class="back-link" href="/clients.html">Clients →</a>
+  </div>
+</header>
+
+<main>
+  <div class="page-title">
+    <span class="icon">🖥️</span>
+    <h1>Command Center</h1>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-pill">
+      <span class="stat-label">Tracked Clients</span>
+      <span class="stat-value" id="stat-total">0</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">Stale (7+ days)</span>
+      <span class="stat-value" id="stat-stale" style="color:var(--warn)">0</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">Open Tasks</span>
+      <span class="stat-value" id="stat-tasks" style="color:var(--accent2)">0</span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <select class="filter-select" id="filter-status" onchange="render()">
+      <option value="">All Statuses</option>
+      <option value="prospect">Prospect</option>
+      <option value="active">Active</option>
+      <option value="delivered">Delivered</option>
+      <option value="paused">Paused</option>
+      <option value="former">Former</option>
+      <option value="bsbr">BSBR</option>
+    </select>
+    <select class="filter-select" id="sort-by" onchange="render()">
+      <option value="stale">Sort: Most stale first</option>
+      <option value="name">Sort: Name</option>
+    </select>
+  </div>
+
+  <div class="board" id="board"></div>
+</main>
+
+<script>
+  const SESSION = sessionStorage.getItem('rmt_session') || '';
+  const apiHeaders = () => ({ Authorization: `Bearer ${SESSION}` });
+  let allClients = [];
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function daysAgo(iso) {
+    if (!iso) return null;
+    const ms = Date.now() - new Date(iso).getTime();
+    return Math.floor(ms / 86400000);
+  }
+
+  async function load() {
+    const res = await fetch('/.netlify/functions/clients', { headers: apiHeaders() });
+    if (!res.ok) {
+      document.getElementById('board').innerHTML = `<div class="empty-state">Failed to load clients (${res.status}).</div>`;
+      return;
+    }
+    allClients = await res.json();
+    render();
+  }
+
+  function render() {
+    const statusFilter = document.getElementById('filter-status').value;
+    const sortBy = document.getElementById('sort-by').value;
+
+    let rows = allClients.filter(c => !statusFilter || c.status === statusFilter);
+
+    if (sortBy === 'name') {
+      rows.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      rows.sort((a, b) => {
+        const ageA = a.status_updated_at ? new Date(a.status_updated_at).getTime() : -Infinity;
+        const ageB = b.status_updated_at ? new Date(b.status_updated_at).getTime() : -Infinity;
+        return ageA - ageB;
+      });
+    }
+
+    const totalTasks = allClients.reduce((sum, c) => sum + (c.client_tasks || []).filter(t => t.status === 'open').length, 0);
+    const staleCount = allClients.filter(c => {
+      const d = daysAgo(c.status_updated_at);
+      return d === null || d >= 7;
+    }).length;
+
+    document.getElementById('stat-total').textContent = allClients.length;
+    document.getElementById('stat-stale').textContent = staleCount;
+    document.getElementById('stat-tasks').textContent = totalTasks;
+
+    const board = document.getElementById('board');
+    if (rows.length === 0) {
+      board.innerHTML = `<div class="empty-state">No clients match this filter.</div>`;
+      return;
+    }
+
+    board.innerHTML = rows.map(c => {
+      const age = daysAgo(c.status_updated_at);
+      const isStale = age === null || age >= 7;
+      const ageLabel = age === null ? 'never logged' : (age === 0 ? 'today' : `${age}d ago`);
+      const openTasks = (c.client_tasks || []).filter(t => t.status === 'open');
+      const nextDue = openTasks
+        .filter(t => t.due_date)
+        .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
+
+      return `
+        <div class="row ${isStale ? 'stale' : ''}">
+          <div class="row-name">
+            ${escapeHtml(c.name)}
+            ${c.company ? `<span class="company">${escapeHtml(c.company)}</span>` : ''}
+          </div>
+          <div class="row-status ${c.current_status ? '' : 'empty'}">
+            ${c.current_status ? escapeHtml(c.current_status) : 'No status logged yet'}
+          </div>
+          <div class="row-tasks ${openTasks.length ? '' : 'none'}">
+            ${openTasks.length ? `${openTasks.length} open task${openTasks.length === 1 ? '' : 's'}` : 'No open tasks'}
+            ${nextDue ? `<br>next due ${escapeHtml(nextDue.due_date)}` : ''}
+          </div>
+          <div class="row-meta">
+            <span class="badge ${escapeHtml(c.status)}">${escapeHtml(c.status)}</span>
+            <span class="row-age ${isStale ? 'stale' : ''}">${ageLabel}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  load();
+</script>
+</body>
+</html>

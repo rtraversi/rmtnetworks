@@ -37,6 +37,7 @@ const WRITABLE_FIELDS = [
   'status', 'pipeline_stage', 'deal_value', 'lost_reason',
   'date_hired', 'contract_renewal_date', 'payment_terms', 'next_followup_date',
   'contract_url', 'stripe_customer_email', 'scope_of_work', 'notes',
+  'current_status', 'status_updated_at',
 ];
 
 function pickWritable(body) {
@@ -55,7 +56,7 @@ exports.handler = async (event) => {
     if (method === 'GET') {
       const filter = isMax(event) ? `&id=eq.${MAX_ALLOWED_CLIENT_ID}` : '';
       const res = await sbFetch(
-        `/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle),client_charges(amount),client_payments(amount)&order=name.asc${filter}`
+        `/clients?select=*,client_logins(id),client_subscriptions(id,price,billing_cycle),client_charges(amount),client_payments(amount),client_tasks(id,status,due_date,title)&order=name.asc${filter}`
       );
       if (!res.ok) return json(500, { error: await res.text() });
       return json(200, await res.json());
