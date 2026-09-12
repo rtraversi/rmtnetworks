@@ -27,6 +27,20 @@
 .EXAMPLE
   # Just update current status, no activity log line
   .\crm-log.ps1 -Client "Acme" -Status "Blocked - waiting on their DNS access"
+
+.EXAMPLE
+  # Full wrap-for-the-day update - status line plus the structured detail fields.
+  # Any field you omit is left as-is (merged, not overwritten).
+  .\crm-log.ps1 -Client "Acme" -Status "Awaiting logo files" `
+    -LastHandoff "Finished homepage layout, about to start the contact form" `
+    -NextUp "Wire up the contact form once logo files are in" `
+    -WaitingOn "Client to send final logo files (asked 9/12)" `
+    -SentPending "Sent homepage preview link 9/12" `
+    -ClientQuestions "They asked whether we can support a Spanish version"
+
+.EXAMPLE
+  # Print everything currently known about a client (no activity logged)
+  .\crm-log.ps1 -Client "Acme" -Show
 #>
 
 [CmdletBinding()]
@@ -36,6 +50,12 @@ param(
   [ValidateSet('note', 'email', 'call', 'meeting')]
   [string]$Type = 'note',
   [string]$Status,
+  [string]$LastHandoff,
+  [string]$NextUp,
+  [string]$WaitingOn,
+  [string]$SentPending,
+  [string]$ClientQuestions,
+  [switch]$Show,
   [switch]$List
 )
 
@@ -101,6 +121,24 @@ if ($matches.Count -gt 1) {
 $clientRow = $matches[0]
 $clientId  = $clientRow.id
 
+if ($Show) {
+  $d = $clientRow.status_detail
+  Write-Host ""
+  Write-Host "$($clientRow.name)" -ForegroundColor Cyan
+  Write-Host "  Status:            $($clientRow.current_status)"
+  Write-Host "  Updated:           $($clientRow.status_updated_at)"
+  Write-Host "  Last handoff:      $($d.last_handoff)"
+  Write-Host "  Next up:           $($d.next_up)"
+  Write-Host "  Waiting on:        $($d.waiting_on)"
+  Write-Host "  Sent, pending:     $($d.sent_pending)"
+  Write-Host "  Client questions:  $($d.client_questions)"
+  $openTasks = $clientRow.client_tasks | Where-Object { $_.status -eq 'open' }
+  Write-Host "  Open tasks:        $($openTasks.Count)"
+  foreach ($t in $openTasks) { Write-Host "    - $($t.title) $(if ($t.due_date) { "(due $($t.due_date))" })" }
+  Write-Host ""
+  return
+}
+
 if ($Body) {
   $activityPayload = @{
     client_id = $clientId
@@ -112,16 +150,40 @@ if ($Body) {
   Write-Host "Logged [$Type] for $($clientRow.name): $Body" -ForegroundColor Green
 }
 
-if ($Status) {
-  $statusPayload = @{
-    current_status    = $Status
-    status_updated_at = (Get-Date).ToUniversalTime().ToString('o')
-  } | ConvertTo-Json
+$detailFields = @{
+  last_handoff     = $LastHandoff
+  next_up          = $NextUp
+  waiting_on       = $WaitingOn
+  sent_pending     = $SentPending
+  client_questions = $ClientQuestions
+}
+$hasDetailUpdate = ($detailFields.Values | Where-Object { $_ }).Count -gt 0
 
-  Invoke-RestMethod -Uri "$BaseUrl/clients?id=$clientId" -Headers $Headers -Method Patch -Body $statusPayload | Out-Null
-  Write-Host "Status updated for $($clientRow.name): $Status" -ForegroundColor Cyan
+if ($Status -or $hasDetailUpdate) {
+  $patch = @{ status_updated_at = (Get-Date).ToUniversalTime().ToString('o') }
+
+  if ($Status) { $patch.current_status = $Status }
+
+  if ($hasDetailUpdate) {
+    # Merge onto the existing status_detail rather than overwrite it - each field
+    # you don't pass keeps whatever was there before.
+    $merged = @{}
+    if ($clientRow.status_detail) {
+      $clientRow.status_detail.PSObject.Properties | ForEach-Object { $merged[$_.Name] = $_.Value }
+    }
+    foreach ($key in $detailFields.Keys) {
+      if ($detailFields[$key]) { $merged[$key] = $detailFields[$key] }
+    }
+    $patch.status_detail = $merged
+  }
+
+  $patchJson = $patch | ConvertTo-Json -Depth 5
+  Invoke-RestMethod -Uri "$BaseUrl/clients?id=$clientId" -Headers $Headers -Method Patch -Body $patchJson | Out-Null
+
+  if ($Status) { Write-Host "Status updated for $($clientRow.name): $Status" -ForegroundColor Cyan }
+  if ($hasDetailUpdate) { Write-Host "Detail updated for $($clientRow.name)." -ForegroundColor Cyan }
 }
 
-if (-not $Body -and -not $Status) {
-  Write-Host "Nothing to do - pass -Body and/or -Status." -ForegroundColor Yellow
+if (-not $Body -and -not $Status -and -not $hasDetailUpdate) {
+  Write-Host "Nothing to do - pass -Body, -Status, and/or a detail field. See -Show or -List." -ForegroundColor Yellow
 }

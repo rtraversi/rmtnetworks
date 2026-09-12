@@ -77,12 +77,46 @@
   select:focus { outline: none; border-color: var(--accent); }
 
   .board { display: flex; flex-direction: column; gap: 10px; }
-  .row {
+  .card {
     background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden;
+  }
+  .card.stale { border-color: var(--warn); }
+  .row {
     padding: 16px 20px; display: grid;
     grid-template-columns: 1fr 2fr auto auto; gap: 16px; align-items: center;
+    cursor: pointer; user-select: none;
   }
-  .row.stale { border-color: var(--warn); }
+  .row:hover { background: rgba(255,255,255,0.02); }
+  .row-name .chevron {
+    display: inline-block; margin-right: 6px; color: var(--muted);
+    font-size: 0.7rem; transition: transform 0.15s;
+  }
+  .card.expanded .row-name .chevron { transform: rotate(90deg); }
+
+  .detail-panel {
+    display: none; padding: 0 20px 20px; border-top: 1px solid var(--border);
+    grid-template-columns: 1fr 1fr; gap: 16px 24px;
+  }
+  .card.expanded .detail-panel { display: grid; padding-top: 16px; }
+  .detail-field { font-size: 0.82rem; }
+  .detail-field .detail-label {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+  }
+  .detail-field .detail-value { color: var(--text); line-height: 1.4; }
+  .detail-field .detail-value.empty { color: var(--muted); font-style: italic; }
+  .detail-field.full { grid-column: 1 / -1; }
+  .detail-tasklist { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .detail-tasklist li {
+    font-family: 'DM Mono', monospace; font-size: 0.76rem; color: var(--text);
+    display: flex; justify-content: space-between; gap: 10px;
+  }
+  .detail-tasklist .due { color: var(--muted); white-space: nowrap; }
+
+  @media (max-width: 700px) {
+    .detail-panel { grid-template-columns: 1fr; }
+  }
   .row-name { font-weight: 700; font-size: 1rem; }
   .row-name .company { display: block; font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); font-weight: 400; margin-top: 2px; }
   .row-status { font-size: 0.88rem; color: var(--text); }
@@ -221,25 +255,52 @@
         .filter(t => t.due_date)
         .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
 
+      const d = c.status_detail || {};
+      const field = (label, value) => `
+        <div class="detail-field">
+          <div class="detail-label">${label}</div>
+          <div class="detail-value ${value ? '' : 'empty'}">${value ? escapeHtml(value) : 'Nothing logged'}</div>
+        </div>
+      `;
+
       return `
-        <div class="row ${isStale ? 'stale' : ''}">
-          <div class="row-name">
-            ${escapeHtml(c.name)}
-            ${c.company ? `<span class="company">${escapeHtml(c.company)}</span>` : ''}
+        <div class="card ${isStale ? 'stale' : ''}" id="card-${c.id}">
+          <div class="row" onclick="toggleCard('${c.id}')">
+            <div class="row-name">
+              <span class="chevron">▶</span>${escapeHtml(c.name)}
+              ${c.company ? `<span class="company">${escapeHtml(c.company)}</span>` : ''}
+            </div>
+            <div class="row-status ${c.current_status ? '' : 'empty'}">
+              ${c.current_status ? escapeHtml(c.current_status) : 'No status logged yet'}
+            </div>
+            <div class="row-tasks ${openTasks.length ? '' : 'none'}">
+              ${openTasks.length ? `${openTasks.length} open task${openTasks.length === 1 ? '' : 's'}` : 'No open tasks'}
+              ${nextDue ? `<br>next due ${escapeHtml(nextDue.due_date)}` : ''}
+            </div>
+            <div class="row-meta">
+              <span class="row-age ${isStale ? 'stale' : ''}">${ageLabel}</span>
+            </div>
           </div>
-          <div class="row-status ${c.current_status ? '' : 'empty'}">
-            ${c.current_status ? escapeHtml(c.current_status) : 'No status logged yet'}
-          </div>
-          <div class="row-tasks ${openTasks.length ? '' : 'none'}">
-            ${openTasks.length ? `${openTasks.length} open task${openTasks.length === 1 ? '' : 's'}` : 'No open tasks'}
-            ${nextDue ? `<br>next due ${escapeHtml(nextDue.due_date)}` : ''}
-          </div>
-          <div class="row-meta">
-            <span class="row-age ${isStale ? 'stale' : ''}">${ageLabel}</span>
+          <div class="detail-panel">
+            ${field('Where we left off', d.last_handoff)}
+            ${field("What's next", d.next_up)}
+            ${field('Waiting on client', d.waiting_on)}
+            ${field('Sent, awaiting response', d.sent_pending)}
+            ${field('Client questions to answer', d.client_questions)}
+            <div class="detail-field full">
+              <div class="detail-label">Open tasks</div>
+              ${openTasks.length
+                ? `<ul class="detail-tasklist">${openTasks.map(t => `<li><span>${escapeHtml(t.title)}</span>${t.due_date ? `<span class="due">due ${escapeHtml(t.due_date)}</span>` : ''}</li>`).join('')}</ul>`
+                : `<div class="detail-value empty">No open tasks</div>`}
+            </div>
           </div>
         </div>
       `;
     }).join('');
+  }
+
+  function toggleCard(id) {
+    document.getElementById(`card-${id}`).classList.toggle('expanded');
   }
 
   load();
