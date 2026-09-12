@@ -133,7 +133,7 @@
 
   <div class="stats-bar">
     <div class="stat-pill">
-      <span class="stat-label">Tracked Clients</span>
+      <span class="stat-label">Active Clients</span>
       <span class="stat-value" id="stat-total">0</span>
     </div>
     <div class="stat-pill">
@@ -147,15 +147,6 @@
   </div>
 
   <div class="toolbar">
-    <select class="filter-select" id="filter-status" onchange="render()">
-      <option value="">All Statuses</option>
-      <option value="prospect">Prospect</option>
-      <option value="active">Active</option>
-      <option value="delivered">Delivered</option>
-      <option value="paused">Paused</option>
-      <option value="former">Former</option>
-      <option value="bsbr">BSBR</option>
-    </select>
     <select class="filter-select" id="sort-by" onchange="render()">
       <option value="stale">Sort: Most stale first</option>
       <option value="name">Sort: Name</option>
@@ -186,15 +177,14 @@
       document.getElementById('board').innerHTML = `<div class="empty-state">Failed to load clients (${res.status}).</div>`;
       return;
     }
-    allClients = await res.json();
+    allClients = (await res.json()).filter(c => c.status === 'active');
     render();
   }
 
   function render() {
-    const statusFilter = document.getElementById('filter-status').value;
     const sortBy = document.getElementById('sort-by').value;
 
-    let rows = allClients.filter(c => !statusFilter || c.status === statusFilter);
+    let rows = allClients.slice();
 
     if (sortBy === 'name') {
       rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -218,7 +208,7 @@
 
     const board = document.getElementById('board');
     if (rows.length === 0) {
-      board.innerHTML = `<div class="empty-state">No clients match this filter.</div>`;
+      board.innerHTML = `<div class="empty-state">No active clients.</div>`;
       return;
     }
 
@@ -245,7 +235,6 @@
             ${nextDue ? `<br>next due ${escapeHtml(nextDue.due_date)}` : ''}
           </div>
           <div class="row-meta">
-            <span class="badge ${escapeHtml(c.status)}">${escapeHtml(c.status)}</span>
             <span class="row-age ${isStale ? 'stale' : ''}">${ageLabel}</span>
           </div>
         </div>
