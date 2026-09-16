@@ -302,11 +302,33 @@
   .app-tile.stripe-tile .tile-mode.live { color: var(--accent); border-color: rgba(79,255,176,0.4); }
   .app-tile.stripe-tile .tile-mode.test { color: var(--warn);   border-color: rgba(255,107,74,0.4); }
 
-  /* Tax review tile */
-  .app-tile.tax-tile .tile-icon {
-    background: rgba(79,255,176,0.1);
-    border-color: rgba(79,255,176,0.28);
+  /* Personal tile — groups individual (non-client) tools behind sub-links
+     instead of each getting its own top-level tile. */
+  .app-tile.personal-tile { cursor: default; }
+  .personal-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
   }
+  .personal-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .personal-link:hover { border-color: var(--accent); background: rgba(79,255,176,0.05); }
+  .personal-link-name { flex: 1; }
+  .personal-link-arrow { color: var(--accent); opacity: 0; transition: opacity 0.15s; }
+  .personal-link:hover .personal-link-arrow { opacity: 1; }
 
   /* IurisIQ Demo Portal tile */
   .app-tile.iurisiq-tile {
@@ -319,10 +341,8 @@
     border-color: rgba(139,92,246,0.3);
   }
 
-  /* IURIX Accreditation tile — side-by-side A/B counters for the two landing
-     variants Katy is circulating (?v=1 vs ?v=2). Two columns rather than the
-     label/value grid the other metric tiles use: the whole point is comparing
-     one number against the other, and stacked rows make that a subtraction. */
+  /* Iurix Accreditation tile — reuses the orange/red treatment from the
+     old IURIX A/B tile (now removed) on what was the Site Traffic tile. */
   .app-tile.iurix-tile {
     background: linear-gradient(135deg, rgba(255,107,74,0.07) 0%, rgba(75,143,255,0.03) 100%);
     border-color: rgba(255,107,74,0.28);
@@ -331,45 +351,6 @@
   .app-tile.iurix-tile .tile-icon {
     background: rgba(255,107,74,0.12);
     border-color: rgba(255,107,74,0.3);
-  }
-  .app-tile.iurix-tile .ab-metrics {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 10px;
-  }
-  .app-tile.iurix-tile .ab-col {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 12px;
-    background: rgba(0,0,0,0.18);
-  }
-  .app-tile.iurix-tile .ab-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .app-tile.iurix-tile .ab-val {
-    font-family: 'DM Mono', monospace;
-    font-size: 1.5rem;
-    font-weight: 500;
-    line-height: 1.25;
-    color: var(--text);
-  }
-  .app-tile.iurix-tile .ab-val.has-hits { color: var(--accent); }
-  .app-tile.iurix-tile .ab-url {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    color: var(--muted);
-    word-break: break-all;
-  }
-  /* The leader gets the outline, so which variant is winning reads at a glance
-     without comparing two numbers. Neither is marked while both sit at zero. */
-  .app-tile.iurix-tile .ab-col.leading {
-    border-color: rgba(79,255,176,0.45);
-    background: rgba(79,255,176,0.06);
   }
 
   @media (max-width: 640px) {
@@ -405,14 +386,26 @@
 
   <div class="apps-grid">
 
-    <a class="app-tile demo-hub" href="/demos.html">
-      <div class="tile-icon">🧪</div>
+    <a class="app-tile clients-tile" href="/clients.html">
+      <div class="tile-icon">👥</div>
       <div class="tile-body">
-        <div class="tile-name">Demo Site</div>
-        <div class="tile-desc">Client-facing demos &mdash; Proof-Scan, Tracker, USCIS Intake, and New Deed automation.</div>
+        <div class="tile-name">Clients</div>
+        <div class="tile-desc">Contact cards, Docker containers, and encrypted logins for every client automation.</div>
       </div>
       <div class="tile-footer">
-        <span class="tile-tag">Showcase</span>
+        <span class="tile-tag">CRM</span>
+        <span class="tile-cta">Open →</span>
+      </div>
+    </a>
+
+    <a class="app-tile" href="/command-center.html">
+      <div class="tile-icon">🖥️</div>
+      <div class="tile-body">
+        <div class="tile-name">Command Center</div>
+        <div class="tile-desc">Every active client's current status, staleness, and open tasks at a glance.</div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">CRM</span>
         <span class="tile-cta">Open →</span>
       </div>
     </a>
@@ -440,6 +433,18 @@
       </div>
     </a>
 
+    <a class="app-tile demo-hub" href="/demos.html">
+      <div class="tile-icon">🧪</div>
+      <div class="tile-body">
+        <div class="tile-name">Demo Site</div>
+        <div class="tile-desc">Client-facing demos &mdash; Proof-Scan, Tracker, USCIS Intake, and New Deed automation.</div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">Showcase</span>
+        <span class="tile-cta">Open →</span>
+      </div>
+    </a>
+
     <a class="app-tile stripe-tile iurisiq-tile rob-only" href="#" target="_blank" rel="noopener" id="iurisiqTile">
       <div class="tile-icon">⚖️</div>
       <div class="tile-body">
@@ -463,10 +468,10 @@
       </div>
     </a>
 
-    <a class="app-tile stripe-tile cfa-tile rob-only" href="https://dash.cloudflare.com/4b2a402334decc9259d7317aaf9782f0/web-analytics" target="_blank" rel="noopener" id="cfaTile">
-      <div class="tile-icon">📈</div>
+    <a class="app-tile stripe-tile cfa-tile iurix-tile rob-only" href="https://dash.cloudflare.com/4b2a402334decc9259d7317aaf9782f0/web-analytics" target="_blank" rel="noopener" id="cfaTile">
+      <div class="tile-icon">⚖️</div>
       <div class="tile-body">
-        <div class="tile-name">Site Traffic</div>
+        <div class="tile-name">Iurix Accreditation</div>
         <div class="tile-metrics" id="cfaMetrics">
           <span class="tile-metric-label">Visits (24h)</span>
           <span class="tile-metric-val accent" id="cfaVisits24h">—</span>
@@ -486,43 +491,25 @@
       </div>
     </a>
 
-    <!-- Opens the BARE url on purpose: the beacon only counts ?v=1 and ?v=2, so
-         checking the site from here can't inflate either variant's number. -->
-    <a class="app-tile iurix-tile" href="https://iurixaccreditation.com" target="_blank" rel="noopener" id="iurixTile">
-      <div class="tile-icon">⚖️</div>
+    <div class="app-tile personal-tile">
+      <div class="tile-icon">🗂️</div>
       <div class="tile-body">
-        <div class="tile-name">IURIX Accreditation</div>
-        <div class="tile-desc">Landing page hits by link variant &mdash; which version people are actually opening.</div>
-        <div class="ab-metrics" id="iurixMetrics">
-          <div class="ab-col" id="iurixV1Col">
-            <div class="ab-label">Version 1</div>
-            <div class="ab-val" id="iurixV1Hits">&mdash;</div>
-            <div class="ab-url">/?v=1</div>
-          </div>
-          <div class="ab-col" id="iurixV2Col">
-            <div class="ab-label">Version 2</div>
-            <div class="ab-val" id="iurixV2Hits">&mdash;</div>
-            <div class="ab-url">/?v=2</div>
-          </div>
+        <div class="tile-name">Personal</div>
+        <div class="tile-desc">Individual tools — not client work.</div>
+        <div class="personal-links">
+          <a class="personal-link" href="/tax.html">
+            <span class="personal-link-icon">🧾</span>
+            <span class="personal-link-name">Analyze Tax Return</span>
+            <span class="personal-link-arrow">→</span>
+          </a>
+          <a class="personal-link" href="/ideas.html">
+            <span class="personal-link-icon">💡</span>
+            <span class="personal-link-name">Ideas</span>
+            <span class="personal-link-arrow">→</span>
+          </a>
         </div>
       </div>
-      <div class="tile-footer">
-        <span class="tile-tag">IURIX</span>
-        <span class="tile-cta">Open site →</span>
-      </div>
-    </a>
-
-    <a class="app-tile tax-tile" href="/tax.html">
-      <div class="tile-icon">🧾</div>
-      <div class="tile-body">
-        <div class="tile-name">Analyze Tax Return</div>
-        <div class="tile-desc">Upload a draft return and have Claude review it for errors, omissions, and ways to lower the bill &mdash; federal and NC.</div>
-      </div>
-      <div class="tile-footer">
-        <span class="tile-tag">Finance</span>
-        <span class="tile-cta">Open →</span>
-      </div>
-    </a>
+    </div>
 
     <a class="app-tile" href="/tracker.html">
       <div class="tile-icon">📋</div>
@@ -536,18 +523,6 @@
       </div>
     </a>
 
-    <a class="app-tile" href="/ideas.html">
-      <div class="tile-icon">💡</div>
-      <div class="tile-body">
-        <div class="tile-name">Ideas</div>
-        <div class="tile-desc">Capture and track ideas — title, description, priority, and who added them.</div>
-      </div>
-      <div class="tile-footer">
-        <span class="tile-tag">Productivity</span>
-        <span class="tile-cta">Open →</span>
-      </div>
-    </a>
-
     <a class="app-tile" href="/vps.html">
       <div class="tile-icon">🖥</div>
       <div class="tile-body">
@@ -556,30 +531,6 @@
       </div>
       <div class="tile-footer">
         <span class="tile-tag">Infrastructure</span>
-        <span class="tile-cta">Open →</span>
-      </div>
-    </a>
-
-    <a class="app-tile clients-tile" href="/clients.html">
-      <div class="tile-icon">👥</div>
-      <div class="tile-body">
-        <div class="tile-name">Clients</div>
-        <div class="tile-desc">Contact cards, Docker containers, and encrypted logins for every client automation.</div>
-      </div>
-      <div class="tile-footer">
-        <span class="tile-tag">CRM</span>
-        <span class="tile-cta">Open →</span>
-      </div>
-    </a>
-
-    <a class="app-tile" href="/command-center.html">
-      <div class="tile-icon">🖥️</div>
-      <div class="tile-body">
-        <div class="tile-name">Command Center</div>
-        <div class="tile-desc">Every active client's current status, staleness, and open tasks at a glance.</div>
-      </div>
-      <div class="tile-footer">
-        <span class="tile-tag">CRM</span>
         <span class="tile-cta">Open →</span>
       </div>
     </a>
@@ -607,8 +558,6 @@
       const demoHits       = byMetric['page_hits']          ?? 0;
       const proofHits      = byMetric['proof_scan_hits']    ?? 0;
       const uscisHits      = byMetric['uscis_hits']         ?? 0;
-      const iurixV1Hits    = byMetric['iurix_v1_hits']      ?? 0;
-      const iurixV2Hits    = byMetric['iurix_v2_hits']      ?? 0;
 
       const set = (id, n) => {
         const el = document.getElementById(id);
@@ -618,23 +567,6 @@
       set('demo-hits',        demoHits);
       set('proof-hits',       proofHits);
       set('uscis-hits',       uscisHits);
-
-      // IURIX A/B tile. Plain numbers, no eye glyph — these two get read against
-      // each other, and the column label already says what they are.
-      const setAb = (id, n) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent = n.toLocaleString();
-        if (n > 0) el.classList.add('has-hits');
-      };
-      setAb('iurixV1Hits', iurixV1Hits);
-      setAb('iurixV2Hits', iurixV2Hits);
-
-      // A tie leaves both plain — outlining both would say nothing.
-      if (iurixV1Hits !== iurixV2Hits) {
-        const winner = iurixV1Hits > iurixV2Hits ? 'iurixV1Col' : 'iurixV2Col';
-        document.getElementById(winner)?.classList.add('leading');
-      }
     } catch {}
   })();
 
