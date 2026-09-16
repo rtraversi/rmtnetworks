@@ -52,8 +52,7 @@
     transition: color 0.15s, border-color 0.15s;
   }
   .back-link:hover { color: var(--accent); border-color: var(--accent); }
-  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
-  .logo span { color: var(--muted); font-weight: 400; }
+  .logo { height: 28px; width: auto; display: block; }
 
   main { max-width: 1100px; margin: 0 auto; padding: 40px; }
   .page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
@@ -172,7 +171,7 @@
 <header>
   <div class="header-left">
     <a class="back-link" href="javascript:history.back()">← Back</a>
-    <div class="logo">RMT<span>/</span>Networks</div>
+    <img class="logo" src="/images/rmt-networks-logo.png" alt="RMT Networks">
   </div>
   <div class="header-right">
     <a class="back-link" href="/clients.html">Clients →</a>

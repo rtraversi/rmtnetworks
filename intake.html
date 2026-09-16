@@ -24,8 +24,7 @@
     min-height: 100vh; display: flex; justify-content: center;
   }
   main { width: 100%; max-width: 560px; padding: 48px 24px 80px; }
-  .logo { font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 6px; }
-  .logo span { color: var(--muted); font-weight: 400; }
+  .logo { height: 24px; width: auto; display: block; margin-bottom: 6px; }
   h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
   .sub {
     font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted);
@@ -114,7 +113,7 @@
   </div>
 
   <div id="form-wrap" class="hidden">
-    <div class="logo">RMT<span> NETWORKS</span></div>
+    <img class="logo" src="/images/rmt-networks-logo.png" alt="RMT Networks">
     <h1>Secure Intake</h1>
     <div id="personal-message" class="message-box hidden"></div>
     <p class="sub" id="intro-text"></p>

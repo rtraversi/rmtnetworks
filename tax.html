@@ -60,8 +60,7 @@
     background: var(--bg);
     z-index: 100;
   }
-  .logo { font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); text-decoration: none; }
-  .logo span { color: var(--muted); font-weight: 400; }
+  .logo { height: 24px; width: auto; display: block; }
   .head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
   .btn {
@@ -326,7 +325,7 @@
 <body>
 
 <header>
-  <a class="logo" href="/portal.html">RMT<span>/</span>Networks</a>
+  <a href="/portal.html"><img class="logo" src="/images/rmt-networks-logo.png" alt="RMT Networks"></a>
   <div class="head-right">
     <span class="meter" id="meter"></span>
     <a class="btn" href="/portal.html">← Portal</a>

@@ -69,25 +69,11 @@
     box-shadow: 0 24px 64px rgba(0,0,0,0.4);
   }
 
-  .logo-mark {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--accent);
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .logo-mark::before {
-    content: '';
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
+  .logo-img {
+    display: block;
+    height: 44px;
+    width: auto;
+    margin-bottom: 22px;
   }
 
   h1 {
@@ -234,7 +220,7 @@
 <body>
 
 <div class="login-card">
-  <div class="logo-mark">RMT Networks</div>
+  <img class="logo-img" src="/images/rmt-networks-logo.png" alt="RMT Networks">
   <h1>Private Portal</h1>
   <p class="subtitle">Enter your access password to continue.</p>
 

@@ -87,8 +87,7 @@
     .sub-header { padding: 10px 20px; gap: 14px; }
   }
 
-  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.08em; color: var(--accent); }
-  .logo span { color: var(--muted); font-weight: 400; }
+  .logo { height: 28px; width: auto; display: block; }
 
   .btn-logout {
     font-family: 'DM Mono', monospace;
@@ -384,7 +383,7 @@
 <body>
 
 <header>
-  <div class="logo">RMT<span>/</span>Networks</div>
+  <img class="logo" src="/images/rmt-networks-logo.png" alt="RMT Networks">
   <button class="btn-logout" onclick="logout()">Sign out</button>
 </header>
 
