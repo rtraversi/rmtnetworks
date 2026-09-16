@@ -37,7 +37,7 @@ const WRITABLE_FIELDS = [
   'status', 'pipeline_stage', 'deal_value', 'lost_reason',
   'date_hired', 'contract_renewal_date', 'payment_terms', 'next_followup_date',
   'contract_url', 'stripe_customer_email', 'scope_of_work', 'notes',
-  'current_status', 'status_updated_at', 'status_detail',
+  'current_status', 'status_updated_at', 'status_detail', 'project_status',
 ];
 
 function pickWritable(body) {

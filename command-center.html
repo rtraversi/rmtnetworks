@@ -32,6 +32,10 @@
     --text:    #e8eaf0;
     --muted:   #5a6070;
     --card-bg: #181b24;
+    --stage-red:    #ff5470;
+    --stage-green:  #4fffb0;
+    --stage-yellow: #ffd166;
+    --stage-pink:   #ff7cf0;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; visibility: hidden; }
@@ -84,7 +88,7 @@
   .card.stale { border-color: var(--warn); }
   .row {
     padding: 16px 20px; display: grid;
-    grid-template-columns: 1fr 2fr auto auto; gap: 16px; align-items: center;
+    grid-template-columns: 1.1fr auto 1.3fr 1.3fr auto auto; gap: 16px; align-items: center;
     cursor: pointer; user-select: none;
   }
   .row:hover { background: rgba(255,255,255,0.02); }
@@ -121,6 +125,22 @@
   .row-name .company { display: block; font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); font-weight: 400; margin-top: 2px; }
   .row-status { font-size: 0.88rem; color: var(--text); }
   .row-status.empty { color: var(--muted); font-style: italic; }
+  .row-next { font-size: 0.88rem; color: var(--text); }
+  .row-next.empty { color: var(--muted); font-style: italic; }
+  .row-next .col-label, .row-status .col-label {
+    display: block; font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px;
+  }
+  .status-pill {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem; text-transform: uppercase;
+    letter-spacing: 0.05em; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid; white-space: nowrap; font-weight: 500;
+  }
+  .status-pill.pill-red    { color: var(--stage-red);    border-color: var(--stage-red);    background: rgba(255,84,112,0.1); }
+  .status-pill.pill-green  { color: var(--stage-green);  border-color: var(--stage-green);  background: rgba(79,255,176,0.1); }
+  .status-pill.pill-yellow { color: var(--stage-yellow); border-color: var(--stage-yellow); background: rgba(255,209,102,0.1); }
+  .status-pill.pill-pink   { color: var(--stage-pink);   border-color: var(--stage-pink);   background: rgba(255,124,240,0.1); }
+  .status-pill.pill-none   { color: var(--muted); border-color: var(--border); }
   .row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-family: 'DM Mono', monospace; font-size: 0.68rem; }
   .row-age { color: var(--muted); }
   .row-age.stale { color: var(--warn); font-weight: 500; }
@@ -194,6 +214,22 @@
   const SESSION = sessionStorage.getItem('rmt_session') || '';
   const apiHeaders = () => ({ Authorization: `Bearer ${SESSION}` });
   let allClients = [];
+
+  const STAGE_META = {
+    pending_client:  { label: 'Pending Client',  css: 'red' },
+    building:        { label: 'Building',        css: 'green' },
+    on_hold:         { label: 'On-Hold',         css: 'red' },
+    completed:       { label: 'Completed',       css: 'green' },
+    pending_payment: { label: 'Pending Payment', css: 'yellow' },
+    new_build:       { label: 'New Build',       css: 'pink' },
+  };
+
+  function stagePillHtml(projectStatus) {
+    const stage = STAGE_META[projectStatus];
+    return stage
+      ? `<span class="status-pill pill-${stage.css}">${stage.label}</span>`
+      : `<span class="status-pill pill-none">No stage</span>`;
+  }
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -270,8 +306,14 @@
               <span class="chevron">▶</span>${escapeHtml(c.name)}
               ${c.company ? `<span class="company">${escapeHtml(c.company)}</span>` : ''}
             </div>
+            <div class="row-pill">${stagePillHtml(c.project_status)}</div>
             <div class="row-status ${c.current_status ? '' : 'empty'}">
+              <span class="col-label">What's up</span>
               ${c.current_status ? escapeHtml(c.current_status) : 'No status logged yet'}
+            </div>
+            <div class="row-next ${d.next_up ? '' : 'empty'}">
+              <span class="col-label">What's next</span>
+              ${d.next_up ? escapeHtml(d.next_up) : 'Nothing queued'}
             </div>
             <div class="row-tasks ${openTasks.length ? '' : 'none'}">
               ${openTasks.length ? `${openTasks.length} open task${openTasks.length === 1 ? '' : 's'}` : 'No open tasks'}

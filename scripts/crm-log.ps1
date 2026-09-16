@@ -39,6 +39,10 @@
     -ClientQuestions "They asked whether we can support a Spanish version"
 
 .EXAMPLE
+  # Set the pipeline stage pill shown on the Command Center board
+  .\crm-log.ps1 -Client "Acme" -Stage "Building"
+
+.EXAMPLE
   # Print everything currently known about a client (no activity logged)
   .\crm-log.ps1 -Client "Acme" -Show
 #>
@@ -50,6 +54,8 @@ param(
   [ValidateSet('note', 'email', 'call', 'meeting')]
   [string]$Type = 'note',
   [string]$Status,
+  [ValidateSet('Pending Client', 'Building', 'On-Hold', 'Completed', 'Pending Payment', 'New Build')]
+  [string]$Stage,
   [string]$LastHandoff,
   [string]$NextUp,
   [string]$WaitingOn,
@@ -121,23 +127,25 @@ if ($matches.Count -gt 1) {
 $clientRow = $matches[0]
 $clientId  = $clientRow.id
 
-if ($Show) {
-  $d = $clientRow.status_detail
+function Show-Client($row) {
+  $d = $row.status_detail
   Write-Host ""
-  Write-Host "$($clientRow.name)" -ForegroundColor Cyan
-  Write-Host "  Status:            $($clientRow.current_status)"
-  Write-Host "  Updated:           $($clientRow.status_updated_at)"
+  Write-Host "$($row.name)" -ForegroundColor Cyan
+  Write-Host "  Stage:             $($row.project_status)"
+  Write-Host "  Status:            $($row.current_status)"
+  Write-Host "  Updated:           $($row.status_updated_at)"
   Write-Host "  Last handoff:      $($d.last_handoff)"
   Write-Host "  Next up:           $($d.next_up)"
   Write-Host "  Waiting on:        $($d.waiting_on)"
   Write-Host "  Sent, pending:     $($d.sent_pending)"
   Write-Host "  Client questions:  $($d.client_questions)"
-  $openTasks = $clientRow.client_tasks | Where-Object { $_.status -eq 'open' }
+  $openTasks = $row.client_tasks | Where-Object { $_.status -eq 'open' }
   Write-Host "  Open tasks:        $($openTasks.Count)"
   foreach ($t in $openTasks) { Write-Host "    - $($t.title) $(if ($t.due_date) { "(due $($t.due_date))" })" }
   Write-Host ""
-  return
 }
+
+$didWrite = $false
 
 if ($Body) {
   $activityPayload = @{
@@ -148,6 +156,7 @@ if ($Body) {
 
   Invoke-RestMethod -Uri "$BaseUrl/client-activities" -Headers $Headers -Method Post -Body $activityPayload | Out-Null
   Write-Host "Logged [$Type] for $($clientRow.name): $Body" -ForegroundColor Green
+  $didWrite = $true
 }
 
 $detailFields = @{
@@ -159,10 +168,20 @@ $detailFields = @{
 }
 $hasDetailUpdate = ($detailFields.Values | Where-Object { $_ }).Count -gt 0
 
-if ($Status -or $hasDetailUpdate) {
+$StageMap = @{
+  'Pending Client'  = 'pending_client'
+  'Building'        = 'building'
+  'On-Hold'         = 'on_hold'
+  'Completed'       = 'completed'
+  'Pending Payment' = 'pending_payment'
+  'New Build'       = 'new_build'
+}
+
+if ($Status -or $Stage -or $hasDetailUpdate) {
   $patch = @{ status_updated_at = (Get-Date).ToUniversalTime().ToString('o') }
 
   if ($Status) { $patch.current_status = $Status }
+  if ($Stage) { $patch.project_status = $StageMap[$Stage] }
 
   if ($hasDetailUpdate) {
     # Merge onto the existing status_detail rather than overwrite it - each field
@@ -181,9 +200,17 @@ if ($Status -or $hasDetailUpdate) {
   Invoke-RestMethod -Uri "$BaseUrl/clients?id=$clientId" -Headers $Headers -Method Patch -Body $patchJson | Out-Null
 
   if ($Status) { Write-Host "Status updated for $($clientRow.name): $Status" -ForegroundColor Cyan }
+  if ($Stage) { Write-Host "Stage updated for $($clientRow.name): $Stage" -ForegroundColor Cyan }
   if ($hasDetailUpdate) { Write-Host "Detail updated for $($clientRow.name)." -ForegroundColor Cyan }
+  $didWrite = $true
 }
 
-if (-not $Body -and -not $Status -and -not $hasDetailUpdate) {
-  Write-Host "Nothing to do - pass -Body, -Status, and/or a detail field. See -Show or -List." -ForegroundColor Yellow
+if (-not $didWrite -and -not $Show) {
+  Write-Host "Nothing to do - pass -Body, -Status, -Stage, and/or a detail field. See -Show or -List." -ForegroundColor Yellow
+}
+
+if ($Show) {
+  # Re-fetch so a write earlier in this same call is reflected immediately.
+  $fresh = if ($didWrite) { (Get-Clients | Where-Object { $_.id -eq $clientId }) } else { $clientRow }
+  Show-Client $fresh
 }
