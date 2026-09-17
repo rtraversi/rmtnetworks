@@ -36,6 +36,7 @@
     --stage-green:  #4fffb0;
     --stage-yellow: #ffd166;
     --stage-pink:   #ff7cf0;
+    --stage-blue:   #4b8fff;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; visibility: hidden; }
@@ -139,7 +140,22 @@
   .status-pill.pill-green  { color: var(--stage-green);  border-color: var(--stage-green);  background: rgba(79,255,176,0.1); }
   .status-pill.pill-yellow { color: var(--stage-yellow); border-color: var(--stage-yellow); background: rgba(255,209,102,0.1); }
   .status-pill.pill-pink   { color: var(--stage-pink);   border-color: var(--stage-pink);   background: rgba(255,124,240,0.1); }
+  .status-pill.pill-blue   { color: var(--stage-blue);   border-color: var(--stage-blue);   background: rgba(75,143,255,0.1); }
   .status-pill.pill-none   { color: var(--muted); border-color: var(--border); }
+
+  .stage-select {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem; text-transform: uppercase;
+    letter-spacing: 0.05em; padding: 4px 8px; border-radius: 20px;
+    border: 1px solid; white-space: nowrap; font-weight: 500; cursor: pointer;
+  }
+  .stage-select:focus { outline: none; }
+  .stage-select option { background: var(--card-bg); color: var(--text); text-transform: none; }
+  .stage-select.pill-red    { color: var(--stage-red);    border-color: var(--stage-red);    background-color: rgba(255,84,112,0.1); }
+  .stage-select.pill-green  { color: var(--stage-green);  border-color: var(--stage-green);  background-color: rgba(79,255,176,0.1); }
+  .stage-select.pill-yellow { color: var(--stage-yellow); border-color: var(--stage-yellow); background-color: rgba(255,209,102,0.1); }
+  .stage-select.pill-pink   { color: var(--stage-pink);   border-color: var(--stage-pink);   background-color: rgba(255,124,240,0.1); }
+  .stage-select.pill-blue   { color: var(--stage-blue);   border-color: var(--stage-blue);   background-color: rgba(75,143,255,0.1); }
+  .stage-select.pill-none   { color: var(--muted); border-color: var(--border); background-color: transparent; }
   .row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-family: 'DM Mono', monospace; font-size: 0.68rem; }
   .row-age { color: var(--muted); }
   .row-age.stale { color: var(--warn); font-weight: 500; }
@@ -215,19 +231,25 @@
   let allClients = [];
 
   const STAGE_META = {
-    pending_client:  { label: 'Pending Client',  css: 'red' },
-    building:        { label: 'Building',        css: 'green' },
-    on_hold:         { label: 'On-Hold',         css: 'red' },
-    completed:       { label: 'Completed',       css: 'green' },
-    pending_payment: { label: 'Pending Payment', css: 'yellow' },
-    new_build:       { label: 'New Build',       css: 'pink' },
+    pending_client:   { label: 'Pending Client',   css: 'red' },
+    building:         { label: 'Building',         css: 'green' },
+    on_hold:          { label: 'On-Hold',          css: 'red' },
+    completed:        { label: 'Completed',        css: 'green' },
+    pending_payment:  { label: 'Pending Payment',  css: 'yellow' },
+    pending_delivery: { label: 'Pending Delivery', css: 'blue' },
+    new_build:        { label: 'New Build',        css: 'pink' },
   };
 
-  function stagePillHtml(projectStatus) {
-    const stage = STAGE_META[projectStatus];
-    return stage
-      ? `<span class="status-pill pill-${stage.css}">${stage.label}</span>`
-      : `<span class="status-pill pill-none">No stage</span>`;
+  const expandedIds = new Set();
+
+  function stageSelectHtml(client) {
+    const current = client.project_status;
+    const css = STAGE_META[current] ? STAGE_META[current].css : 'none';
+    const options = [`<option value="" ${current ? '' : 'selected'}>No stage</option>`]
+      .concat(Object.entries(STAGE_META).map(([key, meta]) =>
+        `<option value="${key}" ${key === current ? 'selected' : ''}>${meta.label}</option>`
+      )).join('');
+    return `<select class="stage-select pill-${css}" onclick="event.stopPropagation()" onchange="updateProjectStatus('${client.id}', this.value, this)">${options}</select>`;
   }
 
   function escapeHtml(s) {
@@ -299,13 +321,13 @@
       `;
 
       return `
-        <div class="card ${isStale ? 'stale' : ''}" id="card-${c.id}">
+        <div class="card ${isStale ? 'stale' : ''} ${expandedIds.has(c.id) ? 'expanded' : ''}" id="card-${c.id}">
           <div class="row" onclick="toggleCard('${c.id}')">
             <div class="row-name">
               <span class="chevron">▶</span>${escapeHtml(c.name)}
               ${c.company ? `<span class="company">${escapeHtml(c.company)}</span>` : ''}
             </div>
-            <div class="row-pill">${stagePillHtml(c.project_status)}</div>
+            <div class="row-pill">${stageSelectHtml(c)}</div>
             <div class="row-status ${c.current_status ? '' : 'empty'}">
               <span class="col-label">What's up</span>
               ${c.current_status ? escapeHtml(c.current_status) : 'No status logged yet'}
@@ -341,7 +363,44 @@
   }
 
   function toggleCard(id) {
+    if (expandedIds.has(id)) expandedIds.delete(id);
+    else expandedIds.add(id);
     document.getElementById(`card-${id}`).classList.toggle('expanded');
+  }
+
+  async function logSystemActivity(clientId, body) {
+    try {
+      await fetch('/.netlify/functions/client-activities', {
+        method: 'POST', headers: apiHeaders(),
+        body: JSON.stringify({ client_id: clientId, type: 'system', body }),
+      });
+    } catch { /* non-critical */ }
+  }
+
+  async function updateProjectStatus(clientId, newStatus, selectEl) {
+    const client = allClients.find(c => c.id === clientId);
+    if (!client) return;
+    const oldStatus = client.project_status || null;
+    const value = newStatus || null;
+    if (oldStatus === value) return;
+
+    selectEl.disabled = true;
+    try {
+      const res = await fetch(`/.netlify/functions/clients?id=${clientId}`, {
+        method: 'PATCH', headers: apiHeaders(),
+        body: JSON.stringify({ project_status: value }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const oldLabel = STAGE_META[oldStatus]?.label || 'No stage';
+      const newLabel = STAGE_META[value]?.label || 'No stage';
+      await logSystemActivity(clientId, `Stage changed: ${oldLabel} → ${newLabel}`);
+      client.project_status = value;
+      render();
+    } catch (e) {
+      alert('Error updating stage: ' + e.message);
+      selectEl.disabled = false;
+      selectEl.value = oldStatus || '';
+    }
   }
 
   load();

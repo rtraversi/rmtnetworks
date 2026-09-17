@@ -54,7 +54,7 @@ param(
   [ValidateSet('note', 'email', 'call', 'meeting')]
   [string]$Type = 'note',
   [string]$Status,
-  [ValidateSet('Pending Client', 'Building', 'On-Hold', 'Completed', 'Pending Payment', 'New Build')]
+  [ValidateSet('Pending Client', 'Building', 'On-Hold', 'Completed', 'Pending Payment', 'Pending Delivery', 'New Build')]
   [string]$Stage,
   [string]$LastHandoff,
   [string]$NextUp,
@@ -174,6 +174,7 @@ $StageMap = @{
   'On-Hold'         = 'on_hold'
   'Completed'       = 'completed'
   'Pending Payment' = 'pending_payment'
+  'Pending Delivery' = 'pending_delivery'
   'New Build'       = 'new_build'
 }
 
