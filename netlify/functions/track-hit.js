@@ -1,14 +1,12 @@
 // Increments a hit counter in Supabase.
 // Pass ?metric=page_hits (default) or other metric names to track different pages.
 //
-// iurix_v1_hits / iurix_v2_hits are the two iurixaccreditation.com landing
-// variants Katy is comparing (?v=1 vs ?v=2). They are counted here rather than
-// in Cloudflare Web Analytics because CF groups pageviews by request PATH and
-// discards the query string — which is the only thing telling the two variants
-// apart. The beacon lives in the attytraining repo (app/_components/hit-beacon.tsx).
+// The iurix_v1_hits / iurix_v2_hits metrics were retired 2026-09-25: Iurix now
+// records its own ?v= landings (and everything else) first-party, shown at
+// iurixaccreditation.com/ops/metrics. Their old usage_metrics rows are left as
+// history.
 exports.handler = async (event) => {
   const CORS = {
-    // The iurix beacon posts from https://iurixaccreditation.com, so this stays '*'.
     'Access-Control-Allow-Origin':  '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -20,7 +18,7 @@ exports.handler = async (event) => {
   const SB_KEY = process.env.SUPABASE_KEY;
 
   const metric  = event.queryStringParameters?.metric || 'page_hits';
-  const allowed = ['page_hits', 'proof_scan_hits', 'uscis_hits', 'iurix_v1_hits', 'iurix_v2_hits'];
+  const allowed = ['page_hits', 'proof_scan_hits', 'uscis_hits'];
   if (!allowed.includes(metric)) return { statusCode: 400, headers: CORS, body: 'Invalid metric' };
 
   // Only used when the row has to be created on first hit.
@@ -28,8 +26,6 @@ exports.handler = async (event) => {
     page_hits:       'Tracker Demo',
     proof_scan_hits: 'Proof Scan',
     uscis_hits:      'USCIS Intake',
-    iurix_v1_hits:   'IURIX landing v1',
-    iurix_v2_hits:   'IURIX landing v2',
   };
 
   try {
