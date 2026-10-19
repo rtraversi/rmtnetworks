@@ -16,7 +16,6 @@ async function patchMetric(service, metric, usedValue) {
     method: 'PATCH',
     headers: {
       'apikey': SB_KEY,
-      'Authorization': `Bearer ${SB_KEY}`,
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal',
     },
@@ -112,7 +111,7 @@ async function patchMetric(service, metric, usedValue) {
         // Get total from Supabase to calculate used
         const sbRes = await fetch(
           `${SB_URL}/rest/v1/usage_metrics?service_name=eq.Netlify&metric_name=eq.credits&select=limit_value`,
-          { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+          { headers: { 'apikey': SB_KEY } }
         );
         const sbData = await sbRes.json();
         const total = sbData[0]?.limit_value ?? 3000;

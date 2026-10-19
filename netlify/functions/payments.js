@@ -24,7 +24,6 @@ function sbFetch(path, opts = {}) {
     ...opts,
     headers: {
       apikey:          process.env.SUPABASE_KEY,
-      Authorization:   `Bearer ${process.env.SUPABASE_KEY}`,
       'Content-Type':  'application/json',
       Prefer:          'return=representation',
       ...(opts.headers || {}),

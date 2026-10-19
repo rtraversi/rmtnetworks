@@ -118,7 +118,6 @@ async function syncToSupabase(metrics) {
 
   const headers = {
     'apikey': key,
-    'Authorization': `Bearer ${key}`,
     'Content-Type': 'application/json',
     'Prefer': 'return=minimal',
   };

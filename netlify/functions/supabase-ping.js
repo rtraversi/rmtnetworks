@@ -13,7 +13,6 @@ exports.handler = async (event) => {
       {
         headers: {
           'apikey': process.env.SUPABASE_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
         },
       }
     );

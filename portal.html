@@ -541,7 +541,7 @@
       }).then(r => r.json());
       const res = await fetch(
         `${cfg.supabaseUrl}/rest/v1/usage_metrics?service_name=eq.Demo&select=metric_name,used_value`,
-        { headers: { 'apikey': cfg.supabaseKey, 'Authorization': `Bearer ${cfg.supabaseKey}` } }
+        { headers: { 'apikey': cfg.supabaseKey } }
       );
       const rows = await res.json();
       const byMetric = Object.fromEntries(rows.map(r => [r.metric_name, r.used_value]));

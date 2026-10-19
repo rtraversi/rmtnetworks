@@ -19,7 +19,6 @@ exports.handler = async (event) => {
       method: 'PATCH',
       headers: {
         'apikey': SB_KEY,
-        'Authorization': `Bearer ${SB_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
@@ -70,7 +69,6 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: {
         'apikey': SB_KEY,
-        'Authorization': `Bearer ${SB_KEY}`,
         'Content-Type': 'application/json',
       },
       body: '{}',

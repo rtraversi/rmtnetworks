@@ -29,7 +29,7 @@ exports.handler = async (event) => {
   };
 
   try {
-    const headers = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` };
+    const headers = { 'apikey': SB_KEY };
 
     const getRes = await fetch(
       `${SB_URL}/rest/v1/usage_metrics?service_name=eq.Demo&metric_name=eq.${metric}&select=used_value`,

@@ -480,11 +480,10 @@
     API = `${SUPABASE_URL}/rest/v1/subscriptions`;
     headers = {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     };
-    sbHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+    sbHeaders = { 'apikey': SUPABASE_KEY };
   }
 
   // Which metric to show first in the Usage column per service
