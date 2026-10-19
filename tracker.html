@@ -471,7 +471,9 @@
   let sbHeaders = {};
 
   async function initConfig() {
-    const res = await fetch('/.netlify/functions/config');
+    const res = await fetch('/.netlify/functions/config', {
+      headers: { 'Authorization': 'Bearer ' + (sessionStorage.getItem('rmt_session') || '') }
+    });
     const cfg = await res.json();
     SUPABASE_URL = cfg.supabaseUrl;
     SUPABASE_KEY = cfg.supabaseKey;

@@ -536,7 +536,9 @@
   // Page hit counters
   (async () => {
     try {
-      const cfg = await fetch('/.netlify/functions/config').then(r => r.json());
+      const cfg = await fetch('/.netlify/functions/config', {
+        headers: { 'Authorization': 'Bearer ' + (sessionStorage.getItem('rmt_session') || '') }
+      }).then(r => r.json());
       const res = await fetch(
         `${cfg.supabaseUrl}/rest/v1/usage_metrics?service_name=eq.Demo&select=metric_name,used_value`,
         { headers: { 'apikey': cfg.supabaseKey, 'Authorization': `Bearer ${cfg.supabaseKey}` } }
