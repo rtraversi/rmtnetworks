@@ -359,31 +359,20 @@
 <div id="toast"></div>
 
 <script>
-  let SUPABASE_URL = '', SUPABASE_KEY = '';
+  const API = '/.netlify/functions/ideas';
   let allIdeas = [], editingId = null;
   let selectedIds = new Set();
 
-  async function initConfig() {
-    const res = await fetch('/.netlify/functions/config', {
-      headers: { 'Authorization': 'Bearer ' + (sessionStorage.getItem('rmt_session') || '') }
-    });
-    const cfg = await res.json();
-    SUPABASE_URL = cfg.supabaseUrl;
-    SUPABASE_KEY = cfg.supabaseKey;
-  }
-
   function sbHeaders() {
     return {
-      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (sessionStorage.getItem('rmt_session') || ''),
       'Content-Type': 'application/json',
-      'Prefer': 'return=representation',
     };
   }
 
   async function loadIdeas() {
-    await initConfig();
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/ideas?order=created_at.desc`, { headers: sbHeaders() });
+      const res = await fetch(API, { headers: sbHeaders() });
       if (!res.ok) throw new Error(await res.text());
       allIdeas = await res.json();
       renderIdeas();
@@ -511,9 +500,9 @@
     try {
       let res;
       if (editingId) {
-        res = await fetch(`${SUPABASE_URL}/rest/v1/ideas?id=eq.${editingId}`, { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(payload) });
+        res = await fetch(`${API}?id=${editingId}`, { method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(payload) });
       } else {
-        res = await fetch(`${SUPABASE_URL}/rest/v1/ideas`, { method: 'POST', headers: sbHeaders(), body: JSON.stringify(payload) });
+        res = await fetch(API, { method: 'POST', headers: sbHeaders(), body: JSON.stringify(payload) });
       }
       if (!res.ok) throw new Error(await res.text());
       closeModal();
@@ -525,7 +514,7 @@
   async function deleteIdea(id) {
     const r = allIdeas.find(x => x.id === id);
     if (!confirm(`Delete "${r.title}"?`)) return;
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/ideas?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
+    const res = await fetch(`${API}?id=${id}`, { method: 'DELETE', headers: sbHeaders() });
     if (res.ok) { selectedIds.delete(id); await loadIdeas(); toast('Deleted.'); }
     else toast('Delete failed', true);
   }

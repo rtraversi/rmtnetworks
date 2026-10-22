@@ -464,27 +464,11 @@
 <div id="toast"></div>
 
 <script>
-  let SUPABASE_URL = '';
-  let SUPABASE_KEY = '';
-  let API = '';
-  let headers = {};
-  let sbHeaders = {};
-
-  async function initConfig() {
-    const res = await fetch('/.netlify/functions/config', {
-      headers: { 'Authorization': 'Bearer ' + (sessionStorage.getItem('rmt_session') || '') }
-    });
-    const cfg = await res.json();
-    SUPABASE_URL = cfg.supabaseUrl;
-    SUPABASE_KEY = cfg.supabaseKey;
-    API = `${SUPABASE_URL}/rest/v1/subscriptions`;
-    headers = {
-      'apikey': SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    };
-    sbHeaders = { 'apikey': SUPABASE_KEY };
-  }
+  const API = '/.netlify/functions/subscriptions';
+  const headers = {
+    'Authorization': 'Bearer ' + (sessionStorage.getItem('rmt_session') || ''),
+    'Content-Type': 'application/json',
+  };
 
   // Which metric to show first in the Usage column per service
   const PRIMARY_METRIC = {
@@ -502,10 +486,7 @@
   // ── Usage helpers ──────────────────────────────────────────
   async function loadUsage() {
     try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/usage_metrics?select=*&order=service_name.asc,metric_name.asc`,
-        { headers: sbHeaders }
-      );
+      const res = await fetch('/.netlify/functions/usage-metrics', { headers });
       if (!res.ok) return;
       const rows = await res.json();
       usageData.clear();
@@ -564,9 +545,8 @@
   // ── Fetch ──────────────────────────────────────────────────
   async function loadData() {
     try {
-      await initConfig();
       const [subRes] = await Promise.all([
-        fetch(`${API}?order=name.asc`, { headers }),
+        fetch(API, { headers }),
         loadUsage(),
       ]);
       if (!subRes.ok) throw new Error(await subRes.text());
@@ -721,7 +701,7 @@
     try {
       let res;
       if (editingId) {
-        res = await fetch(`${API}?id=eq.${editingId}`, { method: 'PATCH', headers, body: JSON.stringify(payload) });
+        res = await fetch(`${API}?id=${editingId}`, { method: 'PATCH', headers, body: JSON.stringify(payload) });
       } else {
         res = await fetch(API, { method: 'POST', headers, body: JSON.stringify(payload) });
       }
@@ -738,7 +718,7 @@
   async function deleteRow(id) {
     const r = allData.find(x => x.id === id);
     if (!confirm(`Remove "${r.name}" from the tracker?`)) return;
-    const res = await fetch(`${API}?id=eq.${id}`, { method: 'DELETE', headers });
+    const res = await fetch(`${API}?id=${id}`, { method: 'DELETE', headers });
     if (res.ok) { await loadData(); toast('Removed.'); }
     else toast('Delete failed', true);
   }
