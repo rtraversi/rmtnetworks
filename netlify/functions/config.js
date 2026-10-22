@@ -1,6 +1,7 @@
 // Returns Supabase config so credentials stay out of the repo.
-// Gated to Rob/Katy sessions: SUPABASE_KEY bypasses RLS, so it must never be
-// served to an anonymous caller (or to Max's single-client session).
+// Serves the publishable key only. SUPABASE_KEY is the secret key used by the
+// server-side functions and must never reach a browser. Still gated to Rob/Katy
+// sessions while RLS allows anon access (not to anonymous callers or Max).
 const { whoAmI, isMax } = require('../../lib/max-scope.js');
 
 exports.handler = async (event) => {
@@ -16,7 +17,7 @@ exports.handler = async (event) => {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     body: JSON.stringify({
       supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY,
+      supabaseKey: process.env.SUPABASE_PUBLISHABLE_KEY,
     }),
   };
 };
