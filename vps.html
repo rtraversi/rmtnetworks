@@ -428,11 +428,14 @@
     document.getElementById('error-banner').style.display = 'none';
 
     try {
-      const res = await fetch('/.netlify/functions/hostinger-vps');
+      const res = await fetch('/.netlify/functions/hostinger-vps', {
+        headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('rmt_session') }
+      });
+      if (res.status === 401) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`);
+        throw new Error([data.error || `HTTP ${res.status}`, data.detail].filter(Boolean).join(' — '));
       }
 
       renderMetrics(data);
@@ -444,7 +447,9 @@
       document.getElementById('error-banner').style.display = 'block';
       document.getElementById('error-banner').textContent =
         'Could not load VPS metrics: ' + e.message +
-        '\n\nCheck that HOSTINGER_API_KEY and HOSTINGER_VM_ID are set in Netlify environment variables.';
+        (/env vars/.test(e.message)
+          ? '\n\nCheck that HOSTINGER_API_KEY and HOSTINGER_VM_ID are set in Netlify environment variables.'
+          : '');
       document.getElementById('last-updated').textContent = 'Failed to load metrics';
     } finally {
       btn.disabled = false;
