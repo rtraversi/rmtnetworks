@@ -6,7 +6,6 @@
 const { whoAmI, isMax } = require('../../lib/max-scope.js');
 
 const API_BASE = 'https://developers.hostinger.com/api';
-const DAY_MS   = 24 * 60 * 60 * 1000;
 
 exports.handler = async (event) => {
   if (!whoAmI(event) || isMax(event)) return json(401, { error: 'Unauthorized' });
@@ -33,54 +32,20 @@ exports.handler = async (event) => {
     const ramTotalGB  = vm.memory   / 1024;              // e.g. 8192 MB  → 8 GB
     const bwTotalTB   = vm.bandwidth / 1024 / 1024;      // e.g. 8192000 MB → ~7.8 TB
 
-    // Fetch metrics for the current calendar month. Hostinger's metrics endpoint has
-    // started failing ("[VPS:9999] Request failed") on long ranges, so ask in weekly
-    // windows, split a failing window into days, and skip days that still fail.
+    // Fetch metrics for the current calendar month
     const now        = new Date();
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const fetchRange = async (from, to) => {
-      const res = await fetch(
-        `${API_BASE}/vps/v1/virtual-machines/${vmId}/metrics?date_from=${encodeURIComponent(isoSec(from))}&date_to=${encodeURIComponent(isoSec(to))}`,
-        { headers }
-      );
-      if (!res.ok) throw new Error(`Hostinger metrics API ${res.status}: ${await res.text()}`);
-      return res.json();
-    };
+    const dateFrom   = monthStart.toISOString().slice(0, 19) + 'Z';
+    const dateTo     = now.toISOString().slice(0, 19) + 'Z';
 
-    // ?probe=1 → which range sizes Hostinger accepts right now (diagnostic)
-    if (event.queryStringParameters?.probe) {
-      const hours = [1, 6, 24, 72, 168];
-      const probe = await Promise.all(hours.map(async (h) => {
-        const t0 = Date.now();
-        try {
-          const r = await fetchRange(new Date(now.getTime() - h * 3600e3), now);
-          return { hours: h, ok: true, ms: Date.now() - t0, points: Object.keys(r.cpu_usage?.usage || {}).length };
-        } catch (e) {
-          return { hours: h, ok: false, ms: Date.now() - t0, error: e.message.slice(0, 200) };
-        }
-      }));
-      return json(200, { probe });
+    const mRes = await fetch(
+      `${API_BASE}/vps/v1/virtual-machines/${vmId}/metrics?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+      { headers }
+    );
+    if (!mRes.ok) {
+      return json(502, { error: `Hostinger metrics API ${mRes.status}`, detail: await mRes.text() });
     }
-
-    const weeks = splitRange(monthStart, now, 7 * DAY_MS);
-    const parts = [];
-    const gaps  = [];
-    let lastError = null;
-    await Promise.all(weeks.map(async ([from, to]) => {
-      try {
-        parts.push(await fetchRange(from, to));
-      } catch (e) {
-        for (const [dFrom, dTo] of splitRange(from, to, DAY_MS)) {
-          try { parts.push(await fetchRange(dFrom, dTo)); }
-          catch (e2) { lastError = e2.message; gaps.push(isoSec(dFrom).slice(0, 10)); }
-        }
-      }
-    }));
-
-    const m = mergeMetrics(parts);
-    if (!Object.keys(m.cpu_usage?.usage || {}).length) {
-      return json(502, { error: 'Hostinger metrics API returned no data', detail: lastError, gaps });
-    }
+    const m = await mRes.json();
 
     // Get most recent data point (highest Unix timestamp key)
     const tsKeys   = Object.keys(m.cpu_usage?.usage || {}).map(Number).sort((a, b) => b - a);
@@ -132,7 +97,6 @@ exports.handler = async (event) => {
       },
       cpu: { pct: round(cpuPct, 1), cores: server.cpu_cores },
       fetched_at: now.toISOString(),
-      metrics_gaps: gaps.sort(),
     };
 
     const syncResult = await syncToSupabase(metrics);
@@ -143,30 +107,6 @@ exports.handler = async (event) => {
 };
 
 function round(n, dp) { return parseFloat(Number(n).toFixed(dp)); }
-
-function isoSec(d) { return d.toISOString().slice(0, 19) + 'Z'; }
-
-// [[from, to], ...] covering from..to in steps of stepMs (last window may be shorter)
-function splitRange(from, to, stepMs) {
-  const out = [];
-  for (let t = from.getTime(); t < to.getTime(); t += stepMs) {
-    out.push([new Date(t), new Date(Math.min(t + stepMs, to.getTime()))]);
-  }
-  return out;
-}
-
-// Merge Hostinger metric responses ({ series: { unit, usage: { ts: value } } }) by timestamp
-function mergeMetrics(parts) {
-  const merged = {};
-  for (const part of parts) {
-    for (const [series, val] of Object.entries(part || {})) {
-      if (!val || typeof val.usage !== 'object') continue;
-      merged[series] ??= { ...val, usage: {} };
-      Object.assign(merged[series].usage, val.usage);
-    }
-  }
-  return merged;
-}
 
 function json(status, body) {
   return {
