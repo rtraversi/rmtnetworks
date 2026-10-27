@@ -47,6 +47,21 @@ exports.handler = async (event) => {
       return res.json();
     };
 
+    // ?probe=1 → which range sizes Hostinger accepts right now (diagnostic)
+    if (event.queryStringParameters?.probe) {
+      const hours = [1, 6, 24, 72, 168];
+      const probe = await Promise.all(hours.map(async (h) => {
+        const t0 = Date.now();
+        try {
+          const r = await fetchRange(new Date(now.getTime() - h * 3600e3), now);
+          return { hours: h, ok: true, ms: Date.now() - t0, points: Object.keys(r.cpu_usage?.usage || {}).length };
+        } catch (e) {
+          return { hours: h, ok: false, ms: Date.now() - t0, error: e.message.slice(0, 200) };
+        }
+      }));
+      return json(200, { probe });
+    }
+
     const weeks = splitRange(monthStart, now, 7 * DAY_MS);
     const parts = [];
     const gaps  = [];
