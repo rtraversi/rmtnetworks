@@ -1,6 +1,9 @@
 // CRUD for `subscriptions` (tracker.html). Rob/Katy only.
 //
-// GET                         → all subscriptions, by name
+// GET                         → all subscriptions, by name. Active,
+//                               auto-renewing monthly rows whose renewal_date
+//                               has passed are first rolled forward to the
+//                               next due date and saved (lib/renewal.js).
 // POST   body {...}           → add a subscription
 // PATCH  ?id=<uuid> body {...} → update a subscription
 // DELETE ?id=<uuid>           → remove a subscription
@@ -9,6 +12,7 @@
 
 const { whoAmI, isMax } = require('../../lib/max-scope.js');
 const { authenticate } = require('../../lib/portal-auth.js');
+const { nextMonthly, shouldAdvance, todayEastern } = require('../../lib/renewal.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -44,7 +48,22 @@ exports.handler = async (event) => {
     if (method === 'GET') {
       const res = await sbFetch('/subscriptions?order=name.asc');
       if (!res.ok) return json(500, { error: await res.text() });
-      return json(200, await res.json());
+      const rows = await res.json();
+
+      // Roll past monthly due dates forward. A failed save still shows the
+      // new date this time and is retried on the next load.
+      const today = todayEastern();
+      await Promise.all(rows.filter((r) => shouldAdvance(r, today)).map(async (r) => {
+        const next = nextMonthly(r.renewal_date, today);
+        const up = await sbFetch(`/subscriptions?id=eq.${encodeURIComponent(r.id)}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ renewal_date: next, updated_at: new Date().toISOString() }),
+        });
+        if (!up.ok) console.error(`subscriptions: advance ${r.id} failed: HTTP ${up.status}`);
+        r.renewal_date = next;
+      }));
+      return json(200, rows);
     }
 
     if (method === 'POST') {
