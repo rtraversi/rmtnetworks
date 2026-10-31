@@ -4,6 +4,12 @@
   publish  = "."
   functions = "netlify/functions"
 
+[build.environment]
+  # The Supabase publishable key is public by design (js/rmt-auth.js ships it to
+  # the browser for login only; tables have no anon/authenticated grants), so
+  # its env var must not trip Netlify's secrets scan.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_PUBLISHABLE_KEY"
+
 [[headers]]
   for = "/*"
   [headers.values]
