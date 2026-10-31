@@ -6,7 +6,8 @@
 <title>RMT Networks — Ideas</title>
 <script src="/js/vendor/supabase-2.118.0.js"></script>
 <script src="/js/rmt-auth.js"></script>
-<script>RMTAuth.guard();</script>
+<script>RMTAuth.guard({ allow: ['Rob', 'Katy'] });</script>
+<script src="/js/portal-nav.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>

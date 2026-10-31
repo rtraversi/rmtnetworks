@@ -1,6 +1,6 @@
-// backup-status.js — Rob-only status for the portal's Backups tile.
+// backup-status.js — backup status for the dashboard's Backups panel.
 //
-// GET  Authorization: Bearer <rmt session token (Rob only)>
+// GET  Authorization: Bearer <Supabase session (Rob or Katy)>
 //
 // Returns { sites: [{ slug, label, state, reason, ran_at, last_pass_at,
 //                     run_url, db_bytes, restore_rows, files_count, files_copied }] }
@@ -21,8 +21,9 @@ const json = (status, body) => ({
 });
 
 // Supabase session (aal2) or nothing; see lib/portal-auth.js.
+// Rob and Katy (CEO dashboard). Max has no access.
 async function isRob(event) {
-  return ['Rob'].includes(await authenticate(event));
+  return ['Rob', 'Katy'].includes(await authenticate(event));
 }
 
 // Exported for tests.
