@@ -10,7 +10,7 @@
 -- in that repo (supabase/site_reviews.sql).
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
-  apps_catalog, client_activities, client_apps, client_charges, client_containers,
+  apps_catalog, backup_runs, backup_sites, client_activities, client_apps, client_charges, client_containers,
   client_logins, client_milestone_items, client_modules, client_payments,
   client_subscriptions, client_support_contracts, client_tasks, clients,
   demo_new_deeds, ideas, intake_submissions, intake_tokens, modules_catalog,

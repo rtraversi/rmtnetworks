@@ -106,11 +106,11 @@
   main {
     max-width: 1040px;
     margin: 0 auto;
-    padding: 64px 40px 80px;
+    padding: 32px 40px 56px;
   }
 
   .page-header {
-    margin-bottom: 56px;
+    margin-bottom: 24px;
   }
 
   .eyebrow {
@@ -135,10 +135,10 @@
   }
 
   .page-header h1 {
-    font-size: 2.6rem;
+    font-size: 1.8rem;
     font-weight: 800;
     letter-spacing: -0.03em;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     line-height: 1.1;
   }
 
@@ -148,23 +148,27 @@
     color: var(--muted);
   }
 
-  /* App tiles */
+  /* App tiles — compact: icon beside the title (not above it), footer spans
+     both columns. */
   .apps-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
   }
 
   .app-tile {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 30px;
+    border-radius: 12px;
+    padding: 16px 18px;
     text-decoration: none;
     color: var(--text);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    grid-template-rows: 1fr auto;
+    column-gap: 12px;
+    row-gap: 10px;
+    align-items: start;
     transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
     position: relative;
     overflow: hidden;
@@ -182,45 +186,50 @@
 
   .app-tile:hover {
     border-color: rgba(79,255,176,0.4);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
   }
 
   .app-tile:hover::after { opacity: 1; }
 
   .tile-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: var(--surface);
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.1rem;
     flex-shrink: 0;
   }
 
-  .tile-body { flex: 1; }
+  .tile-body { min-width: 0; }
 
   .tile-name {
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin: 7px 0 4px;
   }
 
   .tile-desc {
     font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--muted);
-    line-height: 1.6;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .tile-footer {
+    grid-column: 1 / -1;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-top: 14px;
+    padding-top: 10px;
     border-top: 1px solid var(--border);
   }
 
@@ -267,22 +276,22 @@
      the matching user. Server-side gating in the backing function is the real
      enforcement; this is just to avoid showing a tile that will 401 on click. */
   .app-tile.rob-only { display: none; }
-  body[data-user="Rob"] .app-tile.rob-only { display: flex; }
+  body[data-user="Rob"] .app-tile.rob-only { display: grid; }
 
   /* Max — Clients tile only */
   body[data-user="Max"] .app-tile { display: none; }
-  body[data-user="Max"] .app-tile.clients-tile { display: flex; }
+  body[data-user="Max"] .app-tile.clients-tile { display: grid; }
   body[data-user="Max"] .sub-header { display: none; }
 
   /* Stripe tile — inline live metrics rather than navigation copy */
   .app-tile.stripe-tile .tile-metrics {
     font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
+    font-size: 0.7rem;
     color: var(--text);
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 6px 14px;
-    margin-top: 6px;
+    gap: 3px 12px;
+    margin-top: 4px;
   }
   .app-tile.stripe-tile .tile-metric-label { color: var(--muted); }
   .app-tile.stripe-tile .tile-metric-val   { font-weight: 600; text-align: right; }
@@ -308,14 +317,14 @@
   .personal-links {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 14px;
+    gap: 6px;
+    margin-top: 8px;
   }
   .personal-link {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
+    padding: 6px 10px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -353,10 +362,47 @@
     border-color: rgba(255,107,74,0.3);
   }
 
+  /* Backups tile — one row per monitored client site: dot + name + age.
+     Green = last run passed and is recent; red = failed OR overdue
+     (decided server-side in backup-status.js). Rows link to the GitHub run. */
+  .app-tile.backups-tile { cursor: default; }
+  .app-tile.backups-tile.has-failure { border-color: rgba(255,107,74,0.55); }
+  .backup-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+  .backup-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    margin: 0 -8px;
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+  }
+  a.backup-row:hover { background: var(--surface); }
+  .backup-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .backup-age  { color: var(--muted); font-size: 0.64rem; }
+  .backup-reason {
+    grid-column: 2 / -1;
+    color: var(--warn);
+    font-size: 0.64rem;
+    line-height: 1.4;
+  }
+  .backup-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .backup-dot.green { background: var(--accent); box-shadow: 0 0 8px rgba(79,255,176,0.55); }
+  .backup-dot.red   { background: var(--warn);   box-shadow: 0 0 8px rgba(255,107,74,0.6); }
+  .backup-note { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); }
+  .backup-note.err { color: var(--warn); }
+  .backup-summary { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.04em; }
+  .backup-summary.ok  { color: var(--accent); }
+  .backup-summary.bad { color: var(--warn); }
+
   @media (max-width: 640px) {
-    main { padding: 36px 20px 60px; }
+    main { padding: 24px 16px 48px; }
     header { padding: 20px; }
-    .page-header h1 { font-size: 2rem; }
+    .page-header h1 { font-size: 1.5rem; }
     .apps-grid { grid-template-columns: 1fr; }
   }
 </style>
@@ -409,6 +455,18 @@
         <span class="tile-cta">Open →</span>
       </div>
     </a>
+
+    <div class="app-tile backups-tile rob-only" id="backupsTile">
+      <div class="tile-icon">🛡️</div>
+      <div class="tile-body">
+        <div class="tile-name">Backups</div>
+        <div class="backup-list" id="backupList"><span class="backup-note">Loading…</span></div>
+      </div>
+      <div class="tile-footer">
+        <span class="tile-tag">Nightly · B2</span>
+        <span class="backup-summary" id="backupSummary">—</span>
+      </div>
+    </div>
 
     <a class="app-tile stripe-tile rob-only" href="https://dashboard.stripe.com" target="_blank" rel="noopener" id="stripeTile">
       <div class="tile-icon">💳</div>
@@ -608,6 +666,63 @@
       }
     } catch (e) {
       showError('Network error: ' + (e && e.message ? e.message : 'unknown'));
+    }
+  })();
+
+  // Backups — Rob-only. backup-status decides green/red (a failed run or an
+  // overdue one is red); this only renders it.
+  (async () => {
+    const token = sessionStorage.getItem('rmt_session');
+    if (!token) return;
+    const list    = document.getElementById('backupList');
+    const summary = document.getElementById('backupSummary');
+    const tile    = document.getElementById('backupsTile');
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const ago = (iso) => {
+      if (!iso) return 'never';
+      const h = (Date.now() - Date.parse(iso)) / 3600000;
+      if (h < 1)  return Math.max(1, Math.round(h * 60)) + 'm ago';
+      if (h < 48) return Math.round(h) + 'h ago';
+      return Math.round(h / 24) + 'd ago';
+    };
+    const mb = (b) => b == null ? null : (b / 1048576).toFixed(1) + ' MB';
+    const note = (msg, err) => { list.innerHTML = `<span class="backup-note${err ? ' err' : ''}">${esc(msg)}</span>`; };
+
+    try {
+      const r = await fetch('/.netlify/functions/backup-status', { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        note(err.error || ('HTTP ' + r.status), true);
+        summary.textContent = 'unknown'; summary.className = 'backup-summary bad';
+        return;
+      }
+      const { sites = [] } = await r.json();
+      if (!sites.length) { note('No sites registered yet.'); summary.textContent = '—'; return; }
+
+      list.innerHTML = sites.map(s => {
+        const details = [
+          s.reason,
+          s.db_bytes != null ? 'DB ' + mb(s.db_bytes) : null,
+          s.restore_rows != null ? s.restore_rows.toLocaleString() + ' rows restore-tested' : null,
+          s.files_count != null ? s.files_count.toLocaleString() + ' docs' : null,
+          s.state === 'red' && s.last_pass_at ? 'last good backup ' + ago(s.last_pass_at) : null,
+        ].filter(Boolean).join(' · ');
+        const tag  = s.run_url ? 'a' : 'div';
+        const href = s.run_url ? ` href="${esc(s.run_url)}" target="_blank" rel="noopener"` : '';
+        return `<${tag} class="backup-row"${href} title="${esc(details)}">
+            <span class="backup-dot ${s.state === 'green' ? 'green' : 'red'}"></span>
+            <span class="backup-name">${esc(s.label)}</span>
+            <span class="backup-age">${esc(ago(s.ran_at))}</span>
+            ${s.state === 'green' ? '' : `<span class="backup-reason">${esc(s.reason)}</span>`}
+          </${tag}>`;
+      }).join('');
+
+      const bad = sites.filter(s => s.state !== 'green').length;
+      summary.textContent = bad ? `${bad} of ${sites.length} failing` : `${sites.length} of ${sites.length} passing`;
+      summary.className = 'backup-summary ' + (bad ? 'bad' : 'ok');
+      tile.classList.toggle('has-failure', bad > 0);
+    } catch (e) {
+      note('Network error: ' + (e && e.message ? e.message : 'unknown'), true);
     }
   })();
 
