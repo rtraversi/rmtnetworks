@@ -41,7 +41,9 @@ ALTER TABLE backup_runs ENABLE ROW LEVEL SECURITY;
 
 -- First site: Scroggins & Savage. The token itself is set as the GitHub secret
 -- RMT_BACKUP_REPORT_TOKEN on rtraversi/scrogginssavage; the value below
--- is its hex SHA-256 (the hash is not secret; the token is).
+-- is the hex SHA-256 of the trimmed token, exactly what backup-report.js hashes
+-- (the hash is not secret; the token is). Corrected 2026-10-31: the first value
+-- hashed a trailing CR from the token file and never matched.
 INSERT INTO backup_sites (slug, label, token_sha256)
-VALUES ('scrogginssavage', 'Scroggins & Savage', 'd03cafe661283d32d8b4a2f3de2ae7feb51cade5d0ef9fb909043a6a5dbe2b5b')
+VALUES ('scrogginssavage', 'Scroggins & Savage', '77e59dccb2e0ce4d848174d7a3d0cea7c69deb4b5289a17aae3564ebe6ec4c43')
 ON CONFLICT (slug) DO NOTHING;
