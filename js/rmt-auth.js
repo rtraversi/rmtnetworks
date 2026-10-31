@@ -103,7 +103,8 @@
 
   // Resolves to { user: 'Rob'|'Katy'|'Max', email } once the session is
   // MFA-verified and accepted by the server; otherwise redirects to login.
-  // opts.allow: optional list of users; anyone else is sent to the portal.
+  // opts.allow: optional list of users; anyone else goes to opts.otherwise
+  // (default /portal.html, whose own guard sends Max on to /clients.html).
   // (UI only; the functions behind the page enforce the same rule.)
   var ready = null;
   function guard(opts) {
@@ -123,7 +124,7 @@
       } catch (e) { /* network blip: show the page; data calls re-check */ }
 
       var info = { user: who || (claims.app_metadata && claims.app_metadata.portal_user) || null, email: claims.email || '' };
-      if (opts.allow && opts.allow.indexOf(info.user) === -1) { location.replace('/portal.html'); return new Promise(function () {}); }
+      if (opts.allow && opts.allow.indexOf(info.user) === -1) { location.replace(opts.otherwise || '/portal.html'); return new Promise(function () {}); }
       onBody(function () {
         if (info.user) document.body.dataset.user = info.user;
         document.body.style.visibility = 'visible';
