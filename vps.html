@@ -4,20 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RMT Networks — VPS Monitor</title>
-<script>
-  (function() {
-    var token = sessionStorage.getItem('rmt_session');
-    if (!token) { window.location.replace('/'); return; }
-    fetch('/.netlify/functions/verify', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    }).then(function(r) {
-      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
-      else { document.body.style.visibility = 'visible'; }
-    }).catch(function() {
-      document.body.style.visibility = 'visible';
-    });
-  })();
-</script>
+<script src="/js/vendor/supabase-2.118.0.js"></script>
+<script src="/js/rmt-auth.js"></script>
+<script>RMTAuth.guard();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -429,9 +418,9 @@
 
     try {
       const res = await fetch('/.netlify/functions/hostinger-vps', {
-        headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('rmt_session') }
+        headers: { 'Authorization': 'Bearer ' + RMTAuth.token() }
       });
-      if (res.status === 401) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
+      if (res.status === 401) { RMTAuth.signOut(); return; }
       const data = await res.json();
 
       if (!res.ok) {

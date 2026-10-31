@@ -18,7 +18,7 @@
 //
 // Env: ANTHROPIC_TAX_API   (preferred)  — Anthropic API key
 //      ANTHROPIC_DEED_API  (fallback)   — reuses the existing key if set
-//      SESSION_SECRET / KATY_SESSION_SECRET — portal session tokens
+//      SUPABASE_URL — portal sessions are Supabase Auth JWTs (aal2)
 
 const MAX_BODY_BYTES = 12 * 1024 * 1024; // ~8MB of PDF once base64-encoded
 
@@ -83,6 +83,65 @@ function withKeepalive(body) {
   });
 }
 
+// --- Supabase session check -------------------------------------------------
+// Edge-runtime twin of lib/portal-auth.js (that one is CommonJS + node:crypto).
+// Verifies the ES256 access token against the project's JWKS with WebCrypto and
+// returns app_metadata.portal_user, or null. Keep the two in step.
+const JWKS_TTL_MS = 10 * 60 * 1000;
+let jwks = { keys: new Map(), fetchedAt: 0 };
+
+function authBase() {
+  return (Netlify.env.get('SUPABASE_URL') || '').replace(/\/+$/, '') + '/auth/v1';
+}
+
+function b64urlBytes(s) {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4);
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+const b64urlJson = (s) => JSON.parse(new TextDecoder().decode(b64urlBytes(s)));
+
+async function loadJwks(force) {
+  if (!force && jwks.keys.size && Date.now() - jwks.fetchedAt < JWKS_TTL_MS) return jwks.keys;
+  const res = await fetch(authBase() + '/.well-known/jwks.json');
+  if (!res.ok) throw new Error('JWKS fetch failed: HTTP ' + res.status);
+  const { keys = [] } = await res.json();
+  const map = new Map();
+  for (const jwk of keys) {
+    if (jwk.kty !== 'EC' || jwk.crv !== 'P-256' || !jwk.kid) continue;
+    const { kty, crv, x, y } = jwk;
+    map.set(jwk.kid, await crypto.subtle.importKey(
+      'jwk', { kty, crv, x, y }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']));
+  }
+  jwks = { keys: map, fetchedAt: Date.now() };
+  return map;
+}
+
+async function portalUser(token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  let header, claims;
+  try { header = b64urlJson(parts[0]); claims = b64urlJson(parts[1]); } catch { return null; }
+  if (header.alg !== 'ES256' || !header.kid) return null;
+
+  let key = (await loadJwks(false)).get(header.kid);
+  if (!key) key = (await loadJwks(true)).get(header.kid);
+  if (!key) return null;
+
+  const ok = await crypto.subtle.verify(
+    { name: 'ECDSA', hash: 'SHA-256' }, key,
+    b64urlBytes(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
+  if (!ok) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof claims.exp !== 'number' || claims.exp + 30 < now) return null;
+  if (claims.iss !== authBase()) return null;
+  const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  if (!aud.includes('authenticated') || claims.role !== 'authenticated') return null;
+  if (claims.aal !== 'aal2') return null;
+  return (claims.app_metadata && claims.app_metadata.portal_user) || null;
+}
+
 const json = (status, body) => new Response(JSON.stringify(body), {
   status,
   headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -91,15 +150,14 @@ const json = (status, body) => new Response(JSON.stringify(body), {
 export default async (request) => {
   if (request.method !== 'POST') return json(405, { error: 'POST required' });
 
-  // Same session tokens the rest of the portal uses. Max is deliberately not
-  // included — the Clients app is the only thing he can reach.
+  // Same Supabase sessions the rest of the portal uses (aal2 required). Max is
+  // deliberately not included — the Clients app is the only thing he can reach.
   const token = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
-  const allowed = [
-    Netlify.env.get('SESSION_SECRET'),
-    Netlify.env.get('KATY_SESSION_SECRET'),
-  ].filter(Boolean);
-
-  if (!token || !allowed.includes(token)) {
+  const user = token ? await portalUser(token).catch((e) => {
+    console.error('tax-proxy auth: ' + e.message);
+    return null;
+  }) : null;
+  if (user !== 'Rob' && user !== 'Katy') {
     return json(401, { error: 'Unauthorized' });
   }
 

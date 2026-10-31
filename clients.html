@@ -4,21 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RMT Networks — Clients</title>
-<script>
-  (function() {
-    var token = sessionStorage.getItem('rmt_session');
-    if (!token) { window.location.replace('/'); return; }
-    fetch('/.netlify/functions/verify', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    }).then(function(r) {
-      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
-      r.json().then(function(d) {
-        if (d && d.user) sessionStorage.setItem('rmt_user', d.user);
-        document.body.style.visibility = 'visible';
-      }).catch(function() { document.body.style.visibility = 'visible'; });
-    }).catch(function() { document.body.style.visibility = 'visible'; });
-  })();
-</script>
+<script src="/js/vendor/supabase-2.118.0.js"></script>
+<script src="/js/rmt-auth.js"></script>
+<script>RMTAuth.guard();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -1064,7 +1052,7 @@
     { key: 'not_moving_forward',  label: 'Not Moving Forward' },
   ];
 
-  const SESSION = sessionStorage.getItem('rmt_session') || '';
+  const SESSION = RMTAuth.token() || '';
 
   function apiHeaders() {
     return {

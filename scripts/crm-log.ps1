@@ -9,7 +9,7 @@
   Supabase directly, so it works no matter which Supabase account is active
   locally.
 
-  Reads RMT_SESSION_SECRET from C:\Sites\rmtnetworks\.env (fixed path, so this
+  Reads RMT_CLI_TOKEN from C:\Sites\rmtnetworks\.env (fixed path, so this
   works even when your shell's cwd is some other client's directory).
 
 .EXAMPLE
@@ -73,7 +73,7 @@ $BaseUrl  = 'https://rmtnetworks.com/.netlify/functions'
 
 function Get-EnvValue($path, $key) {
   if (-not (Test-Path $path)) {
-    throw "Env file not found at $path. Create it with a line: $key=<your-session-token>"
+    throw "Env file not found at $path. Create it with a line: $key=<the RMT_CLI_TOKEN value from Netlify>"
   }
   foreach ($line in Get-Content $path) {
     if ($line -match '^\s*#' -or $line -match '^\s*$') { continue }
@@ -85,9 +85,9 @@ function Get-EnvValue($path, $key) {
   throw "$key not found in $path"
 }
 
-$Token = Get-EnvValue $EnvFile 'RMT_SESSION_SECRET'
+$Token = Get-EnvValue $EnvFile 'RMT_CLI_TOKEN'
 if ([string]::IsNullOrWhiteSpace($Token)) {
-  throw "RMT_SESSION_SECRET is empty in $EnvFile - paste in the session token first."
+  throw "RMT_CLI_TOKEN is empty in $EnvFile - paste in the CLI token (same value as RMT_CLI_TOKEN on Netlify) first."
 }
 
 $Headers = @{

@@ -4,10 +4,12 @@
 // Required env vars: HOSTINGER_API_KEY, HOSTINGER_VM_ID, SUPABASE_URL, SUPABASE_KEY
 
 const { whoAmI, isMax } = require('../../lib/max-scope.js');
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const API_BASE = 'https://developers.hostinger.com/api';
 
 exports.handler = async (event) => {
+  await authenticate(event);
   if (!whoAmI(event) || isMax(event)) return json(401, { error: 'Unauthorized' });
 
   const apiKey = process.env.HOSTINGER_API_KEY;

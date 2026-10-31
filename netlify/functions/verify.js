@@ -1,22 +1,18 @@
+// GET /.netlify/functions/verify
+// Confirms the caller's Supabase session is accepted server-side (aal2 + a
+// portal_user in app_metadata) and returns who they are. Pages use this to
+// reveal user-scoped tiles; every data function re-checks on its own.
+'use strict';
+const { authenticate } = require('../../lib/portal-auth.js');
+
+const json = (status, body) => ({
+  statusCode: status,
+  headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  body: JSON.stringify(body),
+});
+
 exports.handler = async (event) => {
-  const auth  = event.headers['authorization'] || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-
-  if (!token) {
-    return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Unauthorized' }) };
-  }
-
-  if (process.env.SESSION_SECRET && token === process.env.SESSION_SECRET) {
-    return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, user: 'Rob' }) };
-  }
-
-  if (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET) {
-    return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, user: 'Katy' }) };
-  }
-
-  if (process.env.MAX_SESSION_SECRET && token === process.env.MAX_SESSION_SECRET) {
-    return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, user: 'Max' }) };
-  }
-
-  return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Unauthorized' }) };
+  const user = await authenticate(event);
+  if (!user) return json(401, { error: 'Unauthorized' });
+  return json(200, { ok: true, user });
 };

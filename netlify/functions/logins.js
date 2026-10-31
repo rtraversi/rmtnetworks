@@ -1,10 +1,11 @@
 // Encrypted CRUD for client_logins.
 // - Stores passwords as AES-256-GCM ciphertext using SECRETS_KEY (64 hex chars).
 // - List endpoints never return plaintext; reveal endpoint returns one password at a time.
-// - Auth gate matches verify.js (Bearer token === SESSION_SECRET, KATY_SESSION_SECRET, or MAX_SESSION_SECRET).
+// - Auth gate: Supabase session (aal2) via lib/portal-auth.js, scoped by lib/max-scope.js.
 
 const crypto = require('crypto');
 const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -66,6 +67,7 @@ async function rowClientId(id) {
 }
 
 exports.handler = async (event) => {
+  await authenticate(event);
   if (!authOk(event)) return json(401, { error: 'Unauthorized' });
 
   const qp = event.queryStringParameters || {};

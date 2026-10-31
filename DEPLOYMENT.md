@@ -27,12 +27,22 @@ function node, a standalone Express app, or any other runtime with no changes.
 
 Set these in **Netlify → Site settings → Environment variables**.
 
-### Auth & session (already in use)
+### Auth & session
+Portal login is Supabase Auth (email + password + required TOTP). Pages load
+`js/rmt-auth.js`; functions verify the access token in `lib/portal-auth.js`
+(the edge `tax-proxy` has its own copy). A session is accepted only at `aal2`
+and only if `app_metadata.portal_user` is `Rob`, `Katy` or `Max`. Manage
+accounts with `node scripts/portal-user.js` (list / add / link / reset-mfa /
+signout / remove).
+
 | Var | Purpose |
 |---|---|
-| `SITE_PASSWORD` | Rob's portal login password |
-| `SESSION_SECRET` | Token returned to Rob's browser after login |
-| `KATY_PASSWORD` / `KATY_SESSION_SECRET` | Same, for Katy |
+| `SUPABASE_URL` | Also the token issuer and JWKS source (below) |
+| `RMT_CLI_TOKEN` | Static token for `scripts/crm-log.ps1`. Accepted only by `clients` and `client-activities`, acting as Rob. Long random value; same value goes in the local `.env`. |
+
+The old `SITE_PASSWORD`, `SESSION_SECRET`, `KATY_PASSWORD`,
+`KATY_SESSION_SECRET`, `MAX_PASSWORD` and `MAX_SESSION_SECRET` are no longer
+read and should be deleted.
 
 ### Supabase (already in use)
 | Var | Purpose |
@@ -109,7 +119,7 @@ return doc.save();
 - [ ] Consider a custom `Reply-To` header (add to `lib/email-sender.js`) so replies go to her, not the system mailbox.
 
 ### 5. Security
-- [ ] **Auth boundary** — the demo uses Rob/Katy session tokens. For client-facing live use, add a per-client login (extend `auth.js` and `verify.js`) or move behind her firm's IDP.
+- [ ] **Auth boundary** — the deed demo functions (`extract-deed`, `render-deed`, `send-deed`, `list-deeds`) do not check a session at all. For client-facing live use, add a per-client login or move behind her firm's IDP.
 - [ ] **Rate-limit** `extract-deed` — Claude API calls cost money. Consider a per-session quota or a simple counter in Supabase.
 - [ ] **PII handling** — uploaded deeds may contain SSNs, etc. Confirm Anthropic data-use policy with the attorney before going live, and document in her engagement letter.
 - [ ] **No persistence** of uploaded files — currently in-memory only. If you change this, add retention policy + access logging.
