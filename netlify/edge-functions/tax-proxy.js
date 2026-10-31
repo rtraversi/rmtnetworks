@@ -139,6 +139,11 @@ async function portalUser(token) {
   const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (!aud.includes('authenticated') || claims.role !== 'authenticated') return null;
   if (claims.aal !== 'aal2') return null;
+  // TOTP step must be under 30 days old (MFA_MAX_AGE_DAYS in portal-auth.js).
+  const amr = Array.isArray(claims.amr) ? claims.amr : [];
+  const totp = amr.filter((a) => a && a.method === 'totp' && typeof a.timestamp === 'number')
+    .reduce((max, a) => Math.max(max, a.timestamp), 0);
+  if (!totp || now - totp > 30 * 86400) return null;
   return (claims.app_metadata && claims.app_metadata.portal_user) || null;
 }
 
