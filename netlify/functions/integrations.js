@@ -8,6 +8,7 @@
 // PATCH ?id=<uuid> body { value?, enabled?, notes? }                   → update
 // DELETE ?id=<uuid>                                                    → remove
 
+const { authenticate } = require('../../lib/portal-auth.js');
 const crypto = require('crypto');
 
 const json = (status, body) => ({
@@ -16,12 +17,9 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-function authOk(event) {
-  const raw   = event.headers['authorization'] || event.headers['Authorization'] || '';
-  const token = raw.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET      && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET);
+// Supabase session (aal2) or nothing; see lib/portal-auth.js.
+async function authOk(event) {
+  return ['Rob', 'Katy'].includes(await authenticate(event));
 }
 
 function getKey() {
@@ -67,7 +65,7 @@ function maskRow(r) {
 }
 
 exports.handler = async (event) => {
-  if (!authOk(event)) return json(401, { error: 'Unauthorized' });
+  if (!(await authOk(event))) return json(401, { error: 'Unauthorized' });
 
   const qp     = event.queryStringParameters || {};
   const method = event.httpMethod;

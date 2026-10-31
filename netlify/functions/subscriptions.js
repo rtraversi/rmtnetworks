@@ -8,6 +8,7 @@
 'use strict';
 
 const { whoAmI, isMax } = require('../../lib/max-scope.js');
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -33,6 +34,7 @@ function rowFrom(body) {
 }
 
 exports.handler = async (event) => {
+  await authenticate(event);
   if (!whoAmI(event) || isMax(event)) return json(401, { error: 'Unauthorized' });
 
   const qp = event.queryStringParameters || {};

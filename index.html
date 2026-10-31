@@ -6,6 +6,8 @@
 <title>RMT Networks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="/js/vendor/supabase-2.118.0.js"></script>
+<script src="/js/rmt-auth.js"></script>
 <style>
   :root {
     --bg:      #0d0f14;
@@ -206,6 +208,55 @@
   }
   .demo-link:hover { opacity: 1; color: #7ab8ff; }
 
+  .step { display: none; }
+  .step.active { display: block; }
+  .input-wrap input.code {
+    letter-spacing: 0.5em;
+    text-align: center;
+    font-size: 1.3rem;
+    padding: 14px 16px;
+  }
+  .input-wrap input.plain { letter-spacing: 0.02em; padding-right: 16px; }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 14px;
+    letter-spacing: 0.04em;
+  }
+  .link-btn:hover { color: #7ab8ff; }
+  .info-msg {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    margin: 6px 0 16px;
+    line-height: 1.5;
+    display: none;
+  }
+  .info-msg.show { display: block; }
+  .qr-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    width: 196px;
+    height: 196px;
+    margin: 0 auto 14px;
+  }
+  .qr-box img { width: 100%; height: 100%; display: block; }
+  .secret {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    word-break: break-all;
+    text-align: center;
+    margin-bottom: 20px;
+    user-select: all;
+  }
+  .field-gap { margin-top: 14px; }
   @keyframes shake {
     0%,100% { transform: translateX(0); }
     20%      { transform: translateX(-7px); }
@@ -221,86 +272,273 @@
 </style>
 </head>
 <body>
-
 <div class="login-card">
   <img class="logo-img" src="/images/rmt-networks-logo.png" alt="RMT Networks">
   <h1>Private Portal</h1>
-  <p class="subtitle">Enter your access password to continue.</p>
 
-  <label class="field-label" for="password">Access Password</label>
-  <div class="input-wrap">
-    <input type="password" id="password" placeholder="••••••••••••" autofocus autocomplete="current-password">
-    <button class="toggle-pw" type="button" onclick="togglePw()" title="Show/hide">👁</button>
-  </div>
-  <div class="error-msg" id="error-msg">Incorrect password — try again.</div>
+  <!-- Step 1: email + password -->
+  <form class="step" id="step-login" autocomplete="on">
+    <p class="subtitle">Sign in with your email and password.</p>
+    <label class="field-label" for="email">Email</label>
+    <div class="input-wrap">
+      <input class="plain" type="email" id="email" autocomplete="username" required>
+    </div>
+    <label class="field-label field-gap" for="password">Password</label>
+    <div class="input-wrap">
+      <input type="password" id="password" placeholder="••••••••••••" autocomplete="current-password" required>
+      <button class="toggle-pw" type="button" data-toggle="password" title="Show/hide">👁</button>
+    </div>
+    <div class="error-msg"></div>
+    <div class="info-msg"></div>
+    <button class="btn-login" type="submit">Continue →</button>
+    <button class="link-btn" type="button" id="forgot-btn">Forgot password?</button>
+  </form>
 
-  <button class="btn-login" id="login-btn" onclick="doLogin()">Access Portal →</button>
+  <!-- Step 2a: TOTP code for an enrolled factor -->
+  <form class="step" id="step-mfa" autocomplete="off">
+    <p class="subtitle">Enter the 6-digit code from your authenticator app.</p>
+    <label class="field-label" for="mfa-code">Authentication code</label>
+    <div class="input-wrap">
+      <input class="code" id="mfa-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+    </div>
+    <div class="error-msg"></div>
+    <button class="btn-login" type="submit">Verify →</button>
+    <button class="link-btn" type="button" data-signout>Use a different account</button>
+  </form>
+
+  <!-- Step 2b: first sign-in, enroll an authenticator -->
+  <form class="step" id="step-enroll" autocomplete="off">
+    <p class="subtitle">Two-factor sign-in is required. Scan this code with an authenticator app (1Password, Google Authenticator, Authy), then enter the 6-digit code it shows.</p>
+    <div class="qr-box"><img id="enroll-qr" alt="Authenticator QR code"></div>
+    <div class="secret" id="enroll-secret" title="Can't scan? Enter this key manually."></div>
+    <label class="field-label" for="enroll-code">Authentication code</label>
+    <div class="input-wrap">
+      <input class="code" id="enroll-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+    </div>
+    <div class="error-msg"></div>
+    <button class="btn-login" type="submit">Turn on two-factor →</button>
+    <button class="link-btn" type="button" data-signout>Cancel</button>
+  </form>
+
+  <!-- Step 3: set a new password (reset / setup link) -->
+  <form class="step" id="step-password" autocomplete="on">
+    <p class="subtitle">Choose a new password (at least 12 characters).</p>
+    <input type="email" id="pw-username" autocomplete="username" hidden>
+    <label class="field-label" for="new-password">New password</label>
+    <div class="input-wrap">
+      <input type="password" id="new-password" autocomplete="new-password" minlength="12" required>
+      <button class="toggle-pw" type="button" data-toggle="new-password" title="Show/hide">👁</button>
+    </div>
+    <label class="field-label field-gap" for="new-password2">Confirm password</label>
+    <div class="input-wrap">
+      <input type="password" id="new-password2" autocomplete="new-password" minlength="12" required>
+    </div>
+    <div class="error-msg"></div>
+    <button class="btn-login" type="submit">Save password →</button>
+  </form>
+
+  <!-- Reset request -->
+  <form class="step" id="step-forgot" autocomplete="on">
+    <p class="subtitle">We'll email you a link to set a new password.</p>
+    <label class="field-label" for="forgot-email">Email</label>
+    <div class="input-wrap">
+      <input class="plain" type="email" id="forgot-email" autocomplete="username" required>
+    </div>
+    <div class="error-msg"></div>
+    <div class="info-msg"></div>
+    <button class="btn-login" type="submit">Send reset link →</button>
+    <button class="link-btn" type="button" id="back-btn">Back to sign in</button>
+  </form>
 
   <div class="footer-note">rmtnetworks.com · private access only</div>
-
   <div class="demo-link-wrap">
     <a href="/demos.html" class="demo-link">View client demos →</a>
   </div>
 </div>
 
 <script>
-  // Already logged in? Skip straight to portal.
-  if (sessionStorage.getItem('rmt_session')) {
-    window.location.replace('/portal.html');
-  }
+(function () {
+  var sb = RMTAuth.client.auth;
+  var $ = function (id) { return document.getElementById(id); };
 
-  function togglePw() {
-    const inp = document.getElementById('password');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-  }
+  // Read before supabase-js consumes the URL fragment.
+  var hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  var recovery = hash.get('type') === 'recovery' || hash.get('type') === 'invite';
+  var linkError = hash.get('error_description');
 
-  document.getElementById('password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
+  // Only same-origin paths are allowed as a post-login destination.
+  var next = (function () {
+    var n = new URLSearchParams(location.search).get('next') || '';
+    return /^\/(?!\/)[^\\]*$/.test(n) ? n : '/portal.html';
+  })();
+
+  var steps = ['step-login', 'step-mfa', 'step-enroll', 'step-password', 'step-forgot'];
+  function show(id) {
+    steps.forEach(function (s) { $(s).classList.toggle('active', s === id); });
+    var first = $(id).querySelector('input:not([hidden])');
+    if (first) setTimeout(function () { first.focus(); }, 0);
+  }
+  function msg(stepId, kind, text) {
+    var el = $(stepId).querySelector(kind === 'error' ? '.error-msg' : '.info-msg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('show', !!text);
+    if (kind === 'error' && text) {
+      var inp = $(stepId).querySelector('input:not([hidden])');
+      if (inp) { inp.classList.add('error', 'shake'); setTimeout(function () { inp.classList.remove('shake'); }, 400); }
+    }
+  }
+  function clearMsgs(stepId) {
+    msg(stepId, 'error', ''); msg(stepId, 'info', '');
+    $(stepId).querySelectorAll('input').forEach(function (i) { i.classList.remove('error'); });
+  }
+  async function busy(stepId, label, fn) {
+    var btn = $(stepId).querySelector('.btn-login');
+    var orig = btn.textContent;
+    btn.disabled = true; btn.textContent = label;
+    clearMsgs(stepId);
+    try { await fn(); }
+    catch (e) { msg(stepId, 'error', (e && e.message) || 'Something went wrong. Try again.'); }
+    finally { btn.disabled = false; btn.textContent = orig; }
+  }
+  function fail(error) { if (error) throw error; }
+
+  document.querySelectorAll('[data-toggle]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var inp = $(b.getAttribute('data-toggle'));
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+  });
+  document.querySelectorAll('[data-signout]').forEach(function (b) {
+    b.addEventListener('click', async function () {
+      await sb.signOut({ scope: 'local' });
+      recovery = false;
+      show('step-login');
+    });
   });
 
-  async function doLogin() {
-    const pw  = document.getElementById('password').value;
-    const btn = document.getElementById('login-btn');
-    const err = document.getElementById('error-msg');
-    const inp = document.getElementById('password');
-
-    if (!pw) {
-      inp.classList.add('error', 'shake');
-      setTimeout(() => inp.classList.remove('shake'), 400);
+  // After a password (or reset-link) sign-in: check the account is a portal
+  // user, then route to the MFA challenge or first-time enrollment.
+  var factorId = null;
+  async function afterPassword() {
+    var u = await sb.getUser();
+    fail(u.error);
+    var portalUser = u.data.user && u.data.user.app_metadata && u.data.user.app_metadata.portal_user;
+    if (!portalUser) {
+      await sb.signOut({ scope: 'local' });
+      show('step-login');
+      msg('step-login', 'error', 'This account is not set up for the portal.');
       return;
     }
+    $('pw-username').value = u.data.user.email || '';
 
-    btn.disabled = true;
-    btn.textContent = 'Checking...';
-    err.classList.remove('show');
-    inp.classList.remove('error');
+    var aal = await sb.mfa.getAuthenticatorAssuranceLevel();
+    fail(aal.error);
+    if (aal.data.currentLevel === 'aal2') return afterMfa();
 
-    try {
-      const res = await fetch('/.netlify/functions/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw })
-      });
-
-      if (res.ok) {
-        const { token } = await res.json();
-        sessionStorage.setItem('rmt_session', token);
-        window.location.replace('/portal.html');
-      } else {
-        inp.classList.add('error', 'shake');
-        setTimeout(() => inp.classList.remove('shake'), 400);
-        err.classList.add('show');
-        btn.disabled = false;
-        btn.textContent = 'Access Portal →';
-        inp.focus();
-      }
-    } catch {
-      err.textContent = 'Connection error — please try again.';
-      err.classList.add('show');
-      btn.disabled = false;
-      btn.textContent = 'Access Portal →';
+    var f = await sb.mfa.listFactors();
+    fail(f.error);
+    var verified = (f.data.totp || []).filter(function (x) { return x.status === 'verified'; });
+    if (verified.length) {
+      factorId = verified[0].id;
+      $('mfa-code').value = '';
+      show('step-mfa');
+      return;
     }
+    await startEnroll(f.data.all || []);
   }
+
+  async function startEnroll(all) {
+    // Clear a half-finished enrollment from an earlier attempt.
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].factor_type === 'totp' && all[i].status !== 'verified') {
+        await sb.mfa.unenroll({ factorId: all[i].id });
+      }
+    }
+    var r = await sb.mfa.enroll({ factorType: 'totp', friendlyName: 'RMT Portal', issuer: 'RMT Networks' });
+    fail(r.error);
+    factorId = r.data.id;
+    $('enroll-qr').src = r.data.totp.qr_code;
+    $('enroll-secret').textContent = r.data.totp.secret;
+    $('enroll-code').value = '';
+    show('step-enroll');
+  }
+
+  function afterMfa() {
+    if (recovery) { show('step-password'); return; }
+    location.replace(next);
+  }
+
+  $('step-login').addEventListener('submit', function (e) {
+    e.preventDefault();
+    busy('step-login', 'Checking...', async function () {
+      var r = await sb.signInWithPassword({ email: $('email').value.trim(), password: $('password').value });
+      $('password').value = '';
+      if (r.error) throw new Error(r.error.status === 400 ? 'Incorrect email or password.' : r.error.message);
+      await afterPassword();
+    });
+  });
+
+  async function verifyCode(inputId) {
+    var code = $(inputId).value.replace(/\s+/g, '');
+    if (!/^\d{6}$/.test(code)) throw new Error('Enter the 6-digit code.');
+    var r = await sb.mfa.challengeAndVerify({ factorId: factorId, code: code });
+    if (r.error) { $(inputId).value = ''; throw new Error('That code did not work. Wait for the next one and try again.'); }
+    afterMfa();
+  }
+  $('step-mfa').addEventListener('submit', function (e) {
+    e.preventDefault();
+    busy('step-mfa', 'Verifying...', function () { return verifyCode('mfa-code'); });
+  });
+  $('step-enroll').addEventListener('submit', function (e) {
+    e.preventDefault();
+    busy('step-enroll', 'Verifying...', function () { return verifyCode('enroll-code'); });
+  });
+
+  $('step-password').addEventListener('submit', function (e) {
+    e.preventDefault();
+    busy('step-password', 'Saving...', async function () {
+      var a = $('new-password').value, b = $('new-password2').value;
+      if (a.length < 12) throw new Error('Use at least 12 characters.');
+      if (a !== b) throw new Error('The passwords do not match.');
+      var r = await sb.updateUser({ password: a });
+      fail(r.error);
+      recovery = false;
+      location.replace(next);
+    });
+  });
+
+  $('forgot-btn').addEventListener('click', function () {
+    $('forgot-email').value = $('email').value.trim();
+    clearMsgs('step-forgot');
+    show('step-forgot');
+  });
+  $('back-btn').addEventListener('click', function () { show('step-login'); });
+  $('step-forgot').addEventListener('submit', function (e) {
+    e.preventDefault();
+    busy('step-forgot', 'Sending...', async function () {
+      var r = await sb.resetPasswordForEmail($('forgot-email').value.trim(), { redirectTo: location.origin + '/' });
+      fail(r.error);
+      msg('step-forgot', 'info', 'If that address has a portal account, a reset link is on its way.');
+    });
+  });
+
+  sb.onAuthStateChange(function (event) {
+    if (event === 'PASSWORD_RECOVERY') recovery = true;
+  });
+
+  // Start: resume an existing session (including one from a reset link).
+  (async function () {
+    var s = await sb.getSession();
+    if (s.data && s.data.session) {
+      try { await afterPassword(); }
+      catch (e) { show('step-login'); msg('step-login', 'error', e.message); }
+      return;
+    }
+    show('step-login');
+    if (linkError) msg('step-login', 'error', linkError + ' Request a new link below.');
+  })();
+})();
 </script>
   <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "736efc4c26a64db2a0f053bd30794e2c"}'></script><!-- End Cloudflare Web Analytics -->
 </body>

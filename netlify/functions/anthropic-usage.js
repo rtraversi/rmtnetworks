@@ -7,6 +7,7 @@
 // down by model. Amount values from Anthropic are in cents (decimal string).
 
 'use strict';
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -20,10 +21,9 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-function isRob(authHeader) {
-  const token = (authHeader || '').replace(/^Bearer\s+/i, '').trim();
-  if (!token || !process.env.SESSION_SECRET) return false;
-  return token === process.env.SESSION_SECRET;
+// Supabase session (aal2) or nothing; see lib/portal-auth.js.
+async function isRob(event) {
+  return ['Rob'].includes(await authenticate(event));
 }
 
 // Add new clients here as you set up their workspaces.
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS };
   if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed' });
 
-  if (!isRob(event.headers.authorization || event.headers.Authorization)) {
+  if (!(await isRob(event))) {
     return json(401, { error: 'Unauthorized' });
   }
 

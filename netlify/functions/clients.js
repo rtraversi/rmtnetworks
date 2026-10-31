@@ -8,6 +8,7 @@
 'use strict';
 
 const { whoAmI, isMax, clientAllowed, MAX_ALLOWED_CLIENT_ID } = require('../../lib/max-scope.js');
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -46,6 +47,7 @@ function pickWritable(body) {
 }
 
 exports.handler = async (event) => {
+  await authenticate(event, { allowCli: true });
   if (!authOk(event)) return json(401, { error: 'Unauthorized' });
 
   const qp = event.queryStringParameters || {};

@@ -6,6 +6,7 @@
 'use strict';
 
 const { whoAmI, clientAllowed } = require('../../lib/max-scope.js');
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -32,6 +33,7 @@ function sbFetch(path, opts = {}) {
 const ALLOWED_TYPES = ['call', 'email', 'meeting', 'note', 'system'];
 
 exports.handler = async (event) => {
+  await authenticate(event, { allowCli: true });
   if (!authOk(event)) return json(401, { error: 'Unauthorized' });
 
   const qp = event.queryStringParameters || {};

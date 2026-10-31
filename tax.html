@@ -5,25 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>RMT Networks — Tax Return Review</title>
-<script>
-  (function() {
-    var token = sessionStorage.getItem('rmt_session');
-    if (!token) { window.location.replace('/'); return; }
-    fetch('/.netlify/functions/verify', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    }).then(function(r) {
-      if (!r.ok) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); return; }
-      return r.json().then(function(d) {
-        // Rob and Katy only. The edge proxy enforces this server-side too.
-        if (!d || (d.user !== 'Rob' && d.user !== 'Katy')) { window.location.replace('/portal.html'); return; }
-        document.body.dataset.user = d.user;
-        document.body.style.visibility = 'visible';
-      });
-    }).catch(function() {
-      document.body.style.visibility = 'visible';
-    });
-  })();
-</script>
+<script src="/js/vendor/supabase-2.118.0.js"></script>
+<script src="/js/rmt-auth.js"></script>
+<script>RMTAuth.guard({ allow: ['Rob', 'Katy'] });</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -516,8 +500,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 function logout() {
-  sessionStorage.removeItem('rmt_session');
-  window.location.replace('/');
+  RMTAuth.signOut();
 }
 
 /* ============================================================
@@ -780,7 +763,7 @@ async function streamTurn({ onText, onThinking, onRetry }) {
 }
 
 async function streamOnce({ onText, onThinking }) {
-  const token = sessionStorage.getItem('rmt_session');
+  const token = RMTAuth.token();
   if (!token) { window.location.replace('/'); return ''; }
 
   let res;
@@ -814,7 +797,7 @@ async function streamOnce({ onText, onThinking }) {
       detail = (j.error && (j.error.message || j.error)) || j.hint || detail;
       if (typeof detail === 'object') detail = JSON.stringify(detail);
     } catch (_) { /* keep the status */ }
-    if (res.status === 401) { sessionStorage.removeItem('rmt_session'); window.location.replace('/'); }
+    if (res.status === 401) { RMTAuth.signOut(); }
     const err = new Error(detail);
     err.kind = 'http';
     err.status = res.status;

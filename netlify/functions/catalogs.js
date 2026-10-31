@@ -6,6 +6,7 @@
 'use strict';
 
 const { whoAmI, isMax } = require('../../lib/max-scope.js');
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -32,6 +33,7 @@ function sbFetch(path, opts = {}) {
 const WRITABLE_FIELDS = ['one_time_cost', 'monthly_cost'];
 
 exports.handler = async (event) => {
+  await authenticate(event);
   if (!authOk(event)) return json(401, { error: 'Unauthorized' });
 
   const qp = event.queryStringParameters || {};

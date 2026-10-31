@@ -17,6 +17,7 @@
 const crypto = require('crypto');
 const { encrypt, decrypt } = require('../../lib/secrets.js');
 const { whoAmI, isMax, clientAllowed } = require('../../lib/max-scope.js');
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -60,6 +61,7 @@ async function submissionClientId(id) {
 }
 
 exports.handler = async (event) => {
+  await authenticate(event);
   const who = whoAmI(event);
   if (!who) return json(401, { error: 'Unauthorized' });
 

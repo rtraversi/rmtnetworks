@@ -9,9 +9,10 @@
 // site's expected_hours). A failed run, or no run at all inside the window, is
 // 'red': a job that silently stops running must not keep showing green.
 //
-// Writes come from backup-report.js. Required env: SESSION_SECRET, SUPABASE_URL, SUPABASE_KEY.
+// Writes come from backup-report.js. Required env: SUPABASE_URL, SUPABASE_KEY.
 
 'use strict';
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -19,10 +20,9 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-function isRob(authHeader) {
-  const token = (authHeader || '').replace(/^Bearer\s+/i, '').trim();
-  if (!token || !process.env.SESSION_SECRET) return false;
-  return token === process.env.SESSION_SECRET;
+// Supabase session (aal2) or nothing; see lib/portal-auth.js.
+async function isRob(event) {
+  return ['Rob'].includes(await authenticate(event));
 }
 
 // Exported for tests.
@@ -44,7 +44,7 @@ function assess(site, latest, now = Date.now()) {
 exports.assess = assess;
 exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed' });
-  if (!isRob(event.headers.authorization || event.headers.Authorization)) {
+  if (!(await isRob(event))) {
     return json(401, { error: 'Unauthorized' });
   }
 

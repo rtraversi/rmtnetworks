@@ -6,6 +6,7 @@
 // their full payment history + totals.
 
 'use strict';
+const { authenticate } = require('../../lib/portal-auth.js');
 
 const Stripe = require('stripe');
 
@@ -21,18 +22,16 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-function authOk(authHeader) {
-  const token = (authHeader || '').replace(/^Bearer\s+/i, '').trim();
-  if (!token) return false;
-  return (process.env.SESSION_SECRET      && token === process.env.SESSION_SECRET) ||
-         (process.env.KATY_SESSION_SECRET && token === process.env.KATY_SESSION_SECRET);
+// Supabase session (aal2) or nothing; see lib/portal-auth.js.
+async function authOk(event) {
+  return ['Rob', 'Katy'].includes(await authenticate(event));
 }
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS };
   if (event.httpMethod !== 'GET')     return json(405, { error: 'Method not allowed' });
 
-  if (!authOk(event.headers.authorization || event.headers.Authorization)) {
+  if (!(await authOk(event))) {
     return json(401, { error: 'Unauthorized' });
   }
 
