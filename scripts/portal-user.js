@@ -66,6 +66,12 @@ async function findUser(email) {
   return u;
 }
 
+// The user list endpoint does not include MFA factors; this one does.
+async function factorsOf(u) {
+  const d = await api('GET', `/admin/users/${u.id}/factors`);
+  return Array.isArray(d) ? d : (d && d.factors) || [];
+}
+
 async function setupLink(email) {
   const d = await api('POST', '/admin/generate_link', { type: 'recovery', email, redirect_to: SITE });
   return d.action_link || (d.properties && d.properties.action_link);
@@ -78,7 +84,7 @@ async function main() {
   switch (cmd) {
     case 'list': {
       for (const u of await allUsers()) {
-        const factors = (u.factors || []).filter((f) => f.status === 'verified').length;
+        const factors = (await factorsOf(u)).filter((f) => f.status === 'verified').length;
         console.log([u.email, (u.app_metadata || {}).portal_user || '(no portal access)',
           factors ? 'MFA on' : 'MFA not set up', 'last sign-in ' + (u.last_sign_in_at || 'never')].join('  |  '));
       }
@@ -99,8 +105,11 @@ async function main() {
     }
     case 'reset-mfa': {
       const u = await findUser(email);
-      for (const f of u.factors || []) await api('DELETE', `/admin/users/${u.id}/factors/${f.id}`);
-      console.log(`Removed ${(u.factors || []).length} factor(s) from ${email}. They will enroll a new authenticator at next sign-in.`);
+      const fs_ = await factorsOf(u);
+      for (const f of fs_) await api('DELETE', `/admin/users/${u.id}/factors/${f.id}`);
+      const left = (await factorsOf(u)).length;
+      if (left) throw new Error(`${left} factor(s) still on ${email} after delete`);
+      console.log(`Removed ${fs_.length} factor(s) from ${email}. They will enroll a new authenticator at next sign-in.`);
       console.log('Existing sessions stay valid until they expire; run "signout" too if the device was lost.');
       return;
     }
