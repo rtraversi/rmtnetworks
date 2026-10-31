@@ -530,6 +530,14 @@
   // Start: resume an existing session (including one from a reset link).
   (async function () {
     var s = await sb.getSession();
+    var c = s.data && s.data.session && RMTAuth.decodeClaims(s.data.session.access_token);
+    if (c && c.aal === 'aal2' && !RMTAuth.mfaFresh(c)) {
+      // The 30-day sign-in on this browser has run out.
+      await sb.signOut({ scope: 'local' });
+      show('step-login');
+      msg('step-login', 'info', 'It has been 30 days. Please sign in again.');
+      return;
+    }
     if (s.data && s.data.session) {
       try { await afterPassword(); }
       catch (e) { show('step-login'); msg('step-login', 'error', e.message); }

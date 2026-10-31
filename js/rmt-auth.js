@@ -26,12 +26,31 @@
   var STORAGE_KEY = 'rmt-auth';
   var LOGIN_PATH = '/';
 
-  // sessionStorage, like the old portal token: closing the tab ends the
-  // session, so a shared or unattended computer doesn't stay logged in.
+  // One password + authenticator sign-in lasts MFA_MAX_AGE_DAYS on this
+  // browser. The session lives in localStorage so new tabs and browser
+  // restarts reuse it; the functions (lib/portal-auth.js) refuse tokens whose
+  // TOTP step is older than that, and guard() signs out locally to match.
+  var MFA_MAX_AGE_DAYS = 30;
   var storage = (function () {
-    try { window.sessionStorage.setItem('rmt-probe', '1'); window.sessionStorage.removeItem('rmt-probe'); return window.sessionStorage; }
-    catch (e) { return undefined; }
+    try {
+      var ls = window.localStorage;
+      ls.setItem('rmt-probe', '1'); ls.removeItem('rmt-probe');
+      // Carry over a session from the old sessionStorage setup once.
+      try {
+        var old = window.sessionStorage.getItem(STORAGE_KEY);
+        if (old && !ls.getItem(STORAGE_KEY)) ls.setItem(STORAGE_KEY, old);
+        window.sessionStorage.removeItem(STORAGE_KEY);
+      } catch (e) { /* ignore */ }
+      return ls;
+    } catch (e) { return undefined; }
   })();
+
+  function mfaFresh(claims) {
+    var amr = (claims && Array.isArray(claims.amr)) ? claims.amr : [];
+    var totp = 0;
+    amr.forEach(function (a) { if (a && a.method === 'totp' && typeof a.timestamp === 'number' && a.timestamp > totp) totp = a.timestamp; });
+    return totp > 0 && Date.now() / 1000 - totp <= MFA_MAX_AGE_DAYS * 86400;
+  }
 
   var client = window.supabase.createClient(SUPABASE_URL, PUBLISHABLE_KEY, {
     auth: { storageKey: STORAGE_KEY, storage: storage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -115,6 +134,11 @@
       var s = res && res.data && res.data.session;
       var claims = s && decodeClaims(s.access_token);
       if (!claims || claims.aal !== 'aal2') { goLogin(); return new Promise(function () {}); }
+      if (!mfaFresh(claims)) {
+        // 30 days are up: drop this browser's session so login starts clean.
+        try { await client.auth.signOut({ scope: 'local' }); } catch (e) { /* ignore */ }
+        goLogin(); return new Promise(function () {});
+      }
 
       var who = null;
       try {
@@ -150,5 +174,5 @@
     if (event === 'SIGNED_OUT' && location.pathname !== LOGIN_PATH && location.pathname !== '/index.html') goLogin();
   });
 
-  window.RMTAuth = { client: client, token: token, guard: guard, signOut: signOut, decodeClaims: decodeClaims };
+  window.RMTAuth = { client: client, token: token, guard: guard, signOut: signOut, decodeClaims: decodeClaims, mfaFresh: mfaFresh };
 })();
