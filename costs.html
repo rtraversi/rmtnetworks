@@ -73,6 +73,13 @@
   table.fixed td.num, table.fixed th.num { text-align: right; padding-right: 0; padding-left: 10px; }
   table.fixed .name { font-weight: 700; }
   table.fixed .mono { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--soft); }
+  .flag { color: var(--yellow); font-family: 'DM Mono', monospace; font-size: 0.68rem; }
+  table.fixed td.flag, table.fixed th.flag { padding-left: 18px; }
+  .st { font-family: 'DM Mono', monospace; font-size: 0.68rem; white-space: nowrap; }
+  .st.charged { color: var(--accent); } .st.expected { color: var(--yellow); } .st.other { color: var(--muted); }
+  .btn-ignore { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 3px 9px; font-family: 'DM Mono', monospace; font-size: 0.64rem; cursor: pointer; }
+  .btn-ignore:hover { color: var(--text); border-color: var(--muted); }
+  .help { font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
   .due-soon { color: var(--yellow) !important; }
   .past { color: var(--warn) !important; }
 
@@ -81,7 +88,12 @@
     main { padding: 20px 16px 48px; }
     .grid > .panel { grid-column: span 12; }
     .greet h1 { font-size: 1.5rem; }
+    .kpi { padding: 14px; }
+    .kpi .k-val { font-size: 1.3rem; }
+    .panel { padding: 16px 14px; }
     table.fixed .hide-sm { display: none; }
+    table.fixed td, table.fixed th { padding-right: 6px; }
+    table.fixed td.num, table.fixed th.num { padding-left: 6px; }
   }
 </style>
 </head>
@@ -101,15 +113,23 @@
 
   <div class="kpis">
     <div class="kpi" id="kpi-total"><div class="k-label">This month (est.)</div><div class="k-val">—</div><div class="k-sub"></div></div>
-    <div class="kpi" id="kpi-fixed"><div class="k-label">Fixed plans</div><div class="k-val">—</div><div class="k-sub"></div></div>
-    <div class="kpi" id="kpi-usage"><div class="k-label">Usage, month to date</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-charged"><div class="k-label">Charged so far</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-due"><div class="k-label">Still to come</div><div class="k-val">—</div><div class="k-sub"></div></div>
     <div class="kpi" id="kpi-netlify"><div class="k-label">Netlify credits</div><div class="k-val">—</div><div class="k-sub"></div></div>
   </div>
 
   <div class="grid" id="usage-grid">
-    <section class="panel span-4"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
-    <section class="panel span-4"><div class="skeleton"></div><div class="skeleton"></div></section>
-    <section class="panel span-4"><div class="skeleton"></div><div class="skeleton"></div></section>
+    <section class="panel span-12" id="card">
+      <div class="p-head"><div class="p-title"><span class="dot"></span>Card charges</div><span class="p-note" id="card-note"></span></div>
+      <div class="p-body"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    </section>
+    <section class="panel span-12" id="unmatched">
+      <div class="p-head"><div class="p-title">Charges with no match</div><span class="p-note">repeat merchants, or $50+ · last 90 days</span></div>
+      <div class="p-body"><div class="skeleton"></div></div>
+    </section>
+    <section class="panel span-4 feed"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
+    <section class="panel span-4 feed"><div class="skeleton"></div><div class="skeleton"></div></section>
+    <section class="panel span-4 feed"><div class="skeleton"></div><div class="skeleton"></div></section>
     <section class="panel span-12" id="fixed">
       <div class="p-head"><div class="p-title">Fixed plans</div><a class="p-link" href="/tracker.html">Subscriptions →</a></div>
       <div class="p-body"><div class="skeleton"></div><div class="skeleton"></div></div>
@@ -145,14 +165,14 @@
     const bad = u.ok === false || stale(u);
     const scopes = u.scopes.length ? `<div class="sub-h">By workspace</div>` + u.scopes.map((s) => `
       <div class="row"><span>${esc(s.name)}</span><span class="money">${usd(s.mtd_usd)}</span><span class="money muted">${usd(s.last_month_usd)}</span></div>`).join('') : '';
-    return `<section class="panel span-4">
+    return `<section class="panel span-4 feed">
       <div class="p-head">
         <div class="p-title"><span class="dot ${bad ? 'red' : 'green'}"></span>${esc(u.label)}</div>
         <span class="p-note" title="${esc(u.checked_at || '')}">checked ${esc(ago(u.checked_at))}</span>
       </div>
       ${u.ok === false ? `<div class="feed-err">Last fetch failed: ${esc(u.error)}${u.last_ok_at ? ' · last good ' + esc(ago(u.last_ok_at)) : ''}</div>` : ''}
       <div class="big">${usd(u.mtd_usd)}</div>
-      <div class="big-sub">this month · last month ${usd(u.last_month_usd)}</div>
+      <div class="big-sub">used this month (API) · last month ${usd(u.last_month_usd)}</div>
       ${scopes}
       ${!u.scopes.length && !u.mtd_usd && !u.last_month_usd ? empty('No spend recorded yet.') : ''}
       ${u.balance_usd != null ? `<div class="p-foot"><span>Credit left <b>${usd(u.balance_usd)}</b></span></div>` : ''}
@@ -160,11 +180,11 @@
   }
 
   function netlifyPanel(n) {
-    if (!n) return `<section class="panel span-4"><div class="p-head"><div class="p-title">Netlify credits</div></div>${empty('No Netlify credit data.')}</section>`;
+    if (!n) return `<section class="panel span-4 feed"><div class="p-head"><div class="p-title">Netlify credits</div></div>${empty('No Netlify credit data.')}</section>`;
     const pct = n.limit ? Math.round((n.used / n.limit) * 100) : 0;
     const cls = pct >= 100 ? 'over' : pct >= 80 ? 'mid' : '';
     const old = (Date.now() - new Date(n.last_updated).getTime()) > 26 * 3600000;
-    return `<section class="panel span-4">
+    return `<section class="panel span-4 feed">
       <div class="p-head">
         <div class="p-title"><span class="dot ${old ? 'red' : 'green'}"></span>Netlify credits</div>
         <span class="p-note">scraped ${esc(ago(n.last_updated))}</span>
@@ -176,11 +196,69 @@
     </section>`;
   }
 
+  function planStatus(st) {
+    return {
+      charged:     '<span class="st charged">charged ✓</span>',
+      expected:    '<span class="st expected">not charged yet</span>',
+      annual:      '<span class="st other">annual ÷ 12</span>',
+      not_on_card: '<span class="st other" title="No card match set, or paid with another card">not on card</span>',
+    }[st] || '';
+  }
+
+  function cardPanel(c) {
+    const bad = c.ok === false || stale(c);
+    $('#card .dot').className = 'dot ' + (c.ok == null ? '' : bad ? 'red' : 'green');
+    $('#card-note').textContent = (c.accounts.length ? c.accounts.join(' · ') + ' · ' : '') + 'checked ' + ago(c.checked_at);
+    let html = '';
+    if (c.ok === false) html += `<div class="feed-err">Last fetch failed: ${esc(c.error)}${c.last_ok_at ? ' · last good ' + esc(ago(c.last_ok_at)) : ''}</div>`;
+    if (c.warnings.length) html += `<div class="feed-err">SimpleFIN: ${esc(c.warnings.join(' · '))}</div>`;
+    html += c.vendors.length ? `<table class="fixed">
+      <thead><tr><th>Vendor</th><th class="hide-sm">Billed</th><th class="num">This month</th><th class="num">Last month</th><th class="num hide-sm">Last charge</th><th class="flag">Check</th></tr></thead>
+      <tbody>${c.vendors.map((v) => `<tr>
+        <td class="name">${esc(v.label)} <span class="mono muted hide-sm">"${esc(v.pattern)}"</span></td>
+        <td class="mono hide-sm">${esc(v.billing)}${v.annual ? ' (not in month total)' : ''}</td>
+        <td class="num money">${usd(v.mtd_usd)}</td>
+        <td class="num money muted">${usd(v.last_month_usd)}</td>
+        <td class="num mono hide-sm">${v.last ? usd(v.last.amount_usd) + ' · ' + esc(shortDate(v.last.day)) : '—'}</td>
+        <td class="flag">${esc(v.flags.join(' · '))}</td>
+      </tr>`).join('')}</tbody></table>` : empty('No card charges matched yet. Set "Card match" on a subscription to link its charges.');
+    html += `<div class="help">Charges are matched by the "Card match" text on each subscription (edit it in Subscriptions). Matching runs when this page loads, so a new match also applies to past charges.</div>`;
+    $('#card .p-body').innerHTML = html;
+  }
+
+  function unmatchedPanel(rows) {
+    $('#unmatched .p-body').innerHTML = rows.length ? `<table class="fixed">
+      <thead><tr><th>Merchant</th><th class="num">Times</th><th class="num">Total</th><th class="num hide-sm">Last</th><th></th></tr></thead>
+      <tbody>${rows.map((u) => `<tr>
+        <td class="name" title="${esc(u.sample)}">${esc(u.merchant)}</td>
+        <td class="num mono">${u.count}</td>
+        <td class="num money">${usd(u.total_usd)}</td>
+        <td class="num mono hide-sm">${usd(u.last_amount_usd)} · ${esc(shortDate(u.last_day))}</td>
+        <td class="num"><button class="btn-ignore" type="button" data-ignore="${esc(u.sample)}">Ignore</button></td>
+      </tr>`).join('')}</tbody></table>
+      <div class="help">Business charge? Add it in Subscriptions with a "Card match". Not a cost (personal, a transfer)? Ignore hides it for good.</div>`
+      : empty('Every repeat or large charge is matched or ignored.');
+  }
+
+  async function ignore(sample) {
+    const pattern = window.prompt('Hide charges whose description contains:', sample);
+    if (!pattern || !pattern.trim()) return;
+    try {
+      const r = await fetch('/.netlify/functions/costs', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ignore: pattern.trim() }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+      load();
+    } catch (e) { window.alert('Could not save: ' + e.message); }
+  }
+
   function fixedPanel(rows) {
     const today = new Date().toISOString().slice(0, 10);
     const soon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     const body = rows.length ? `<table class="fixed">
-      <thead><tr><th>Service</th><th class="hide-sm">Plan</th><th class="hide-sm">Billed</th><th>Renews</th><th class="num">Price</th><th class="num">Per month</th></tr></thead>
+      <thead><tr><th>Service</th><th class="hide-sm">Plan</th><th class="hide-sm">Billed</th><th>Renews</th><th>This month</th><th class="num hide-sm">Price</th><th class="num">Per month</th></tr></thead>
       <tbody>${rows.map((s) => {
         const r = s.renewal_date;
         const cls = !r ? '' : r < today ? 'past' : r <= soon ? 'due-soon' : '';
@@ -189,7 +267,8 @@
           <td class="mono hide-sm">${esc(s.plan || '')}</td>
           <td class="mono hide-sm">${esc(s.billing_cycle)}</td>
           <td class="mono ${cls}" title="${cls === 'past' ? 'Renewal date has passed: update it in Subscriptions' : ''}">${esc(shortDate(r))}</td>
-          <td class="num money">${usd(s.price)}${s.billing_cycle === 'annual' ? '<span class="muted">/yr</span>' : ''}</td>
+          <td>${planStatus(s.card_status)}</td>
+          <td class="num money hide-sm">${usd(s.price)}${s.billing_cycle === 'annual' ? '<span class="muted">/yr</span>' : ''}</td>
           <td class="num money">${usd(s.monthly_usd)}</td>
         </tr>`;
       }).join('')}</tbody></table>` : empty('No priced plans in Subscriptions.');
@@ -207,30 +286,37 @@
       $('#month').textContent = new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
       const t = d.totals;
-      const badFeeds = d.usage.filter((u) => u.ok === false || stale(u));
-      kpi('total', usd(t.month_usd), 'fixed plans + usage so far');
-      kpi('fixed', usd(t.fixed_monthly_usd), `${d.fixed.length} paid plans · annual ÷ 12`);
-      kpi('usage', usd(t.usage_mtd_usd), badFeeds.length ? `${badFeeds.length} feed${badFeeds.length > 1 ? 's' : ''} failing` : 'all feeds current', badFeeds.length > 0);
+      const cardBad = d.card.ok === false || stale(d.card);
+      kpi('total', usd(t.month_usd), 'charged so far + still to come');
+      kpi('charged', usd(t.card_mtd_usd), cardBad ? 'card feed not current' : 'card charges this month', cardBad);
+      kpi('due', usd(t.still_due_usd), 'not charged yet, paid elsewhere, or annual ÷ 12');
       if (d.netlify) {
         const pct = d.netlify.limit ? Math.round((d.netlify.used / d.netlify.limit) * 100) : 0;
         kpi('netlify', pct + '%', `${d.netlify.used.toLocaleString()} of ${d.netlify.limit.toLocaleString()} ${d.netlify.unit}`, pct >= 80);
       } else kpi('netlify', '—', 'no data');
 
       const grid = $('#usage-grid');
-      [...grid.querySelectorAll('section:not(#fixed)')].forEach((s) => s.remove());
-      grid.insertAdjacentHTML('afterbegin', d.usage.map(usagePanel).join('') + netlifyPanel(d.netlify));
+      cardPanel(d.card);
+      unmatchedPanel(d.card.unmatched);
+      [...grid.querySelectorAll('section.feed, section.load-err')].forEach((s) => s.remove());
+      $('#fixed').insertAdjacentHTML('beforebegin', d.usage.map(usagePanel).join('') + netlifyPanel(d.netlify));
       fixedPanel(d.fixed);
 
       $('#updated').textContent = 'Updated ' + new Date(d.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     } catch (e) {
       $('#updated').textContent = 'Load failed';
-      ['total', 'fixed', 'usage', 'netlify'].forEach((id) => kpi(id, '?', 'unavailable', true));
+      ['total', 'charged', 'due', 'netlify'].forEach((id) => kpi(id, '?', 'unavailable', true));
       const grid = $('#usage-grid');
-      [...grid.querySelectorAll('section:not(#fixed)')].forEach((s) => s.remove());
-      grid.insertAdjacentHTML('afterbegin', `<section class="panel span-12"><div class="empty err">Could not load costs: ${esc(e.message)}</div></section>`);
-      $('#fixed .p-body').innerHTML = '';
+      [...grid.querySelectorAll('section.feed, section.load-err')].forEach((s) => s.remove());
+      grid.insertAdjacentHTML('afterbegin', `<section class="panel span-12 load-err"><div class="empty err">Could not load costs: ${esc(e.message)}</div></section>`);
+      ['#card', '#unmatched', '#fixed'].forEach((id) => { $(id + ' .p-body').innerHTML = ''; });
     }
   }
+
+  $('#unmatched').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-ignore]');
+    if (b) ignore(b.getAttribute('data-ignore'));
+  });
 
   RMTAuth.guard().then(() => {
     $('#refresh').addEventListener('click', load);

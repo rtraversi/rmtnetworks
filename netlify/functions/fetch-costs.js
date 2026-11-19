@@ -13,6 +13,10 @@
 //               Env: ANTHROPIC_ADMIN_KEY (sk-ant-admin01-..., org admin key).
 //   openrouter  /api/v1/activity (last 30 days, by model) and /api/v1/credits.
 //               Env: OPENROUTER_MANAGEMENT_KEY (read-only management key).
+//   card        SimpleFIN Bridge: every transaction on the accounts in
+//               SIMPLEFIN_ACCOUNT_IDS (comma-separated SimpleFIN account ids), into
+//               card_charges. Last 45 days per run; ?days=90 backfills once.
+//               Env: SIMPLEFIN_ACCESS_URL (claimed access URL, holds credentials).
 //
 // Required env: CRON_SECRET, SUPABASE_URL, SUPABASE_KEY.
 
@@ -135,9 +139,84 @@ async function fetchOpenRouter(key) {
   };
 }
 
+// ── Card charges (SimpleFIN Bridge) ─────────────────────────────────────────
+// Same rules as the adapter in katychavez-portal-new (functions/api/_adapters/bank-feed/
+// simplefin.js): only simplefin.org hosts, credentials split out of the access URL, at
+// most 45 days per /accounts request, at most 24 requests a day (this runs twice a day).
+const SIMPLEFIN_MAX_DAYS = 45;
+
+function splitAccessUrl(accessUrl) {
+  const url = new URL(String(accessUrl).trim());
+  const host = url.hostname.toLowerCase();
+  if (url.protocol !== 'https:' || !(host === 'simplefin.org' || host.endsWith('.simplefin.org')) || !url.username) {
+    throw new Error('SIMPLEFIN_ACCESS_URL is not an https simplefin.org access URL with credentials');
+  }
+  const auth = 'Basic ' + Buffer.from(`${decodeURIComponent(url.username)}:${decodeURIComponent(url.password)}`).toString('base64');
+  url.username = '';
+  url.password = '';
+  return { base: url.toString().replace(/\/+$/, ''), auth };
+}
+
+// One SimpleFIN account set → card_charges rows for the wanted accounts. Pending
+// transactions are skipped; they come back posted. Exported for tests.
+function cardRows(set, wanted) {
+  const out = [];
+  for (const a of set.accounts ?? []) {
+    if (!wanted.has(String(a.id))) continue;
+    for (const t of a.transactions ?? []) {
+      const amount = Number(t.amount);
+      if (t.pending || !t.posted || !Number.isFinite(amount)) continue;
+      out.push({
+        account_id: String(a.id),
+        txn_id: String(t.id),
+        account_name: a.name ?? null,
+        posted_on: new Date(Number(t.posted) * 1000).toISOString().slice(0, 10),
+        amount_usd: Math.round(amount * 100) / 100,
+        description: String(t.payee || t.description || '').trim().slice(0, 300) || null,
+      });
+    }
+  }
+  return out;
+}
+
+async function fetchCard(accessUrl, accountIds, days, now) {
+  const wanted = new Set(String(accountIds || '').split(',').map((s) => s.trim()).filter(Boolean));
+  if (!wanted.size) throw new Error('SIMPLEFIN_ACCOUNT_IDS env var not set');
+  const { base, auth } = splitAccessUrl(accessUrl);
+  const end = Math.floor(now.getTime() / 1000);
+  const rows = [];
+  const warnings = new Set();
+  // Oldest window first; each at most 45 days.
+  for (let start = end - days * 86400; start < end; start += SIMPLEFIN_MAX_DAYS * 86400) {
+    const winEnd = Math.min(start + SIMPLEFIN_MAX_DAYS * 86400, end);
+    const p = new URLSearchParams({ 'start-date': String(start), 'end-date': String(winEnd) });
+    for (const id of wanted) p.append('account', id);
+    const res = await fetch(`${base}/accounts?${p}`, {
+      headers: { Authorization: auth, Accept: 'application/json' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(20000),
+    });
+    if (res.status === 401 || res.status === 403) throw new Error(`SimpleFIN refused the access URL (HTTP ${res.status}): revoked in SimpleFIN Bridge?`);
+    if (res.status === 402) throw new Error('SimpleFIN Bridge subscription needs payment');
+    if (!res.ok) throw new Error(`SimpleFIN /accounts HTTP ${res.status}`);
+    const set = await res.json();
+    for (const e of [...(set.errors ?? []), ...(set.errlist ?? [])]) {
+      const msg = typeof e === 'string' ? e : (e?.msg || e?.code);
+      if (msg) warnings.add(String(msg));
+    }
+    rows.push(...cardRows(set, wanted));
+  }
+  const accounts = [...new Set(rows.map((r) => r.account_name).filter(Boolean))];
+  return {
+    rows,
+    status: { balance_usd: null, details: { accounts, days, transactions: rows.length, warnings: [...warnings] } },
+  };
+}
+
 // ── handler ─────────────────────────────────────────────────────────────────
 exports.sumAnthropicRows = sumAnthropicRows;
 exports.sumOpenRouterActivity = sumOpenRouterActivity;
+exports.cardRows = cardRows;
 
 exports.handler = async (event) => {
   const auth = (event.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
@@ -162,21 +241,24 @@ exports.handler = async (event) => {
   };
 
   const now = new Date();
+  // ?days=90 backfills card charges once (SimpleFIN Bridge keeps about 90 days).
+  const cardDays = Math.min(90, Math.max(1, Number(event.queryStringParameters?.days) || SIMPLEFIN_MAX_DAYS));
   const sources = [
-    ['anthropic', process.env.ANTHROPIC_ADMIN_KEY, (k) => fetchAnthropic(k, now)],
-    ['openrouter', process.env.OPENROUTER_MANAGEMENT_KEY, (k) => fetchOpenRouter(k)],
+    ['anthropic', process.env.ANTHROPIC_ADMIN_KEY, (k) => fetchAnthropic(k, now), 'cost_daily', 'service,scope,day'],
+    ['openrouter', process.env.OPENROUTER_MANAGEMENT_KEY, (k) => fetchOpenRouter(k), 'cost_daily', 'service,scope,day'],
+    ['card', process.env.SIMPLEFIN_ACCESS_URL, (k) => fetchCard(k, process.env.SIMPLEFIN_ACCOUNT_IDS, cardDays, now), 'card_charges', 'account_id,txn_id'],
   ];
 
-  const results = await Promise.all(sources.map(async ([service, key, run]) => {
+  const results = await Promise.all(sources.map(async ([service, key, run, table, conflict]) => {
     const checked_at = now.toISOString();
     try {
       if (!key) throw new Error('API key env var not set');
       const { rows, status } = await run(key);
       const stamped = rows.map((r) => ({ ...r, updated_at: checked_at }));
-      await upsert('cost_daily', 'service,scope,day', stamped);
+      await upsert(table, conflict, stamped);
       await upsert('cost_status', 'service', [{ service, ok: true, error: null, ...status, checked_at, last_ok_at: checked_at }]);
       const total = rows.reduce((s, r) => s + r.amount_usd, 0);
-      return { service, ok: true, days: rows.length, window_usd: round4(total), balance_usd: status.balance_usd };
+      return { service, ok: true, rows: rows.length, net_usd: round4(total), balance_usd: status.balance_usd };
     } catch (e) {
       // Record the failure but keep last_ok_at and the old balance (omitted keys aren't overwritten).
       try {

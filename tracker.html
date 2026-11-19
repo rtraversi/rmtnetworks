@@ -429,8 +429,12 @@
         <input type="url" id="f-url" placeholder="https://...">
       </div>
       <div class="form-group full">
+        <label>Card match</label>
+        <input type="text" id="f-card" placeholder="Text in the card charge, e.g. Netlify (blank = not on the card)">
+      </div>
+      <div class="form-group full">
         <label>Notes</label>
-        <textarea id="f-notes" placeholder="API keys, account IDs, anything useful..."></textarea>
+        <textarea id="f-notes" placeholder="Account IDs, anything useful (no passwords or API keys)"></textarea>
       </div>
       <div class="form-group">
         <label>Active?</label>
@@ -655,10 +659,11 @@
       document.getElementById('f-login').value     = r.login_method || 'email';
       document.getElementById('f-url').value       = r.website_url || '';
       document.getElementById('f-notes').value     = r.notes || '';
+      document.getElementById('f-card').value      = r.card_match || '';
       document.getElementById('f-active').value    = String(r.is_active);
       document.getElementById('f-autorenew').value = String(r.auto_renews);
     } else {
-      ['f-name','f-plan','f-price','f-renewal','f-email','f-url','f-notes'].forEach(id => document.getElementById(id).value = '');
+      ['f-name','f-plan','f-price','f-renewal','f-email','f-url','f-notes','f-card'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('f-cat').value       = 'General';
       document.getElementById('f-billing').value   = 'monthly';
       document.getElementById('f-login').value     = 'email';
@@ -687,6 +692,7 @@
       login_method:  document.getElementById('f-login').value || null,
       website_url:   document.getElementById('f-url').value || null,
       notes:         document.getElementById('f-notes').value || null,
+      card_match:    document.getElementById('f-card').value.trim() || null,
       is_active:     document.getElementById('f-active').value === 'true',
       auto_renews:   document.getElementById('f-autorenew').value === 'true',
     };

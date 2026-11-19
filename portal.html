@@ -424,16 +424,16 @@
     }
   }
 
-  // Fixed plans (monthly equivalent) + usage-billed spend so far; details on costs.html.
+  // Card charges so far this month + plans still to come; details on costs.html.
   async function loadCosts() {
     try {
       const r = await fetch('/.netlify/functions/costs');
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
       const t = d.totals;
-      const failing = d.usage.filter((u) => u.ok === false).length;
+      const failing = d.usage.filter((u) => u.ok === false).length + (d.card && d.card.ok === false ? 1 : 0);
       kpi('costs', usd(t.month_usd),
-        failing ? `${plural(failing, 'cost feed')} failing` : `${usd(t.fixed_monthly_usd)} fixed · ${usd(t.usage_mtd_usd)} usage`,
+        failing ? `${plural(failing, 'cost feed')} failing` : `${usd(t.card_mtd_usd)} charged · ${usd(t.still_due_usd)} to come`,
         failing ? 'warn' : null);
     } catch (e) {
       kpi('costs', '?', 'unavailable', 'warn');
