@@ -9,13 +9,18 @@
 -- charge_ignores   description patterns that are never costs (card payments, transfers),
 --                  left out of the "recurring charges with no match" list.
 -- subscriptions.card_match
---                  case-insensitive text found in that vendor's card charges (e.g. 'Widdix'
---                  for attachmentAV). Matching happens when the Costs screen loads, so a new
+--                  case-insensitive text found in that vendor's card charges (e.g.
+--                  'Netlify'). Matching happens when the Costs screen loads, so a new
 --                  or changed pattern also applies to charges already stored.
+-- subscriptions.card_amount
+--                  optional exact charge amount, for two products billed under one name
+--                  (a $100.00 plan vs. variable API top-ups from the same vendor). Rules
+--                  with an amount are tried before text-only ones.
 --
 -- Same access model as v14: RLS on with no policies, service_role grants only.
 
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS card_match text;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS card_amount numeric(12,2);
 
 CREATE TABLE IF NOT EXISTS card_charges (
   account_id    text          NOT NULL,            -- SimpleFIN account id

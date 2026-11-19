@@ -119,11 +119,22 @@ function summarizeCard(charges, subs, ignores, now = new Date()) {
   const dayMs = 86400000;
   const daysAgo = (d) => Math.floor((now.getTime() - Date.parse(d + 'T12:00:00Z')) / dayMs);
 
-  const patterns = subs.filter((s) => s.card_match && s.card_match.trim())
-    .map((s) => ({ sub: s, p: s.card_match.trim().toLowerCase() }));
+  // A rule is card_match text plus an optional exact amount; one rule key per pair.
+  const ruleKey = (s) => {
+    const p = (s.card_match || '').trim().toLowerCase();
+    if (!p) return '';
+    const a = s.card_amount == null || s.card_amount === '' ? null : Number(s.card_amount);
+    return a == null || !Number.isFinite(a) ? p : `${p}|${a.toFixed(2)}`;
+  };
+  const patterns = subs.filter((s) => ruleKey(s))
+    .map((s) => {
+      const a = ruleKey(s).includes('|') ? Number(s.card_amount) : null;
+      return { sub: s, key: ruleKey(s), p: s.card_match.trim().toLowerCase(), amount: a };
+    })
+    .sort((x, y) => (y.amount != null) - (x.amount != null)); // amount rules first
   const ignorePats = ignores.map((i) => String(i.pattern || '').trim().toLowerCase()).filter(Boolean);
 
-  const vendors = new Map();   // pattern → vendor summary
+  const vendors = new Map();   // rule key → vendor summary
   const unmatched = new Map(); // merchant key → summary
 
   const sorted = [...charges].sort((a, b) => a.posted_on.localeCompare(b.posted_on));
@@ -131,15 +142,16 @@ function summarizeCard(charges, subs, ignores, now = new Date()) {
     const desc = String(c.description || '');
     const lower = desc.toLowerCase();
     const amt = -Number(c.amount_usd); // positive = money out
-    const hit = patterns.find((x) => lower.includes(x.p));
+    const hit = patterns.find((x) => lower.includes(x.p) && (x.amount == null || Math.abs(Math.abs(amt) - x.amount) < 0.005));
     if (hit) {
-      const v = vendors.get(hit.p) || { pattern: hit.sub.card_match.trim(), subs: [], mtd: 0, last_month: 0, count: 0, last: null };
-      for (const x of patterns) if (x.p === hit.p && !v.subs.includes(x.sub)) v.subs.push(x.sub);
+      const pattern = hit.sub.card_match.trim() + (hit.amount != null ? ` = ${hit.amount.toFixed(2)}` : '');
+      const v = vendors.get(hit.key) || { key: hit.key, pattern, subs: [], mtd: 0, last_month: 0, count: 0, last: null };
+      for (const x of patterns) if (x.key === hit.key && !v.subs.includes(x.sub)) v.subs.push(x.sub);
       const m = c.posted_on.slice(0, 7);
       if (m === thisMonth) v.mtd += amt;
       if (m === prevMonth) v.last_month += amt;
       if (amt > 0) { v.count += 1; v.last = { day: c.posted_on, amount_usd: round2(amt) }; }
-      vendors.set(hit.p, v);
+      vendors.set(hit.key, v);
       continue;
     }
     if (amt <= 0 || ignorePats.some((p) => lower.includes(p))) continue;
@@ -163,6 +175,7 @@ function summarizeCard(charges, subs, ignores, now = new Date()) {
       flags.push(`Last charge ${v.last.amount_usd.toFixed(2)} vs plan ${monthlyPrice.toFixed(2)}`);
     }
     return {
+      key: v.key,
       label: [...new Set(v.subs.map((s) => s.name))].join(' / '),
       pattern: v.pattern,
       billing: cycles.join(' + '),
@@ -175,11 +188,11 @@ function summarizeCard(charges, subs, ignores, now = new Date()) {
     };
   }).sort((a, b) => b.mtd_usd - a.mtd_usd || b.last_month_usd - a.last_month_usd);
 
-  const charged = new Set(vendorList.filter((v) => v.mtd_usd > 0).map((v) => v.pattern.toLowerCase()));
+  const charged = new Set(vendorList.filter((v) => v.mtd_usd > 0).map((v) => v.key));
   const plans = subs.map((s) => {
     const monthly = monthlyUsd(s);
     if (monthly == null) return null;
-    const p = (s.card_match || '').trim().toLowerCase();
+    const p = ruleKey(s);
     let status;
     if (s.billing_cycle === 'annual') status = 'annual';
     else if (!p) status = 'not_on_card';
@@ -245,7 +258,7 @@ exports.handler = async (event) => {
     const [rows, statuses, subs, netlify, charges, ignores] = await Promise.all([
       get(`cost_daily?select=service,scope,day,amount_usd&day=gte.${since}&order=day.asc`),
       get('cost_status?select=*'),
-      get('subscriptions?select=name,plan,category,price,billing_cycle,renewal_date,card_match&is_active=eq.true&order=name.asc'),
+      get('subscriptions?select=name,plan,category,price,billing_cycle,renewal_date,card_match,card_amount&is_active=eq.true&order=name.asc'),
       get('usage_metrics?select=used_value,limit_value,unit,last_updated&service_name=eq.Netlify&metric_name=eq.credits&limit=1'),
       get(`card_charges?select=posted_on,amount_usd,description&posted_on=gte.${cardSince}&order=posted_on.asc&limit=5000`),
       get('charge_ignores?select=pattern'),
