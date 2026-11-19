@@ -71,29 +71,23 @@ async function patchMetric(service, metric, usedValue) {
     console.log('Credit-related lines found:');
     creditLines.forEach((l, i) => console.log(`  [${i}] ${l.trim()}`));
 
-    // The label and value are on separate lines, e.g.:
-    //   "Pro plan available credits"
-    //   "2,756.6 credits"
+    // Since 2026-11 the billing page shows the plan balance as one line,
+    //   "2,910.8 / 3,000 credits remaining"   (then "Pro plan credits · Granted ...")
+    // and auto-recharge / add-on balances as more lines of the same shape below it.
+    // Only the Pro plan balance counts. If the shape isn't found, exit non-zero rather
+    // than write a made-up number.
     const allLines = bodyText.split('\n').map(l => l.trim()).filter(Boolean);
-    const proIdx = allLines.findIndex(l => /pro plan available credits/i.test(l));
+    const num = (t) => parseFloat(t.replace(/,/g, ''));
+    const REMAINING = /^([\d,]+(?:\.\d+)?)\s*\/\s*([\d,]+(?:\.\d+)?)\s*credits remaining/i;
     let available = null;
-
-    if (proIdx !== -1) {
-      // Value is on the next non-empty line
-      const valueLine = allLines[proIdx + 1] || '';
-      console.log('Pro label at index', proIdx, '— next line:', valueLine);
-      const m = valueLine.match(/([\d,]+\.?\d*)/);
-      if (m) available = parseFloat(m[1].replace(/,/g, ''));
-    }
-
-    // Fallback: find a line like "2,756.6 credits" that follows credit context
-    if (available === null) {
-      const fallbackLine = creditLines.find(l => /^[\d,]+\.?\d*\s*credits/i.test(l));
-      console.log('Fallback line:', fallbackLine);
-      if (fallbackLine) {
-        const m = fallbackLine.match(/([\d,]+\.?\d*)/);
-        if (m) available = parseFloat(m[1].replace(/,/g, ''));
-      }
+    let planTotal = null;
+    const proIdx = allLines.findIndex((l, i) => REMAINING.test(l) && /pro plan credits/i.test(allLines[i + 1] || ''));
+    const balIdx = proIdx !== -1 ? proIdx : allLines.findIndex(l => REMAINING.test(l));
+    if (balIdx !== -1) {
+      const m = allLines[balIdx].match(REMAINING);
+      available = num(m[1]);
+      planTotal = num(m[2]);
+      console.log('Balance line:', allLines[balIdx], proIdx === -1 ? '(no Pro plan label after it)' : '');
     }
 
     console.log('Available credits resolved to:', available);
@@ -114,8 +108,8 @@ async function patchMetric(service, metric, usedValue) {
           { headers: { 'apikey': SB_KEY } }
         );
         const sbData = await sbRes.json();
-        const total = sbData[0]?.limit_value ?? 3000;
-        const used = Math.max(0, total - available);
+        const total = planTotal ?? sbData[0]?.limit_value ?? 3000;
+        const used = Math.round(Math.max(0, total - available) * 10) / 10;
         console.log(`Total: ${total}, Available: ${available}, Used: ${used}`);
 
         await patchMetric('Netlify', 'credits', used);

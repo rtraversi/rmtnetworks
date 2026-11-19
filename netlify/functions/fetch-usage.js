@@ -157,9 +157,10 @@ exports.handler = async (event) => {
       const creditsUsed = d.capabilities?.credits?.used ?? null;
       const creditsTotal = d.capabilities?.credits?.included ?? d.plan_credits ?? null;
 
+      // Report only. The API's credits.used is always 0, so writing it would overwrite the
+      // real figure that scripts/scrape-netlify.js saves from the billing page.
       if (creditsUsed != null) {
-        await patchMetric('Netlify', 'credits', creditsUsed);
-        results.push({ service: 'Netlify', ok: true, credits_used: creditsUsed, credits_total: creditsTotal, note: 'credits.used always 0 — API limitation, scraping needed for real value' });
+        results.push({ service: 'Netlify', ok: true, credits_used: creditsUsed, credits_total: creditsTotal, note: 'not saved: API always reports 0; the scrape job owns this metric' });
       } else {
         results.push({ service: 'Netlify', ok: null, note: 'credits field not found' });
       }
