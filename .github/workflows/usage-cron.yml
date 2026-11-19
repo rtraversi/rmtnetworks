@@ -36,6 +36,16 @@ jobs:
             "https://rmtnetworks.com/.netlify/functions/fetch-usage" \
             | jq . || true
 
+      - name: Call fetch-costs function
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "Fetching vendor costs at $(date -u)"
+          curl -sf \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://rmtnetworks.com/.netlify/functions/fetch-costs" \
+            | jq . || true
+
   scrape-netlify:
     name: Scrape Netlify credit balance
     runs-on: ubuntu-24.04  # Playwright 1.59 has no ubuntu-26.04 support (ubuntu-latest moved 2026-11)

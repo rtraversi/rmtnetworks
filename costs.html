@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMT Networks — Costs</title>
+<script src="/js/vendor/supabase-2.118.0.js"></script>
+<script src="/js/rmt-auth.js"></script>
+<script>RMTAuth.guard({ allow: ['Rob', 'Katy'], otherwise: '/clients.html' });</script>
+<script src="/js/portal-nav.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14; --surface: #13161e; --border: #1e2230; --accent: #4fffb0; --accent2: #4b8fff;
+    --warn: #ff6b4a; --yellow: #ffd166; --text: #e8eaf0; --soft: #a3a9b8; --muted: #5a6070; --card-bg: #181b24;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; visibility: hidden; }
+  a { color: inherit; }
+  main { max-width: 1400px; margin: 0 auto; padding: 28px 24px 64px; }
+
+  .greet { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .greet .eyebrow { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  .greet h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.02em; }
+  .greet .meta { display: flex; align-items: center; gap: 12px; font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); }
+  .btn-refresh { background: none; border: 1px solid var(--border); color: var(--soft); border-radius: 6px; padding: 6px 12px; font-family: 'DM Mono', monospace; font-size: 0.7rem; cursor: pointer; }
+  .btn-refresh:hover { color: var(--text); border-color: var(--muted); }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpi { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; }
+  .kpi .k-label { font-family: 'DM Mono', monospace; font-size: 0.64rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .kpi .k-val { font-size: 1.75rem; font-weight: 800; margin: 6px 0 2px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .kpi .k-sub { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--soft); min-height: 1em; }
+  .kpi.warn { border-color: rgba(255,107,74,0.45); } .kpi.warn .k-val { color: var(--warn); }
+
+  .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+  .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; min-width: 0; display: flex; flex-direction: column; }
+  .span-4 { grid-column: span 4; } .span-12 { grid-column: span 12; }
+  .p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .p-title { font-size: 0.98rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .p-link { font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--accent2); text-decoration: none; white-space: nowrap; }
+  .p-link:hover { color: #7ab8ff; }
+  .p-note { font-family: 'DM Mono', monospace; font-size: 0.64rem; color: var(--muted); }
+  .p-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--soft); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  .p-foot b { color: var(--text); font-weight: 500; }
+  .empty { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); padding: 10px 0; }
+  .err { color: var(--warn); }
+  .skeleton { height: 14px; border-radius: 4px; background: var(--surface); margin: 8px 0; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.green { background: var(--accent); box-shadow: 0 0 8px rgba(79,255,176,0.55); }
+  .dot.red { background: var(--warn); box-shadow: 0 0 8px rgba(255,107,74,0.6); }
+
+  .big { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .big-sub { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--soft); margin: 2px 0 12px; }
+  .feed-err { font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--warn); margin-bottom: 10px; word-break: break-word; }
+
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 14px; align-items: baseline; padding: 7px 0; font-size: 0.8rem; }
+  .row + .row { border-top: 1px solid rgba(30,34,48,0.7); }
+  .money { font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .muted { color: var(--muted); }
+  .sub-h { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 4px 0 2px; }
+
+  .bar { height: 6px; border-radius: 99px; background: var(--surface); overflow: hidden; margin: 4px 0 10px; }
+  .bar > span { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+  .bar.mid > span { background: var(--yellow); } .bar.over > span { background: var(--warn); }
+
+  table.fixed { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.fixed th { text-align: left; font-family: 'DM Mono', monospace; font-size: 0.6rem; font-weight: 400; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; padding: 0 10px 8px 0; }
+  table.fixed td { padding: 8px 10px 8px 0; border-top: 1px solid rgba(30,34,48,0.7); vertical-align: baseline; }
+  table.fixed td.num, table.fixed th.num { text-align: right; padding-right: 0; padding-left: 10px; }
+  table.fixed .name { font-weight: 700; }
+  table.fixed .mono { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--soft); }
+  .due-soon { color: var(--yellow) !important; }
+  .past { color: var(--warn) !important; }
+
+  @media (max-width: 1150px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .span-4 { grid-column: span 6; } }
+  @media (max-width: 760px) {
+    main { padding: 20px 16px 48px; }
+    .grid > .panel { grid-column: span 12; }
+    .greet h1 { font-size: 1.5rem; }
+    table.fixed .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <div class="greet">
+    <div>
+      <div class="eyebrow" id="month">&nbsp;</div>
+      <h1>Costs</h1>
+    </div>
+    <div class="meta">
+      <span id="updated">Loading…</span>
+      <button class="btn-refresh" type="button" id="refresh">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi" id="kpi-total"><div class="k-label">This month (est.)</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-fixed"><div class="k-label">Fixed plans</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-usage"><div class="k-label">Usage, month to date</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-netlify"><div class="k-label">Netlify credits</div><div class="k-val">—</div><div class="k-sub"></div></div>
+  </div>
+
+  <div class="grid" id="usage-grid">
+    <section class="panel span-4"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
+    <section class="panel span-4"><div class="skeleton"></div><div class="skeleton"></div></section>
+    <section class="panel span-4"><div class="skeleton"></div><div class="skeleton"></div></section>
+    <section class="panel span-12" id="fixed">
+      <div class="p-head"><div class="p-title">Fixed plans</div><a class="p-link" href="/tracker.html">Subscriptions →</a></div>
+      <div class="p-body"><div class="skeleton"></div><div class="skeleton"></div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const usd = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+  const ago = (iso) => {
+    if (!iso) return 'never';
+    const h = (Date.now() - new Date(iso).getTime()) / 3600000;
+    return h < 1 ? 'just now' : h < 48 ? Math.round(h) + 'h ago' : Math.round(h / 24) + 'd ago';
+  };
+  const shortDate = (ymd) => ymd ? new Date(ymd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  const empty = (msg) => `<div class="empty">${esc(msg)}</div>`;
+  function kpi(id, val, sub, warn) {
+    const el = $('#kpi-' + id);
+    $('.k-val', el).textContent = val;
+    $('.k-sub', el).textContent = sub || '';
+    el.classList.toggle('warn', !!warn);
+  }
+
+  // A feed is stale if its last good fetch is over 26h old (it runs twice a day).
+  const stale = (u) => !u.last_ok_at || (Date.now() - new Date(u.last_ok_at).getTime()) > 26 * 3600000;
+
+  function usagePanel(u) {
+    const bad = u.ok === false || stale(u);
+    const scopes = u.scopes.length ? `<div class="sub-h">By workspace</div>` + u.scopes.map((s) => `
+      <div class="row"><span>${esc(s.name)}</span><span class="money">${usd(s.mtd_usd)}</span><span class="money muted">${usd(s.last_month_usd)}</span></div>`).join('') : '';
+    return `<section class="panel span-4">
+      <div class="p-head">
+        <div class="p-title"><span class="dot ${bad ? 'red' : 'green'}"></span>${esc(u.label)}</div>
+        <span class="p-note" title="${esc(u.checked_at || '')}">checked ${esc(ago(u.checked_at))}</span>
+      </div>
+      ${u.ok === false ? `<div class="feed-err">Last fetch failed: ${esc(u.error)}${u.last_ok_at ? ' · last good ' + esc(ago(u.last_ok_at)) : ''}</div>` : ''}
+      <div class="big">${usd(u.mtd_usd)}</div>
+      <div class="big-sub">this month · last month ${usd(u.last_month_usd)}</div>
+      ${scopes}
+      ${!u.scopes.length && !u.mtd_usd && !u.last_month_usd ? empty('No spend recorded yet.') : ''}
+      ${u.balance_usd != null ? `<div class="p-foot"><span>Credit left <b>${usd(u.balance_usd)}</b></span></div>` : ''}
+    </section>`;
+  }
+
+  function netlifyPanel(n) {
+    if (!n) return `<section class="panel span-4"><div class="p-head"><div class="p-title">Netlify credits</div></div>${empty('No Netlify credit data.')}</section>`;
+    const pct = n.limit ? Math.round((n.used / n.limit) * 100) : 0;
+    const cls = pct >= 100 ? 'over' : pct >= 80 ? 'mid' : '';
+    const old = (Date.now() - new Date(n.last_updated).getTime()) > 26 * 3600000;
+    return `<section class="panel span-4">
+      <div class="p-head">
+        <div class="p-title"><span class="dot ${old ? 'red' : 'green'}"></span>Netlify credits</div>
+        <span class="p-note">scraped ${esc(ago(n.last_updated))}</span>
+      </div>
+      <div class="big">${n.used.toLocaleString()} <span style="font-size:.9rem;color:var(--muted)">/ ${n.limit.toLocaleString()}</span></div>
+      <div class="big-sub">${esc(n.unit)} used this billing period · ${pct}%</div>
+      <div class="bar ${cls}"><span style="width:${Math.min(100, Math.max(1, pct))}%"></span></div>
+      <div class="p-foot"><span>Included in the Pro plan; extra credits are billed only past the limit.</span></div>
+    </section>`;
+  }
+
+  function fixedPanel(rows) {
+    const today = new Date().toISOString().slice(0, 10);
+    const soon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const body = rows.length ? `<table class="fixed">
+      <thead><tr><th>Service</th><th class="hide-sm">Plan</th><th class="hide-sm">Billed</th><th>Renews</th><th class="num">Price</th><th class="num">Per month</th></tr></thead>
+      <tbody>${rows.map((s) => {
+        const r = s.renewal_date;
+        const cls = !r ? '' : r < today ? 'past' : r <= soon ? 'due-soon' : '';
+        return `<tr>
+          <td class="name">${esc(s.name)}</td>
+          <td class="mono hide-sm">${esc(s.plan || '')}</td>
+          <td class="mono hide-sm">${esc(s.billing_cycle)}</td>
+          <td class="mono ${cls}" title="${cls === 'past' ? 'Renewal date has passed: update it in Subscriptions' : ''}">${esc(shortDate(r))}</td>
+          <td class="num money">${usd(s.price)}${s.billing_cycle === 'annual' ? '<span class="muted">/yr</span>' : ''}</td>
+          <td class="num money">${usd(s.monthly_usd)}</td>
+        </tr>`;
+      }).join('')}</tbody></table>` : empty('No priced plans in Subscriptions.');
+    $('#fixed .p-body').innerHTML = body;
+  }
+
+  async function load() {
+    $('#updated').textContent = 'Loading…';
+    try {
+      const r = await fetch('/.netlify/functions/costs');
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+
+      const [y, m] = d.month.split('-').map(Number);
+      $('#month').textContent = new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      const t = d.totals;
+      const badFeeds = d.usage.filter((u) => u.ok === false || stale(u));
+      kpi('total', usd(t.month_usd), 'fixed plans + usage so far');
+      kpi('fixed', usd(t.fixed_monthly_usd), `${d.fixed.length} paid plans · annual ÷ 12`);
+      kpi('usage', usd(t.usage_mtd_usd), badFeeds.length ? `${badFeeds.length} feed${badFeeds.length > 1 ? 's' : ''} failing` : 'all feeds current', badFeeds.length > 0);
+      if (d.netlify) {
+        const pct = d.netlify.limit ? Math.round((d.netlify.used / d.netlify.limit) * 100) : 0;
+        kpi('netlify', pct + '%', `${d.netlify.used.toLocaleString()} of ${d.netlify.limit.toLocaleString()} ${d.netlify.unit}`, pct >= 80);
+      } else kpi('netlify', '—', 'no data');
+
+      const grid = $('#usage-grid');
+      [...grid.querySelectorAll('section:not(#fixed)')].forEach((s) => s.remove());
+      grid.insertAdjacentHTML('afterbegin', d.usage.map(usagePanel).join('') + netlifyPanel(d.netlify));
+      fixedPanel(d.fixed);
+
+      $('#updated').textContent = 'Updated ' + new Date(d.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    } catch (e) {
+      $('#updated').textContent = 'Load failed';
+      ['total', 'fixed', 'usage', 'netlify'].forEach((id) => kpi(id, '?', 'unavailable', true));
+      const grid = $('#usage-grid');
+      [...grid.querySelectorAll('section:not(#fixed)')].forEach((s) => s.remove());
+      grid.insertAdjacentHTML('afterbegin', `<section class="panel span-12"><div class="empty err">Could not load costs: ${esc(e.message)}</div></section>`);
+      $('#fixed .p-body').innerHTML = '';
+    }
+  }
+
+  RMTAuth.guard().then(() => {
+    $('#refresh').addEventListener('click', load);
+    load();
+  });
+})();
+</script>
+</body>
+</html>

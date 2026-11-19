@@ -18,6 +18,7 @@
     { label: 'Dashboard',      href: '/portal.html',         users: TEAM, match: ['/', '/portal.html', '/portal'] },
     { label: 'Clients',        href: '/clients.html',        users: ALL },
     { label: 'Command Center', href: '/command-center.html', users: ALL },  // Max: scoped to his client server-side
+    { label: 'Costs',          href: '/costs.html',          users: TEAM },
     { label: 'Subscriptions',  href: '/tracker.html',        users: TEAM },
     { label: 'VPS',            href: '/vps.html',            users: TEAM },
     { label: 'Demos',          href: '/demos.html',          users: TEAM },

@@ -12,7 +12,7 @@
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
   apps_catalog, backup_runs, backup_sites, client_activities, client_apps, client_charges, client_containers,
   client_logins, client_milestone_items, client_modules, client_payments,
-  client_subscriptions, client_support_contracts, client_tasks, clients,
+  client_subscriptions, client_support_contracts, client_tasks, clients, cost_daily, cost_status,
   demo_new_deeds, ideas, intake_submissions, intake_tokens, modules_catalog,
   subscriptions, usage_metrics
 TO service_role;

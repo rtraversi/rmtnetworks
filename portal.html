@@ -51,7 +51,7 @@
   .btn-refresh:hover { color: var(--text); border-color: var(--muted); }
 
   /* KPI strip ----------------------------------------------------------- */
-  .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
   .kpi {
     background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px;
     padding: 16px 18px; text-decoration: none; display: block; transition: border-color .15s;
@@ -195,6 +195,7 @@
     <a class="kpi" href="#waiting" id="kpi-waiting"><div class="k-label">Waiting on clients</div><div class="k-val">—</div><div class="k-sub"></div></a>
     <a class="kpi" href="#pipeline" id="kpi-pipeline"><div class="k-label">Pipeline</div><div class="k-val">—</div><div class="k-sub"></div></a>
     <a class="kpi" href="#backups" id="kpi-backups"><div class="k-label">Backups</div><div class="k-val">—</div><div class="k-sub"></div></a>
+    <a class="kpi" href="/costs.html" id="kpi-costs"><div class="k-label">Spend this month</div><div class="k-val">—</div><div class="k-sub"></div></a>
   </div>
 
   <div class="grid">
@@ -423,6 +424,22 @@
     }
   }
 
+  // Fixed plans (monthly equivalent) + usage-billed spend so far; details on costs.html.
+  async function loadCosts() {
+    try {
+      const r = await fetch('/.netlify/functions/costs');
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+      const t = d.totals;
+      const failing = d.usage.filter((u) => u.ok === false).length;
+      kpi('costs', usd(t.month_usd),
+        failing ? `${plural(failing, 'cost feed')} failing` : `${usd(t.fixed_monthly_usd)} fixed · ${usd(t.usage_mtd_usd)} usage`,
+        failing ? 'warn' : null);
+    } catch (e) {
+      kpi('costs', '?', 'unavailable', 'warn');
+    }
+  }
+
   // Rob only: Stripe's own view of open invoices, next to the CRM ledger.
   async function loadStripe(user) {
     if (user !== 'Rob') return;
@@ -438,7 +455,7 @@
 
   function loadAll(user) {
     $('#updated').textContent = 'Loading…';
-    return Promise.all([loadDashboard().then(() => loadStripe(user)), loadBackups()]);
+    return Promise.all([loadDashboard().then(() => loadStripe(user)), loadBackups(), loadCosts()]);
   }
 
   RMTAuth.guard().then((info) => {
