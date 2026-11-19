@@ -428,9 +428,17 @@
         <label>Website URL</label>
         <input type="url" id="f-url" placeholder="https://...">
       </div>
+      <div class="form-group">
+        <label>Card match</label>
+        <input type="text" id="f-card" placeholder="Text in the charge, e.g. Netlify">
+      </div>
+      <div class="form-group">
+        <label>Card amount (optional)</label>
+        <input type="number" id="f-card-amt" step="0.01" placeholder="Only charges of exactly this">
+      </div>
       <div class="form-group full">
         <label>Notes</label>
-        <textarea id="f-notes" placeholder="API keys, account IDs, anything useful..."></textarea>
+        <textarea id="f-notes" placeholder="Account IDs, anything useful (no passwords or API keys)"></textarea>
       </div>
       <div class="form-group">
         <label>Active?</label>
@@ -655,10 +663,12 @@
       document.getElementById('f-login').value     = r.login_method || 'email';
       document.getElementById('f-url').value       = r.website_url || '';
       document.getElementById('f-notes').value     = r.notes || '';
+      document.getElementById('f-card').value      = r.card_match || '';
+      document.getElementById('f-card-amt').value  = r.card_amount ?? '';
       document.getElementById('f-active').value    = String(r.is_active);
       document.getElementById('f-autorenew').value = String(r.auto_renews);
     } else {
-      ['f-name','f-plan','f-price','f-renewal','f-email','f-url','f-notes'].forEach(id => document.getElementById(id).value = '');
+      ['f-name','f-plan','f-price','f-renewal','f-email','f-url','f-notes','f-card','f-card-amt'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('f-cat').value       = 'General';
       document.getElementById('f-billing').value   = 'monthly';
       document.getElementById('f-login').value     = 'email';
@@ -687,6 +697,8 @@
       login_method:  document.getElementById('f-login').value || null,
       website_url:   document.getElementById('f-url').value || null,
       notes:         document.getElementById('f-notes').value || null,
+      card_match:    document.getElementById('f-card').value.trim() || null,
+      card_amount:   document.getElementById('f-card-amt').value ? parseFloat(document.getElementById('f-card-amt').value) : null,
       is_active:     document.getElementById('f-active').value === 'true',
       auto_renews:   document.getElementById('f-autorenew').value === 'true',
     };

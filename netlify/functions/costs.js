@@ -1,18 +1,23 @@
 // costs.js — data for the Costs screen (costs.html) and the dashboard's spend KPI.
 //
-// GET  Authorization: Bearer <Supabase session (Rob or Katy)>
+// GET   Authorization: Bearer <Supabase session (Rob or Katy)>
+// POST  { ignore: "<text>", note? } adds a charge_ignores pattern (same auth)
 //
-// Returns {
+// GET returns {
 //   generated_at, month: 'YYYY-MM',
 //   usage:  [{ service, label, ok, error, checked_at, last_ok_at, balance_usd,
-//              mtd_usd, last_month_usd, scopes: [{ scope, name, mtd_usd, last_month_usd }],
-//              daily: [{ day, amount_usd }] }],          // usage-billed vendors (cost_daily)
+//              mtd_usd, last_month_usd, scopes: [...], daily: [...] }],  // API usage feeds
+//   card:   { ok, error, checked_at, last_ok_at, accounts, warnings,
+//             vendors: [{ label, pattern, billing, annual, mtd_usd, last_month_usd,
+//                         charges_90d, last: { day, amount_usd }, flags }],
+//             unmatched: [{ merchant, sample, count, total_usd, last_day, last_amount_usd }] },
 //   netlify: { used, limit, unit, last_updated } | null,  // build credits (usage_metrics)
-//   fixed:  [{ name, plan, category, price, billing_cycle, monthly_usd, renewal_date }],
-//   totals: { fixed_monthly_usd, usage_mtd_usd, month_usd }
+//   fixed:  [{ name, plan, category, price, billing_cycle, monthly_usd, renewal_date,
+//              card_match, card_status: charged|expected|annual|not_on_card }],
+//   totals: { month_usd, card_mtd_usd, still_due_usd, fixed_monthly_usd, usage_mtd_usd }
 // }
 //
-// Reads snapshots only; vendor APIs are called by fetch-costs.js on a schedule.
+// Reads snapshots only; vendor APIs and SimpleFIN are called by fetch-costs.js on a schedule.
 // Required env: SUPABASE_URL, SUPABASE_KEY.
 
 'use strict';
@@ -86,11 +91,137 @@ function summarizeUsage(rows, statuses, now = new Date()) {
   });
 }
 
+// Merchant key for grouping unmatched charges: "OPENAI *CHATGPT SUBSCR 123" → "OPENAI".
+// Exported for tests.
+function merchantKey(desc) {
+  let d = String(desc || '').toUpperCase();
+  // Payment processors put the real merchant after the star: "SQ *JOE'S CAFE".
+  const star = d.match(/^(SQ|TST|PAYPAL|PP|SP|DD|IN|GOOGLE|APPLE\.COM\/BILL)\s*\*\s*(.+)$/);
+  d = star ? star[2] : d;
+  const k = d
+    .replace(/\*.*$/, '').replace(/[#0-9].*$/, '')
+    .replace(/[^A-Z&' ]/g, ' ').replace(/\s+/g, ' ').trim()
+    .split(' ').slice(0, 3).join(' ');
+  return k || String(desc || '').trim().toUpperCase() || '(no description)';
+}
+
+// Card charges (SimpleFIN) matched to subscriptions by card_match, and what the month
+// will cost. Exported for tests.
+//
+// For the month estimate:
+//   • monthly and usage-billed vendors on the card count what they actually charged;
+//   • a monthly plan not charged yet this month (or paid some other way) adds its price;
+//   • annual plans always add price ÷ 12, and their card charges are left out of the
+//     month so a renewal doesn't count twice.
+function summarizeCard(charges, subs, ignores, now = new Date()) {
+  const thisMonth = now.toISOString().slice(0, 7);
+  const prevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+  const dayMs = 86400000;
+  const daysAgo = (d) => Math.floor((now.getTime() - Date.parse(d + 'T12:00:00Z')) / dayMs);
+
+  // A rule is card_match text plus an optional exact amount; one rule key per pair.
+  const ruleKey = (s) => {
+    const p = (s.card_match || '').trim().toLowerCase();
+    if (!p) return '';
+    const a = s.card_amount == null || s.card_amount === '' ? null : Number(s.card_amount);
+    return a == null || !Number.isFinite(a) ? p : `${p}|${a.toFixed(2)}`;
+  };
+  const patterns = subs.filter((s) => ruleKey(s))
+    .map((s) => {
+      const a = ruleKey(s).includes('|') ? Number(s.card_amount) : null;
+      return { sub: s, key: ruleKey(s), p: s.card_match.trim().toLowerCase(), amount: a };
+    })
+    .sort((x, y) => (y.amount != null) - (x.amount != null)); // amount rules first
+  const ignorePats = ignores.map((i) => String(i.pattern || '').trim().toLowerCase()).filter(Boolean);
+
+  const vendors = new Map();   // rule key → vendor summary
+  const unmatched = new Map(); // merchant key → summary
+
+  const sorted = [...charges].sort((a, b) => a.posted_on.localeCompare(b.posted_on));
+  for (const c of sorted) {
+    const desc = String(c.description || '');
+    const lower = desc.toLowerCase();
+    const amt = -Number(c.amount_usd); // positive = money out
+    const hit = patterns.find((x) => lower.includes(x.p) && (x.amount == null || Math.abs(Math.abs(amt) - x.amount) < 0.005));
+    if (hit) {
+      const pattern = hit.sub.card_match.trim() + (hit.amount != null ? ` = ${hit.amount.toFixed(2)}` : '');
+      const v = vendors.get(hit.key) || { key: hit.key, pattern, subs: [], mtd: 0, last_month: 0, count: 0, last: null };
+      for (const x of patterns) if (x.key === hit.key && !v.subs.includes(x.sub)) v.subs.push(x.sub);
+      const m = c.posted_on.slice(0, 7);
+      if (m === thisMonth) v.mtd += amt;
+      if (m === prevMonth) v.last_month += amt;
+      if (amt > 0) { v.count += 1; v.last = { day: c.posted_on, amount_usd: round2(amt) }; }
+      vendors.set(hit.key, v);
+      continue;
+    }
+    if (amt <= 0 || ignorePats.some((p) => lower.includes(p))) continue;
+    const k = merchantKey(desc);
+    const u = unmatched.get(k) || { merchant: k, sample: desc, count: 0, total_usd: 0, last_day: null, last_amount_usd: null };
+    u.count += 1;
+    u.total_usd += amt;
+    u.last_day = c.posted_on;
+    u.last_amount_usd = round2(amt);
+    unmatched.set(k, u);
+  }
+
+  const vendorList = [...vendors.values()].map((v) => {
+    const cycles = [...new Set(v.subs.map((s) => s.billing_cycle))];
+    const annual = cycles.length === 1 && cycles[0] === 'annual';
+    const monthlyPrice = v.subs.filter((s) => s.billing_cycle === 'monthly').reduce((t, s) => t + (Number(s.price) || 0), 0);
+    const flags = [];
+    if (cycles.includes('monthly') && (!v.last || daysAgo(v.last.day) > 40)) flags.push('No charge in 40+ days');
+    if (cycles.length === 1 && cycles[0] === 'monthly' && monthlyPrice > 0 && v.last
+        && Math.abs(v.last.amount_usd - monthlyPrice) / monthlyPrice > 0.05) {
+      flags.push(`Last charge ${v.last.amount_usd.toFixed(2)} vs plan ${monthlyPrice.toFixed(2)}`);
+    }
+    return {
+      key: v.key,
+      label: [...new Set(v.subs.map((s) => s.name))].join(' / '),
+      pattern: v.pattern,
+      billing: cycles.join(' + '),
+      annual,
+      mtd_usd: round2(v.mtd),
+      last_month_usd: round2(v.last_month),
+      charges_90d: v.count,
+      last: v.last,
+      flags,
+    };
+  }).sort((a, b) => b.mtd_usd - a.mtd_usd || b.last_month_usd - a.last_month_usd);
+
+  const charged = new Set(vendorList.filter((v) => v.mtd_usd > 0).map((v) => v.key));
+  const plans = subs.map((s) => {
+    const monthly = monthlyUsd(s);
+    if (monthly == null) return null;
+    const p = ruleKey(s);
+    let status;
+    if (s.billing_cycle === 'annual') status = 'annual';
+    else if (!p) status = 'not_on_card';
+    else status = charged.has(p) ? 'charged' : 'expected';
+    return { name: s.name, status, still_due_usd: status === 'charged' ? 0 : monthly };
+  }).filter(Boolean);
+
+  const cardMtd = vendorList.filter((v) => !v.annual).reduce((t, v) => t + v.mtd_usd, 0);
+  const stillDue = plans.reduce((t, p) => t + p.still_due_usd, 0);
+
+  return {
+    vendors: vendorList,
+    unmatched: [...unmatched.values()]
+      .filter((u) => u.count >= 2 || u.total_usd >= 50)
+      .map((u) => ({ ...u, total_usd: round2(u.total_usd) }))
+      .sort((a, b) => b.total_usd - a.total_usd),
+    plan_status: Object.fromEntries(plans.map((p) => [p.name, p.status])),
+    card_mtd_usd: round2(cardMtd),
+    still_due_usd: round2(stillDue),
+  };
+}
+
 exports.monthlyUsd = monthlyUsd;
 exports.summarizeUsage = summarizeUsage;
+exports.summarizeCard = summarizeCard;
+exports.merchantKey = merchantKey;
 
 exports.handler = async (event) => {
-  if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed' });
+  if (!['GET', 'POST'].includes(event.httpMethod)) return json(405, { error: 'Method not allowed' });
   if (!['Rob', 'Katy'].includes(await authenticate(event))) return json(401, { error: 'Unauthorized' });
 
   const base = process.env.SUPABASE_URL;
@@ -103,20 +234,41 @@ exports.handler = async (event) => {
     return r.json();
   };
 
+  // POST { ignore: "<text in the description>", note? } — hide a merchant from the
+  // "recurring charges with no match" list (card payments, personal charges...).
+  if (event.httpMethod === 'POST') {
+    let body;
+    try { body = JSON.parse(event.body || '{}'); } catch { return json(400, { error: 'Bad JSON' }); }
+    const pattern = String(body.ignore || '').trim();
+    if (pattern.length < 3 || pattern.length > 80) return json(400, { error: 'ignore must be 3-80 characters' });
+    const r = await fetch(`${base}/rest/v1/charge_ignores?on_conflict=pattern`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ pattern, note: String(body.note || '').slice(0, 200) || null }),
+    });
+    if (!r.ok) return json(502, { error: `charge_ignores: HTTP ${r.status}` });
+    return json(200, { ok: true });
+  }
+
   const now = new Date();
   const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
+  const cardSince = new Date(now.getTime() - 95 * 86400000).toISOString().slice(0, 10);
 
   try {
-    const [rows, statuses, subs, netlify] = await Promise.all([
+    const [rows, statuses, subs, netlify, charges, ignores] = await Promise.all([
       get(`cost_daily?select=service,scope,day,amount_usd&day=gte.${since}&order=day.asc`),
       get('cost_status?select=*'),
-      get('subscriptions?select=name,plan,category,price,billing_cycle,renewal_date&is_active=eq.true&order=name.asc'),
+      get('subscriptions?select=name,plan,category,price,billing_cycle,renewal_date,card_match,card_amount&is_active=eq.true&order=name.asc'),
       get('usage_metrics?select=used_value,limit_value,unit,last_updated&service_name=eq.Netlify&metric_name=eq.credits&limit=1'),
+      get(`card_charges?select=posted_on,amount_usd,description&posted_on=gte.${cardSince}&order=posted_on.asc&limit=5000`),
+      get('charge_ignores?select=pattern'),
     ]);
 
-    const usage = summarizeUsage(rows, statuses, now);
+    const cardStatus = statuses.find((s) => s.service === 'card') || null;
+    const usage = summarizeUsage(rows, statuses.filter((s) => s.service !== 'card'), now);
+    const card = summarizeCard(charges, subs, ignores, now);
     const fixed = subs
-      .map((s) => ({ ...s, price: Number(s.price), monthly_usd: monthlyUsd(s) }))
+      .map((s) => ({ ...s, price: Number(s.price), monthly_usd: monthlyUsd(s), card_status: card.plan_status[s.name] || null }))
       .filter((s) => s.monthly_usd != null)
       .sort((a, b) => b.monthly_usd - a.monthly_usd);
 
@@ -128,9 +280,27 @@ exports.handler = async (event) => {
       generated_at: now.toISOString(),
       month: now.toISOString().slice(0, 7),
       usage,
+      card: {
+        ok: cardStatus ? cardStatus.ok : null,
+        error: cardStatus ? cardStatus.error : null,
+        checked_at: cardStatus ? cardStatus.checked_at : null,
+        last_ok_at: cardStatus ? cardStatus.last_ok_at : null,
+        accounts: (cardStatus && cardStatus.details && cardStatus.details.accounts) || [],
+        warnings: (cardStatus && cardStatus.details && cardStatus.details.warnings) || [],
+        vendors: card.vendors,
+        unmatched: card.unmatched,
+      },
       netlify: n ? { used: Number(n.used_value), limit: Number(n.limit_value), unit: n.unit, last_updated: n.last_updated } : null,
       fixed,
-      totals: { fixed_monthly_usd: fixedMonthly, usage_mtd_usd: usageMtd, month_usd: round2(fixedMonthly + usageMtd) },
+      totals: {
+        // The month: what the card has been charged so far for monthly and usage-billed
+        // vendors, plus plans still to come (not charged yet, paid elsewhere, or annual ÷ 12).
+        month_usd: round2(card.card_mtd_usd + card.still_due_usd),
+        card_mtd_usd: card.card_mtd_usd,
+        still_due_usd: card.still_due_usd,
+        fixed_monthly_usd: fixedMonthly,   // every priced plan at its monthly equivalent
+        usage_mtd_usd: usageMtd,           // API usage feeds (billed through the card; not added)
+      },
     });
   } catch (e) {
     return json(502, { error: e.message || 'Unknown error' });
