@@ -1,5 +1,8 @@
 // CRUD for `subscriptions` (tracker.html). Rob/Katy only.
 //
+// GET   ?view=clients         → services on client cards (client_subscriptions)
+//                               as read-only rows with the client's name, for the
+//                               totals (lib/client-costs.js). Edited on the card.
 // GET                         → all subscriptions, by name. Active,
 //                               auto-renewing monthly rows whose renewal_date
 //                               has passed are first rolled forward to the
@@ -13,6 +16,7 @@
 const { whoAmI, isMax } = require('../../lib/max-scope.js');
 const { authenticate } = require('../../lib/portal-auth.js');
 const { nextMonthly, shouldAdvance, todayEastern } = require('../../lib/renewal.js');
+const { clientCostRows } = require('../../lib/client-costs.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -45,6 +49,16 @@ exports.handler = async (event) => {
   const method = event.httpMethod;
 
   try {
+    if (method === 'GET' && qp.view === 'clients') {
+      const [cRes, sRes] = await Promise.all([
+        sbFetch('/client_subscriptions?select=*,client:clients(name)&order=service.asc'),
+        sbFetch('/subscriptions?select=card_match,card_amount&is_active=eq.true'),
+      ]);
+      if (!cRes.ok) return json(500, { error: await cRes.text() });
+      if (!sRes.ok) return json(500, { error: await sRes.text() });
+      return json(200, clientCostRows(await cRes.json(), await sRes.json(), todayEastern()));
+    }
+
     if (method === 'GET') {
       const res = await sbFetch('/subscriptions?order=name.asc');
       if (!res.ok) return json(500, { error: await res.text() });

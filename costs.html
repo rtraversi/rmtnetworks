@@ -200,6 +200,7 @@
     return {
       charged:     '<span class="st charged">charged ✓</span>',
       expected:    '<span class="st expected">not charged yet</span>',
+      partial:     '<span class="st expected" title="This vendor bills several plans; only part of their total has been charged this month">partly charged</span>',
       annual:      '<span class="st other">annual ÷ 12</span>',
       not_on_card: '<span class="st other" title="No card match set, or paid with another card">not on card</span>',
     }[st] || '';
@@ -254,7 +255,7 @@
     } catch (e) { window.alert('Could not save: ' + e.message); }
   }
 
-  function fixedPanel(rows) {
+  function fixedPanel(rows, byClient) {
     const today = new Date().toISOString().slice(0, 10);
     const soon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     const body = rows.length ? `<table class="fixed">
@@ -263,7 +264,7 @@
         const r = s.renewal_date;
         const cls = !r ? '' : r < today ? 'past' : r <= soon ? 'due-soon' : '';
         return `<tr>
-          <td class="name">${esc(s.name)}</td>
+          <td class="name">${esc(s.name)}<div class="mono">${esc(s.client_name || 'Business')}</div></td>
           <td class="mono hide-sm">${esc(s.plan || '')}</td>
           <td class="mono hide-sm">${esc(s.billing_cycle)}</td>
           <td class="mono ${cls}" title="${cls === 'past' ? 'Renewal date has passed: update it in Subscriptions' : ''}">${esc(shortDate(r))}</td>
@@ -272,7 +273,15 @@
           <td class="num money">${usd(s.monthly_usd)}</td>
         </tr>`;
       }).join('')}</tbody></table>` : empty('No priced plans in Subscriptions.');
-    $('#fixed .p-body').innerHTML = body;
+    // Who the plans are for: business overhead, then each client (services on client cards).
+    const split = (byClient || []).length > 1 ? `<table class="fixed" style="margin-top:18px">
+      <thead><tr><th>For</th><th class="num">Plans</th><th class="num">Per month</th></tr></thead>
+      <tbody>${byClient.map((b) => `<tr>
+        <td class="name">${esc(b.client_name || 'Business')}</td>
+        <td class="num mono">${b.count}</td>
+        <td class="num money">${usd(b.monthly_usd)}</td>
+      </tr>`).join('')}</tbody></table>` : '';
+    $('#fixed .p-body').innerHTML = body + split;
   }
 
   async function load() {
@@ -300,7 +309,7 @@
       unmatchedPanel(d.card.unmatched);
       [...grid.querySelectorAll('section.feed, section.load-err')].forEach((s) => s.remove());
       $('#fixed').insertAdjacentHTML('beforebegin', d.usage.map(usagePanel).join('') + netlifyPanel(d.netlify));
-      fixedPanel(d.fixed);
+      fixedPanel(d.fixed, d.by_client);
 
       $('#updated').textContent = 'Updated ' + new Date(d.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     } catch (e) {
