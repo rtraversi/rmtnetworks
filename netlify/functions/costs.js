@@ -13,7 +13,9 @@
 //             unmatched: [{ merchant, sample, count, total_usd, last_day, last_amount_usd }] },
 //   netlify: { used, limit, unit, last_updated } | null,  // build credits (usage_metrics)
 //   fixed:  [{ name, plan, category, price, billing_cycle, monthly_usd, renewal_date,
-//              card_match, card_status: charged|expected|annual|not_on_card }],
+//              card_match, card_status: charged|expected|annual|not_on_card,
+//              client_name (null = business cost) }],
+//   by_client: [{ client_name (null = business), monthly_usd, count }],
 //   totals: { month_usd, card_mtd_usd, still_due_usd, fixed_monthly_usd, usage_mtd_usd }
 // }
 //
@@ -22,6 +24,8 @@
 
 'use strict';
 const { authenticate } = require('../../lib/portal-auth.js');
+const { clientCostRows } = require('../../lib/client-costs.js');
+const { todayEastern } = require('../../lib/renewal.js');
 
 const json = (status, body) => ({
   statusCode: status,
@@ -35,6 +39,9 @@ const LABELS = {
 };
 
 const round2 = (n) => Math.round(n * 100) / 100;
+
+// Plan-status key: a client's row can share a name with a business row ("Cloudflare").
+const planKey = (s) => (s.client_id ? `${s.name}|${s.client_id}` : s.name);
 
 // Monthly equivalent of a fixed plan; null for free, usage-billed or unpriced rows.
 // Exported for tests.
@@ -170,9 +177,16 @@ function summarizeCard(charges, subs, ignores, now = new Date()) {
     const monthlyPrice = v.subs.filter((s) => s.billing_cycle === 'monthly').reduce((t, s) => t + (Number(s.price) || 0), 0);
     const flags = [];
     if (cycles.includes('monthly') && (!v.last || daysAgo(v.last.day) > 40)) flags.push('No charge in 40+ days');
-    if (cycles.length === 1 && cycles[0] === 'monthly' && monthlyPrice > 0 && v.last
-        && Math.abs(v.last.amount_usd - monthlyPrice) / monthlyPrice > 0.05) {
-      flags.push(`Last charge ${v.last.amount_usd.toFixed(2)} vs plan ${monthlyPrice.toFixed(2)}`);
+    // One plan: compare its last charge. Several plans under one vendor (a client's
+    // Supabase org next to Rob's own) bill separately, so compare last month's total.
+    if (cycles.length === 1 && cycles[0] === 'monthly' && monthlyPrice > 0 && v.last) {
+      const several = v.subs.length > 1;
+      const seen = several ? round2(v.last_month) : v.last.amount_usd;
+      if ((!several || seen > 0) && Math.abs(seen - monthlyPrice) / monthlyPrice > 0.05) {
+        flags.push(several
+          ? `Last month ${seen.toFixed(2)} vs plans ${monthlyPrice.toFixed(2)}`
+          : `Last charge ${seen.toFixed(2)} vs plan ${monthlyPrice.toFixed(2)}`);
+      }
     }
     return {
       key: v.key,
@@ -188,16 +202,34 @@ function summarizeCard(charges, subs, ignores, now = new Date()) {
     };
   }).sort((a, b) => b.mtd_usd - a.mtd_usd || b.last_month_usd - a.last_month_usd);
 
-  const charged = new Set(vendorList.filter((v) => v.mtd_usd > 0).map((v) => v.key));
+  const mtdByKey = new Map(vendorList.map((v) => [v.key, v.mtd_usd]));
+  // Monthly plans that share one card rule (Rob's Supabase org plus a client's) bill as
+  // separate charges, so one charge doesn't mean all of them are paid: what is still due
+  // is the plans' total minus what the vendor has charged this month.
+  const group = new Map(); // rule key → { total, n } of its monthly plans
+  for (const s of subs) {
+    const k = ruleKey(s);
+    const m = monthlyUsd(s);
+    if (!k || m == null || s.billing_cycle !== 'monthly') continue;
+    const g = group.get(k) || { total: 0, n: 0 };
+    g.total += m; g.n += 1;
+    group.set(k, g);
+  }
   const plans = subs.map((s) => {
     const monthly = monthlyUsd(s);
     if (monthly == null) return null;
     const p = ruleKey(s);
-    let status;
-    if (s.billing_cycle === 'annual') status = 'annual';
-    else if (!p) status = 'not_on_card';
-    else status = charged.has(p) ? 'charged' : 'expected';
-    return { name: s.name, status, still_due_usd: status === 'charged' ? 0 : monthly };
+    if (s.billing_cycle === 'annual') return { key: planKey(s), status: 'annual', still_due_usd: monthly };
+    if (!p) return { key: planKey(s), status: 'not_on_card', still_due_usd: monthly };
+    const mtd = Math.max(0, mtdByKey.get(p) || 0);
+    if (mtd <= 0) return { key: planKey(s), status: 'expected', still_due_usd: monthly };
+    const g = group.get(p);
+    if (!g || g.n < 2) return { key: planKey(s), status: 'charged', still_due_usd: 0 };
+    const total = g.total;
+    const short = Math.max(0, total - mtd);
+    if (short < 0.005) return { key: planKey(s), status: 'charged', still_due_usd: 0 };
+    // Split the shortfall across the group by price; the sum is what the total uses.
+    return { key: planKey(s), status: 'partial', still_due_usd: (monthly / total) * short };
   }).filter(Boolean);
 
   const cardMtd = vendorList.filter((v) => !v.annual).reduce((t, v) => t + v.mtd_usd, 0);
@@ -209,7 +241,7 @@ function summarizeCard(charges, subs, ignores, now = new Date()) {
       .filter((u) => u.count >= 2 || u.total_usd >= 50)
       .map((u) => ({ ...u, total_usd: round2(u.total_usd) }))
       .sort((a, b) => b.total_usd - a.total_usd),
-    plan_status: Object.fromEntries(plans.map((p) => [p.name, p.status])),
+    plan_status: Object.fromEntries(plans.map((p) => [p.key, p.status])),
     card_mtd_usd: round2(cardMtd),
     still_due_usd: round2(stillDue),
   };
@@ -255,24 +287,44 @@ exports.handler = async (event) => {
   const cardSince = new Date(now.getTime() - 95 * 86400000).toISOString().slice(0, 10);
 
   try {
-    const [rows, statuses, subs, netlify, charges, ignores] = await Promise.all([
+    const [rows, statuses, ownSubs, netlify, charges, ignores, clientSubs] = await Promise.all([
       get(`cost_daily?select=service,scope,day,amount_usd&day=gte.${since}&order=day.asc`),
       get('cost_status?select=*'),
       get('subscriptions?select=name,plan,category,price,billing_cycle,renewal_date,card_match,card_amount&is_active=eq.true&order=name.asc'),
       get('usage_metrics?select=used_value,limit_value,unit,last_updated&service_name=eq.Netlify&metric_name=eq.credits&limit=1'),
       get(`card_charges?select=posted_on,amount_usd,description&posted_on=gte.${cardSince}&order=posted_on.asc&limit=5000`),
       get('charge_ignores?select=pattern'),
+      get('client_subscriptions?select=id,client_id,service,billing_cycle,price,expiration_date,client:clients(name)&order=service.asc'),
     ]);
+
+    // Services on client cards are costs Rob pays for that client; they count with his own.
+    const subs = [
+      ...ownSubs,
+      ...clientCostRows(clientSubs, ownSubs, todayEastern(now))
+        .map(({ notes, login_email, website_url, ...r }) => r),
+    ];
 
     const cardStatus = statuses.find((s) => s.service === 'card') || null;
     const usage = summarizeUsage(rows, statuses.filter((s) => s.service !== 'card'), now);
     const card = summarizeCard(charges, subs, ignores, now);
     const fixed = subs
-      .map((s) => ({ ...s, price: Number(s.price), monthly_usd: monthlyUsd(s), card_status: card.plan_status[s.name] || null }))
+      .map((s) => ({
+        name: s.name, plan: s.plan, category: s.category, price: Number(s.price),
+        billing_cycle: s.billing_cycle, renewal_date: s.renewal_date, card_match: s.card_match,
+        monthly_usd: monthlyUsd(s), card_status: card.plan_status[planKey(s)] || null,
+        client_name: s.client_name || null,
+      }))
       .filter((s) => s.monthly_usd != null)
       .sort((a, b) => b.monthly_usd - a.monthly_usd);
 
     const fixedMonthly = round2(fixed.reduce((t, s) => t + s.monthly_usd, 0));
+    const byClient = new Map();
+    for (const s of fixed) {
+      const b = byClient.get(s.client_name) || { client_name: s.client_name, monthly_usd: 0, count: 0 };
+      b.monthly_usd += s.monthly_usd;
+      b.count += 1;
+      byClient.set(s.client_name, b);
+    }
     const usageMtd = round2(usage.reduce((t, u) => t + u.mtd_usd, 0));
     const n = netlify[0];
 
@@ -292,6 +344,9 @@ exports.handler = async (event) => {
       },
       netlify: n ? { used: Number(n.used_value), limit: Number(n.limit_value), unit: n.unit, last_updated: n.last_updated } : null,
       fixed,
+      by_client: [...byClient.values()]
+        .map((b) => ({ ...b, monthly_usd: round2(b.monthly_usd) }))
+        .sort((a, b) => (b.client_name == null) - (a.client_name == null) || b.monthly_usd - a.monthly_usd),
       totals: {
         // The month: what the card has been charged so far for monthly and usage-billed
         // vendors, plus plans still to come (not charged yet, paid elsewhere, or annual ÷ 12).
